@@ -29,7 +29,8 @@
 - **100% 保持 Pi 的功能与 TUI 体验**：终端渲染、分支树选择器、Diff 对比、Markdown 流式高亮、快捷键与 Slash Commands 纯正体验；
 - **严格依赖隔离**：零依赖 `deepseek-harness` 专属插件，底层仅依赖 `vendor/` 内核；
 - **完整生态支持**：全面支持 `https://pi.dev/packages` 原生插件生态；实机验证通过 `pnpm pi install npm:@juicesharp/rpiv-todo` 社区插件安装与交互式 TUI 完整运行（包括模型创建 Todo、`/todos` 快捷斜杠命令查看交互）；
-- **架构决策记录 (Agent Notes)**：建立 `.agents/notes/` 目录规范，收录微内核架构设计与服务/插件生态集成中英文架构决策记录（ADR）；
+- **架构决策记录 (Agent Notes)**：建立 `.agents/notes/` 目录规范，收录微内核架构设计、服务矩阵与插件生态集成、以及 TUI 权衡与控制面重构深度分析等中英文架构决策记录（ADR）；
+- **TUI 微内核状态呈现**：在全屏交互式 TUI 欢迎界面优雅呈现 `[Cordis Microkernel]` 10 大核心服务与插件状态，兼顾终端纯净度与系统可观测性；
 - **开发与架构规范 (AGENTS.md)**：创建根目录 `AGENTS.md`，定义微内核设计哲学、服务矩阵、代码与 Git 提交规范。
 
 
