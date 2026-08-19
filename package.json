@@ -1,0 +1,33 @@
+{
+  "name": "pi-cordis-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pi": "tsx packages/coding-agent/src/cli.ts",
+    "build": "pnpm -r run build",
+    "test": "vitest --run",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "workspace:*",
+    "@deepseek-ai/cosmokit": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "tsx": "4.22.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.9"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@google/genai",
+      "canvas",
+      "esbuild",
+      "protobufjs"
+    ]
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}
