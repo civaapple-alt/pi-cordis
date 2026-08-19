@@ -28,4 +28,6 @@
 
 - **100% 保持 Pi 的功能与 TUI 体验**：终端渲染、分支树选择器、Diff 对比、Markdown 流式高亮、快捷键与 Slash Commands 纯正体验；
 - **严格依赖隔离**：零依赖 `deepseek-harness` 专属插件，底层仅依赖 `vendor/` 内核；
-- **完整生态支持**：全面支持 `https://pi.dev/packages` 原生插件生态。
+- **完整生态支持**：全面支持 `https://pi.dev/packages` 原生插件生态；
+- **架构决策记录 (Agent Notes)**：建立 `.agents/notes/` 目录规范，收录微内核架构设计与服务/插件生态集成中英文架构决策记录（ADR）。
+
