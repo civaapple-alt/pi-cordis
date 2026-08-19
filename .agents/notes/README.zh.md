@@ -14,5 +14,7 @@
 | `2026-08-19` | [Pi-Cordis: 服务矩阵划分与扩展生态集成](implemented/architecture/2026-08-19-pi-cordis-services-and-plugin-ecosystem.zh.md) | 10 大核心 Cordis 服务（`ctx.settings`, `ctx.auth`, `ctx.ai`, `ctx.tools`, `ctx.session`, `ctx.skills`, `ctx.prompts`, `ctx.extensions`, `ctx.packageManager`, `ctx.agent`）、`pi.dev/packages` 插件市场兼容与 `ExtensionAPI` 事件桥接 |
 | `2026-08-19` | [Pi-Cordis: TUI、UI 插件体系与控制面重构权衡及发散探索](implemented/architecture/2026-08-19-pi-cordis-tui-and-control-plane-tradeoffs.zh.md) | 控制面重构的 4 大真实代价与绞杀者模式、TUI 全屏静默装配与资源呈现看板、TUI 环境下 UI 插件与 WebServer 的根本困境、DSH 协议化退守战略、7 大 TUI 插槽系统演进与多 Agent 终端呈现边界 |
 | `2026-08-19` | [Pi-Cordis: 仓库精简与上游依赖解耦](implemented/simplification/2026-08-19-pi-cordis-repository-simplification.zh.md) | 移除 1200+ 冗余源码文件、直接消费官方 `@earendil-works/pi-*` 依赖、仓库体积骤降 85%、自动跟进上游升级与极速构建 |
+| `2026-08-19` | [Pi AgentHarness: 工业级事务规格与 Cordis 微内核架构融合](implemented/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.zh.md) | 三存储模型（entries/registers/ledger）、副作用三明治（Effect Sandwich）、Lanes 多车道并发与 Cordis 控制面融合 |
+
 
 
