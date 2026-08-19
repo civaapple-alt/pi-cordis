@@ -2,11 +2,11 @@
 
 > **Repository**: [https://github.com/civaapple-alt/pi-cordis](https://github.com/civaapple-alt/pi-cordis)  
 > **License**: MIT  
-> **Core Foundation**: Cordis v4.0.1 Microkernel + Pi Terminal Agent
+> **Core Foundation**: Cordis v4.0.1 Microkernel + Pi Terminal Agent + Native Plugins Workspace
 
 [English](AGENTS.md) | 中文
 
-**Pi-Cordis** 是基于 **Cordis (v4.0.1)** 微内核与“**Everything is a plugin**”设计哲学重构的 AI 编码智能体工程，100% 保持 [`earendil-works/pi`](https://github.com/earendil-works/pi) 的原生编码能力、交互式终端 UI（TUI）与扩展市场生态，同时仅依赖本地 Vendored Cordis 元框架内核。
+**Pi-Cordis** 是基于 **Cordis (v4.0.1)** 微内核与“**Everything is a plugin**”设计哲学重构的 AI 编码智能体工程，100% 保持 [`earendil-works/pi`](https://github.com/earendil-works/pi) 的原生编码能力、交互式终端 UI（TUI）与扩展市场生态，同时引入模块化 `packages/plugins/*` 插件子包与声明式 `presets/` 预设目录体系。
 
 ---
 
@@ -16,10 +16,11 @@
 - [二、控制面与数据面分层架构](#二控制面与数据面分层架构)
 - [三、仓库目录与工作区规范](#三仓库目录与工作区规范)
 - [四、Cordis 10 大核心服务矩阵](#四cordis-10-大核心服务矩阵)
-- [五、防御性编程与防双轨制反模式](#五防御性编程与防双轨制反模式)
-- [六、质量门禁与测试指令](#六质量门禁与测试指令)
-- [七、架构决策记录 (ADR) 演进规范](#七架构决策记录-adr-演进规范)
-- [八、代码风格与 Git 提交规范](#八代码风格与-git-提交规范)
+- [五、原生插件与 Presets 预设开发规范](#五原生插件与-presets-预设开发规范)
+- [六、防御性编程与防双轨制反模式](#六防御性编程与防双轨制反模式)
+- [七、质量门禁与测试指令](#七质量门禁与测试指令)
+- [八、架构决策记录 (ADR) 演进规范](#八架构决策记录-adr-演进规范)
+- [九、代码风格与 Git 提交规范](#九代码风格与-git-提交规范)
 
 ---
 
@@ -38,7 +39,7 @@
    - 交互式终端 UI（Canvas、差异化渲染、分支树选择器、Diff 对比、Markdown 流式渲染、状态栏）；
    - 7 大核心内置工具（4 核心：`read`, `write`, `edit`, `bash` + 3 可选：`grep`, `find`, `ls`）；
    - 1307+ 个模型提供商支持（OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Ollama, Bedrock 等）；
-   - 完整支持 CLI 参数、Slash Commands（`/help`, `/model`, `/session`, `/clear`, `/compact`, `/tree` 等）。
+   - 完整支持 CLI 参数、Slash Commands（`/help`, `/profile`, `/model`, `/session`, `/clear`, `/compact`, `/tree` 等）。
 6. **全面支持 Pi 原生插件生态 (`https://pi.dev/packages`)**：
    - 内置 `ExtensionService` 完整桥接 Pi 的 `ExtensionAPI` 至 Cordis 事件总线与服务容器；
    - 内置 `PackageManagerService` 支持从 `pi.dev`、npm、git 和本地路径一键安装管理插件。
@@ -52,7 +53,7 @@ Pi-Cordis 采用经典的**绞杀者模式（Strangler Fig Pattern）**：
 ```text
   ┌────────────────────────────────────────────────────────────────────────┐
   │         Cordis 微内核控制面 (Control Plane: packages/.../src/core/cordis)│
-  │  Context 容器 / static provide / 生命周期事件 / 服务发现 / 依赖注入    │
+  │  Context 容器 / static provide / 生命周期事件 / 插件与 Presets 扫描     │
   └──────────────────┬──────────────────────────────────┬──────────────────┘
                      │                                  │
       ┌──────────────▼─────────────┐      ┌─────────────▼──────────────┐
@@ -66,9 +67,6 @@ Pi-Cordis 采用经典的**绞杀者模式（Strangler Fig Pattern）**：
   └────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **数据与算法面**：`packages/ai`、`packages/tui` 等子包作为纯粹的算法和数据处理资产，保持独立高内聚；
-- **控制面**：`packages/coding-agent/src/core/cordis/` 负责全系统能力的生命周期管理、装配与插件事件路由。
-
 ---
 
 ## 三、仓库目录与工作区规范
@@ -81,12 +79,23 @@ pi-cordis/
 │   ├── schemastery/                  # @deepseek-ai/schemastery (3.18.0)
 │   └── ...                           # 辅助插件
 │
+├── presets/                          # 🌟 声明式 Agent 预设目录 (每个预设为独立文件夹)
+│   ├── README.md                     # Presets 规范与扩展指南
+│   ├── default/                      # preset.yml + cordis.yml (标准日常开发)
+│   ├── safe/                         # preset.yml + cordis.yml (安全生产工程)
+│   ├── strict/                       # preset.yml + cordis.yml (严格只读审计)
+│   ├── full/                         # preset.yml + cordis.yml (全能极客模式)
+│   └── minimal/                      # preset.yml + cordis.yml (极简微内核模式)
+│
 ├── packages/                         # Monorepo 子包工作区
-│   └── coding-agent/                 # 编码智能体应用主包 (CLI 入口、TUI 界面与 Cordis 微内核中枢)
-│       └── src/core/cordis/          # 10 大核心服务实现与 createPiContext 引导器
-│           ├── bootstrap.ts          # createPiContext 应用级微内核引导器
-│           ├── types.ts              # Context 与 Events 声明合并
-│           └── services/             # 核心服务实现
+│   ├── coding-agent/                 # 编码智能体主包 (CLI 入口、TUI 界面与 Cordis 引导器)
+│   │   └── src/core/cordis/          # 10 大核心服务 + createPiContext + profile command
+│   └── plugins/                      # 🌟 原生 Cordis 插件集合
+│       ├── safety-gate/              # @pi-cordis/plugin-safety-gate (高危拦截)
+│       ├── git-guard/                # @pi-cordis/plugin-git-guard (Git 检查点)
+│       ├── todo-tracker/             # @pi-cordis/plugin-todo-tracker (待办管理)
+│       ├── rules-injector/           # @pi-cordis/plugin-rules-injector (规则注入)
+│       └── profiles/                 # @pi-cordis/profiles (YAML & Presets 装配中枢)
 │
 ├── .agents/notes/                    # 架构决策记录 (Agent Notes & ADR)
 │   ├── implemented/architecture/     # 已实施的技术架构与生态集成记录
@@ -95,9 +104,7 @@ pi-cordis/
 │   └── README.zh.md                  # 中文索引
 │
 ├── CHANGELOG.md                      # 中文更新日志 (Keep a Changelog)
-├── package.json                      # 根工作区配置
 ├── pnpm-workspace.yaml               # pnpm 工作区关联
-├── tsconfig.base.json                # 基础 TypeScript 配置
 ├── tsconfig.json                     # 统一 TypeScript 路径映射配置
 └── README.md                         # 项目主页与快速入门
 ```
@@ -121,15 +128,52 @@ pi-cordis/
 
 ---
 
-## 五、防御性编程与防双轨制反模式
+## 五、原生插件与 Presets 预设开发规范
+
+### 1. 新增原生 Cordis 插件 (`packages/plugins/<name>/`)
+- 每个插件为一个独立的 npm workspace package；
+- 遵循 Cordis v4.0.1 插件协议，使用 `export const inject = [...]` 显式声明依赖的服务；
+- 插件贡献需注册为可逆副作用：
+  ```typescript
+  import type { Context } from "@deepseek-ai/cordis";
+
+  export const name = "my-custom-plugin";
+  export const inject = ["tools"];
+
+  export function apply(ctx: Context, config: MyConfig = {}) {
+    ctx.tools.register({ ... });
+  }
+  export default { name, inject, apply };
+  ```
+
+### 2. 新增声明式 Preset 预设 (`presets/<name>/`)
+- 在 `presets/<name>/` 创建 `preset.yml`（元数据）与 `cordis.yml`（挂载插件列表）：
+  ```yaml
+  # presets/reviewer/preset.yml
+  name: 代码审查模式 (Reviewer)
+  description: 专注代码质量与安全规范审查
+  ```
+  ```yaml
+  # presets/reviewer/cordis.yml
+  - name: '@pi-cordis/plugin-safety-gate'
+    config:
+      readOnly: true
+  - name: '@pi-cordis/plugin-rules-injector'
+  ```
+- 系统在启动或执行 `/profile` 时自动级联扫描并呈现，无需修改任何 TypeScript 代码！
+
+---
+
+## 六、防御性编程与防双轨制反模式
 
 为了维护微内核的架构纯洁性，所有开发者与 AI 助手必须遵守以下**防御性编程准则**：
 
 1. **严禁绕过微内核私自实例化核心类（Anti-Bypass Rule）**：
    - ❌ 严禁在业务逻辑中直接 `import { Agent } from "@earendil-works/pi-agent-core"` 并 `new Agent()`；
    - ✅ 必须通过 `ctx.agent` 或 `createPiContext()` 统一获取与驱动智能体。
-2. **显式声明服务提供者键（`static provide`）**：
-   - 所有继承 `Service` 的类必须显式声明 `static provide = 'keyName'`，以便 Cordis 运行时自动完成依赖注入与微任务 Fiber 激活。
+2. **显式声明服务提供者键（`static provide`）与注入依赖（`inject`）**：
+   - 所有继承 `Service` 的类必须显式声明 `static provide = 'keyName'`；
+   - 访问 `ctx.<service>` 的插件必须显式声明 `export const inject = ['keyName']`。
 3. **注册即副作用（Registrations are Effects）**：
    - 所有插件贡献必须通过 `ctx.effect()` 或 `ctx.on()` 注册，并返回标准的 `Disposer` 销毁函数，确保可逆卸载。
 4. **跨平台兼容性防范**：
@@ -139,24 +183,24 @@ pi-cordis/
 
 ---
 
-## 六、质量门禁与测试指令
+## 七、质量门禁与测试指令
 
 ```bash
-# 1. 运行全工作区单元测试 (3500+ 测试)
+# 1. 运行 Cordis 微内核引导与原生插件/预设专属测试
+npx vitest run packages/coding-agent/test/cordis-plugins-and-profiles.test.ts packages/coding-agent/test/cordis-bootstrap.test.ts
+
+# 2. 运行全工作区单元测试 (3500+ 测试)
 pnpm test
 
-# 2. 运行 Cordis 微内核引导专属测试
-npx vitest run packages/coding-agent/test/cordis-bootstrap.test.ts
-
-# 3. 运行单个子包测试
-pnpm --filter=@earendil-works/pi-ai test
-pnpm --filter=@earendil-works/pi-tui test
-
-# 4. TypeScript 严格类型检查
+# 3. TypeScript 严格类型检查
 pnpm run check
 
-# 5. 启动交互式 TUI 实机体验
+# 4. 启动交互式 TUI 实机体验
 pnpm pi
+
+# 5. 在 TUI 中切换预设
+/profile safe
+/profile full
 
 # 6. 安装与验证社区扩展
 pnpm pi install npm:@juicesharp/rpiv-todo
@@ -164,7 +208,7 @@ pnpm pi install npm:@juicesharp/rpiv-todo
 
 ---
 
-## 七、架构决策记录 (ADR) 演进规范
+## 八、架构决策记录 (ADR) 演进规范
 
 任何重大的架构调整、抽象层变更或设计权衡，必须在 [`.agents/notes/`](.agents/notes/README.zh.md) 中记录为正式的 ADR 笔记：
 - 采用中英双语格式（`YYYY-MM-DD-title.md` 与 `.zh.md`）；
@@ -172,7 +216,7 @@ pnpm pi install npm:@juicesharp/rpiv-todo
 
 ---
 
-## 八、代码风格与 Git 提交规范
+## 九、代码风格与 Git 提交规范
 
 1. **ESM 原生模块化**：全仓使用 `"type": "module"`，导入语句使用显式 `.ts` 扩展名。
 2. **严格类型约束**：`strict: true`，严禁无理由使用 `any`。
