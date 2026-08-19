@@ -46,6 +46,7 @@
 		"@deepseek-ai/cordis": "workspace:*",
 		"@deepseek-ai/cosmokit": "workspace:*",
 		"@deepseek-ai/schemastery": "workspace:*",
+		"@pi-cordis/profiles": "workspace:*",
 		"@earendil-works/pi-agent-core": "^0.84.1",
 		"@earendil-works/pi-ai": "^0.84.1",
 		"@earendil-works/pi-client": "^0.84.1",

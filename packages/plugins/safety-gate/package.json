@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-safety-gate",
+	"version": "0.1.0",
+	"description": "High-risk command and protected path safety gate plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

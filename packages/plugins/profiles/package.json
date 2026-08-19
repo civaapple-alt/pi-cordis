@@ -1,0 +1,17 @@
+{
+	"name": "@pi-cordis/profiles",
+	"version": "0.1.0",
+	"description": "Profile and preset composition hub for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"dependencies": {
+		"@pi-cordis/plugin-safety-gate": "workspace:*",
+		"@pi-cordis/plugin-git-guard": "workspace:*",
+		"@pi-cordis/plugin-todo-tracker": "workspace:*",
+		"@pi-cordis/plugin-rules-injector": "workspace:*"
+	},
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

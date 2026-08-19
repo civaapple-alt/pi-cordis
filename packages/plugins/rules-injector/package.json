@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-rules-injector",
+	"version": "0.1.0",
+	"description": "Project rules (AGENTS.md, .claude/rules, .cursorrules) auto-discovery and injection plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

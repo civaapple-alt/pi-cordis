@@ -45,7 +45,7 @@ describe("Pi-Cordis Microkernel Bootstrap", () => {
 		let eventFired = false;
 		ctx.on("pi/prompt-transform", (evt) => {
 			eventFired = true;
-			expect(evt.prompt).toBe("hello cordis");
+			expect(evt.prompt).toContain("hello cordis");
 		});
 
 		ctx.emit("pi/prompt-transform", { prompt: "hello cordis" });

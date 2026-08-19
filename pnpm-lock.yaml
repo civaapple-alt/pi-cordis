@@ -57,6 +57,9 @@ importers:
       '@earendil-works/pi-tui':
         specifier: ^0.84.1
         version: 0.84.2
+      '@pi-cordis/profiles':
+        specifier: workspace:*
+        version: link:../plugins/profiles
       '@silvia-odwyer/photon-node':
         specifier: 0.3.4
         version: 0.3.4
@@ -140,6 +143,48 @@ importers:
       '@mariozechner/clipboard':
         specifier: 0.3.9
         version: 0.3.9
+
+  packages/plugins/git-guard:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/profiles:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+      '@pi-cordis/plugin-git-guard':
+        specifier: workspace:*
+        version: link:../git-guard
+      '@pi-cordis/plugin-rules-injector':
+        specifier: workspace:*
+        version: link:../rules-injector
+      '@pi-cordis/plugin-safety-gate':
+        specifier: workspace:*
+        version: link:../safety-gate
+      '@pi-cordis/plugin-todo-tracker':
+        specifier: workspace:*
+        version: link:../todo-tracker
+
+  packages/plugins/rules-injector:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/safety-gate:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/todo-tracker:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
 
   vendor/cordis:
     dependencies:

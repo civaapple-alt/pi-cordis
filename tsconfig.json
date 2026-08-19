@@ -14,12 +14,18 @@
 			"@deepseek-ai/schemastery/*": ["./vendor/schemastery/src/*"],
 			"@earendil-works/pi-coding-agent": ["./packages/coding-agent/src/index.ts"],
 			"@earendil-works/pi-coding-agent/hooks": ["./packages/coding-agent/src/core/hooks/index.ts"],
-			"@earendil-works/pi-coding-agent/*": ["./packages/coding-agent/src/*"]
+			"@earendil-works/pi-coding-agent/*": ["./packages/coding-agent/src/*"],
+			"@pi-cordis/profiles": ["./packages/plugins/profiles/src/index.ts"],
+			"@pi-cordis/plugin-safety-gate": ["./packages/plugins/safety-gate/src/index.ts"],
+			"@pi-cordis/plugin-git-guard": ["./packages/plugins/git-guard/src/index.ts"],
+			"@pi-cordis/plugin-todo-tracker": ["./packages/plugins/todo-tracker/src/index.ts"],
+			"@pi-cordis/plugin-rules-injector": ["./packages/plugins/rules-injector/src/index.ts"]
 		}
 	},
 	"include": [
 		"packages/coding-agent/src/**/*",
 		"packages/coding-agent/test/**/*",
+		"packages/plugins/*/src/**/*",
 		"vendor/*/src/**/*"
 	],
 	"exclude": [

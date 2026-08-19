@@ -20,9 +20,13 @@
   - `ExtensionService` (`ctx.extensions`)：加载 Pi 原生扩展，无缝桥接 `ExtensionAPI` 至 Cordis 事件总线；
   - `PackageManagerService` (`ctx.packageManager`)：支持从 `pi.dev/packages` 插件市场、npm、git 与本地目录安装与管理插件包；
   - `AgentService` (`ctx.agent`)：协调多轮智能体推理循环与上下文装配。
-- **微内核应用引导器 (`createPiContext`)**：
-  - 一键实例化 Cordis 微内核并挂载全部服务插件；
-  - 完美兼容 Pi 的交互式 TUI、批处理打印模式、JSON 事件流模式与 RPC 模式。
+- **原生 Cordis 插件体系与 Profile 预设机制**：
+  - 建立独立的 `packages/plugins/*` 工作区，收录 4 大开箱即用的原生 Cordis 插件：
+    - `@pi-cordis/plugin-safety-gate`：高危破坏性命令与受保护敏感文件拦截器；
+    - `@pi-cordis/plugin-git-guard`：Git 工作区脏状态提示与关键会话轮次自动 Checkpoint 保护；
+    - `@pi-cordis/plugin-todo-tracker`：注册 `todo_write`/`todo_read` 待办工具并自动将活跃任务注入提示词；
+    - `@pi-cordis/plugin-rules-injector`：自动扫描项目规则文件（`AGENTS.md`, `.claude/rules/*.md`, `.cursorrules`）并注入系统提示词。
+  - 推出 `@pi-cordis/profiles` 组合装配中心，支持 `default`, `safe`, `strict`, `full`, `minimal` 5 大常用预设模式，支持在 CLI 与代码中一键切换。
 
 ### 🏗️ 架构与规范 (Architecture)
 

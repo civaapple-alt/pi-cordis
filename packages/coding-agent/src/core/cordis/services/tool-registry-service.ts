@@ -25,6 +25,10 @@ export class ToolRegistryService extends Service {
 		this.toolsOptions = config?.toolsOptions;
 	}
 
+	public register(tool: ToolDef): () => void {
+		return this.registerCustomTool(tool);
+	}
+
 	public registerCustomTool(tool: ToolDef): () => void {
 		this.customTools.set(tool.name, tool);
 		return () => {
@@ -43,5 +47,9 @@ export class ToolRegistryService extends Service {
 	public getAllToolDefinitions(cwd: string = this.cwd): ToolDef[] {
 		const builtin = Array.from(allToolNames).map((name) => this.getBuiltinToolDefinition(name, cwd));
 		return [...builtin, ...this.getCustomTools()];
+	}
+
+	public getToolNames(cwd: string = this.cwd): string[] {
+		return this.getAllToolDefinitions(cwd).map((t) => t.name);
 	}
 }
