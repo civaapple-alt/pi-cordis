@@ -177,21 +177,13 @@ export default function(ctx: Context) {
 
 ```text
 pi-cordis/
-├── vendor/                           # Vendored Cordis v4.0.1 framework source
+├── vendor/                           # Vendored Cordis v4.0.1 framework suite
 │   ├── cordis/                       # Core IoC container
 │   ├── cosmokit/                     # Foundation utilities
 │   └── schemastery/                  # Schema validation
 ├── packages/                         # Monorepo workspaces
-│   ├── coding-agent/                 # Main CLI, TUI, and Cordis integration
-│   │   └── src/core/cordis/          # Microkernel bootstrap and 10 core services
-│   ├── ai/                           # Multi-model runtime (1307+ models)
-│   ├── agent/                        # Inference loop & execution environments
-│   ├── tui/                          # Terminal UI rendering engine
-│   ├── session-backends/sqlite-node/ # SQLite session storage backend
-│   ├── protocol/                     # JSON-RPC protocol
-│   ├── client/                       # Client library
-│   ├── server/                       # Server library
-│   └── telemetry/                    # Telemetry and tracing
+│   └── coding-agent/                 # Main CLI, TUI, and Cordis integration
+│       └── src/core/cordis/          # Microkernel bootstrap and 10 core services
 ├── .agents/notes/                    # Architecture Decision Records (ADRs)
 ├── AGENTS.md                         # Contributor and AI coding guidelines
 ├── CHANGELOG.md                      # Detailed release changelog (Chinese)

@@ -182,16 +182,8 @@ pi-cordis/
 │   ├── cosmokit/                     # 底层工具库
 │   └── schemastery/                  # Schema 模式校验
 ├── packages/                         # Monorepo 子包工作区
-│   ├── coding-agent/                 # 编码智能体应用主包 (CLI 入口、模式调度、交互式 TUI)
-│   │   └── src/core/cordis/          # Cordis 微内核整合中枢与 10 大核心服务实现
-│   ├── ai/                           # 统一多模型引擎 (1307+ 模型定义)
-│   ├── agent/                        # 智能体推理循环与执行环境
-│   ├── tui/                          # 终端 UI 渲染引擎
-│   ├── session-backends/sqlite-node/ # SQLite 会话持久化后端
-│   ├── protocol/                     # JSON-RPC 协议
-│   ├── client/                       # RPC 客户端
-│   ├── server/                       # RPC 服务端
-│   └── telemetry/                    # 遥测与链路追踪
+│   └── coding-agent/                 # 编码智能体应用主包 (CLI 入口、TUI 界面与 Cordis 微内核中枢)
+│       └── src/core/cordis/          # 10 大核心服务实现与 createPiContext 引导器
 ├── .agents/notes/                    # 架构决策记录 (ADRs)
 ├── AGENTS.md                         # 开发者与 AI 编码助手工程规范
 ├── CHANGELOG.md                      # 中文更新日志 (Keep a Changelog)

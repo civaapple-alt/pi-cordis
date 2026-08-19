@@ -82,22 +82,15 @@ pi-cordis/
 │   └── ...                           # 辅助插件
 │
 ├── packages/                         # Monorepo 子包工作区
-│   ├── coding-agent/                 # 编码智能体应用主包 (CLI 入口、模式调度、交互式 TUI)
-│   │   └── src/core/cordis/          # Cordis 微内核整合中枢与 10 大核心服务实现
-│   │       ├── bootstrap.ts          # createPiContext 应用级微内核引导器
-│   │       ├── types.ts              # Context 与 Events 声明合并
-│   │       └── services/             # 核心服务实现
-│   ├── ai/                           # 统一多模型引擎 (1307+ 模型定义)
-│   ├── agent/                        # 智能体核心推理循环与状态管理
-│   ├── tui/                          # 终端 UI 渲染引擎 (Canvas, 差异化重绘)
-│   ├── session-backends/sqlite-node/ # SQLite 会话持久化驱动
-│   ├── protocol/                     # JSON-RPC 协议模式
-│   ├── client/                       # RPC 客户端
-│   ├── server/                       # RPC 服务端
-│   └── telemetry/                    # 遥测与链路追踪
+│   └── coding-agent/                 # 编码智能体应用主包 (CLI 入口、TUI 界面与 Cordis 微内核中枢)
+│       └── src/core/cordis/          # 10 大核心服务实现与 createPiContext 引导器
+│           ├── bootstrap.ts          # createPiContext 应用级微内核引导器
+│           ├── types.ts              # Context 与 Events 声明合并
+│           └── services/             # 核心服务实现
 │
 ├── .agents/notes/                    # 架构决策记录 (Agent Notes & ADR)
 │   ├── implemented/architecture/     # 已实施的技术架构与生态集成记录
+│   ├── implemented/simplification/   # 仓库精简与依赖解耦决策记录
 │   ├── README.md                     # 英文索引
 │   └── README.zh.md                  # 中文索引
 │

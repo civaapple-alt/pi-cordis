@@ -1,7 +1,6 @@
 packages:
   - 'vendor/*'
   - 'packages/*'
-  - 'packages/session-backends/*'
 allowBuilds:
   '@google/genai': set this to true or false
   canvas: set this to true or false
