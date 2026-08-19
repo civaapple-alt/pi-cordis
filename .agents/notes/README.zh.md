@@ -16,6 +16,8 @@
 | `2026-08-19` | [Pi-Cordis: 仓库精简与上游依赖解耦](implemented/simplification/2026-08-19-pi-cordis-repository-simplification.zh.md) | 移除 1200+ 冗余源码文件、直接消费官方 `@earendil-works/pi-*` 依赖、仓库体积骤降 85%、自动跟进上游升级与极速构建 |
 | `2026-08-19` | [Pi AgentHarness: 工业级事务规格与 Cordis 微内核架构融合](implemented/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.zh.md) | 三存储模型（entries/registers/ledger）、副作用三明治（Effect Sandwich）、Lanes 多车道并发与 Cordis 控制面融合 |
 | `2026-08-19` | [Pi-Cordis: 原生 Cordis 插件体系与 Profile 预设机制](implemented/architecture/2026-08-19-pi-cordis-native-plugins-and-profiles.zh.md) | 独立子包工作区（`packages/plugins/*`）、4 大核心插件（safety-gate/git-guard/todo-tracker/rules-injector）与 5 大 Profile 预设矩阵（default/safe/strict/full/minimal） |
+| `2026-08-19` | [Pi-Cordis: 原生插件生态全景规划与优先级演进矩阵](proposed/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.zh.md) | 70+ 个扩展全景分类、P0 -> P1 -> P2 -> P3 优先级演进矩阵（Subagent、Plan模式、问答交互、输出截断与会话压缩） |
+
 
 
 

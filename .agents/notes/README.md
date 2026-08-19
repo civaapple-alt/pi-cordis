@@ -16,6 +16,8 @@ This directory records architectural decision records (ADRs), technology selecti
 | `2026-08-19` | [Pi-Cordis: Repository Simplification and Upstream Decoupling](implemented/simplification/2026-08-19-pi-cordis-repository-simplification.md) | Removing 1200+ duplicate source files, consuming official `@earendil-works/pi-*` dependencies from npm, 85%+ repository size reduction, and effortless upstream tracking |
 | `2026-08-19` | [Pi AgentHarness: Industrial Specification and Cordis Microkernel Integration](implemented/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.md) | Three Stores model (entries/registers/ledger), Effect Sandwich crash resilience, Lanes concurrency, and Cordis control-plane mapping |
 | `2026-08-19` | [Pi-Cordis: Native Cordis Plugins and Profile Presets](implemented/architecture/2026-08-19-pi-cordis-native-plugins-and-profiles.md) | Dedicated plugin workspace (`packages/plugins/*`), four native plugins (safety-gate, git-guard, todo-tracker, rules-injector), and 5 built-in profiles |
+| `2026-08-19` | [Pi-Cordis: Native Plugin Ecosystem Roadmap and Priority Matrix](proposed/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.md) | 70+ extensions taxonomy, P0 -> P1 -> P2 -> P3 priority evolution matrix (Subagent, Plan mode, QnA UI, Output Truncation, Context Compaction) |
+
 
 
 
