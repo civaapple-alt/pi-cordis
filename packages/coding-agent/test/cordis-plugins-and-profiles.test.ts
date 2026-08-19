@@ -67,4 +67,42 @@ describe("Cordis Native Plugins and Profiles System", () => {
 		const toolNames = ctx.tools.getToolNames();
 		expect(toolNames).not.toContain("todo_write");
 	});
+
+	it("should provide /profile slash command with completions and switching handler", async () => {
+		const { createProfileCommandExtension } = await import("../src/core/cordis/profile-command.ts");
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
+
+		let registeredCommand: any;
+		const mockPi: any = {
+			registerCommand: (name: string, def: any) => {
+				registeredCommand = { name, ...def };
+			},
+		};
+
+		const ext = createProfileCommandExtension(ctx);
+		ext(mockPi);
+
+		expect(registeredCommand).toBeDefined();
+		expect(registeredCommand.name).toBe("profile");
+
+		// Test autocompletions
+		const completions = registeredCommand.getArgumentCompletions("s");
+		expect(completions.some((c: any) => c.value === "safe")).toBe(true);
+		expect(completions.some((c: any) => c.value === "strict")).toBe(true);
+
+		// Test switching via handler
+		let notification = "";
+		const mockUI: any = {
+			hasUI: true,
+			ui: {
+				notify: (msg: string) => {
+					notification = msg;
+				},
+			},
+		};
+
+		await registeredCommand.handler("safe", mockUI);
+		expect(notification).toContain('Switched to profile: "safe"');
+		expect(notification).toContain("safety-gate");
+	});
 });

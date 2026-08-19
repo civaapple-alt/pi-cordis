@@ -14,6 +14,9 @@ import {
 import { type CreateAgentSessionOptions, type CreateAgentSessionResult, createAgentSession } from "./sdk.ts";
 import type { SessionManager } from "./session-manager.ts";
 import { SettingsManager } from "./settings-manager.ts";
+import type { Context } from "@deepseek-ai/cordis";
+import { createPiContext } from "./cordis/bootstrap.ts";
+import { createProfileCommandExtension } from "./cordis/profile-command.ts";
 
 /**
  * Non-fatal issues collected while creating services or sessions.
@@ -63,9 +66,6 @@ export interface CreateAgentSessionFromServicesOptions {
 	noTools?: CreateAgentSessionOptions["noTools"];
 	customTools?: ToolDefinition[];
 }
-
-import type { Context } from "@deepseek-ai/cordis";
-import { createPiContext } from "./cordis/index.ts";
 
 /**
  * Coherent cwd-bound runtime services for one effective session cwd.
@@ -148,12 +148,23 @@ export async function createAgentSessionServices(
 			modelsPath: join(agentDir, "models.json"),
 			signal: options.modelRuntimeSignal,
 		}));
-	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);
+	let cordisContext: Context | undefined;
+	try {
+		cordisContext = await createPiContext({ cwd, agentDir, allowModelNetwork: false });
+	} catch {}
+
+	const profileExtension = createProfileCommandExtension(cordisContext);
+	const extensionFactories = [
+		...(options.resourceLoaderOptions?.extensionFactories ?? []),
+		profileExtension,
+	];
+
 	const resourceLoader = new DefaultResourceLoader({
 		...(options.resourceLoaderOptions ?? {}),
 		cwd,
 		agentDir,
 		settingsManager,
+		extensionFactories,
 	});
 	await resourceLoader.reload(options.resourceLoaderReloadOptions);
 
@@ -185,11 +196,6 @@ export async function createAgentSessionServices(
 	extensionsResult.runtime.pendingNativeProviderRegistrations = [];
 	await modelRuntime.refresh({ allowNetwork: false });
 	diagnostics.push(...applyExtensionFlagValues(resourceLoader, options.extensionFlagValues));
-
-	let cordisContext: Context | undefined;
-	try {
-		cordisContext = await createPiContext({ cwd, agentDir, allowModelNetwork: false });
-	} catch {}
 
 	return {
 		cwd,
