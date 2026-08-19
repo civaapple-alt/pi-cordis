@@ -1,106 +1,234 @@
-# Pi-Cordis (🥧) — 基于 Cordis (v4.0.1) 微内核的 AI Coding Agent
+<div align="center">
 
-> **融合 Pi 极简纯粹的 Coding 核心能力与 Cordis “Everything is a plugin” 微内核设计哲学**
+# 🥧 Pi-Cordis
 
----
+**The Developer-First Terminal Coding Agent, Rebuilt on the Cordis (v4.0.1) Microkernel with an "Everything is a Plugin" Architecture.**
 
-## 🎯 核心特性
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](vendor/)
+[![TypeScript: Strict](https://img.shields.io/badge/TypeScript-Strict_Mode-blue.svg?style=flat-square)](tsconfig.json)
+[![Tests: 3500+ Passing](https://img.shields.io/badge/Tests-3500+_Passing-success.svg?style=flat-square)](packages/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/civaapple-alt/pi-cordis/pulls)
 
-1. **Cordis (v4.0.1) 微内核架构**：
-   - 采用纯粹的依赖注入与微内核体系（`Context` / `Service` / `Plugin` / `Fiber`）。
-   - 将 Pi 的设置、鉴权、模型驱动、工具注册、会话存储、技能、提示词模板、扩展系统与智能体调度全面重构为一等公民的 Cordis 服务（`ctx.settings`, `ctx.auth`, `ctx.ai`, `ctx.tools`, `ctx.session`, `ctx.skills`, `ctx.prompts`, `ctx.extensions`, `ctx.packageManager`, `ctx.agent`）。
-2. **100% 保持 Pi 的功能与 TUI 体验**：
-   - 交互式终端 UI（Canvas、差异化渲染、分支树选择器、Diff 对比、Markdown 渲染、状态栏）。
-   - 全套核心编码工具（`read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`）。
-   - 完整支持 OpenAI、Anthropic、Gemini、DeepSeek、Mistral、Ollama、Bedrock 等全部主流模型提供商。
-   - 命令行参数、Slash Commands（`/help`, `/model`, `/session`, `/clear`, `/compact`, `/tree`）100% 兼容。
-3. **支持 Pi 原生插件生态 (`https://pi.dev/packages`)**：
-   - 完整兼容 Pi 扩展体系（`registerTool`, `registerCommand`, `registerProvider`, `beforeSession`, `afterSession`, `transformPrompt` 等）。
-   - 内置包管理器支持从 `pi.dev`、npm、git 和本地目录一键安装与管理扩展包。
-4. **严格依赖隔离**：
-   - 仅依赖 `vendor/` 下 vendored 的 Cordis 元框架内核，零引入 `deepseek-harness` 专属插件。
+[English](README.md) | [中文说明](README.zh.md) | [Architecture Notes](.agents/notes/README.md) | [Contributing Guide](AGENTS.md)
+
+</div>
 
 ---
 
-## ⚡ 快速开始
+## 📖 Table of Contents
 
-### 1. 安装依赖
+- [Overview](#-overview)
+- [Quick Start](#-quick-start)
+- [Core Feature Matrix](#-core-feature-matrix)
+- [Architecture & Control Plane](#-architecture--control-plane)
+- [Cordis Service Matrix](#-cordis-service-matrix)
+- [Plugin & Extension Ecosystem](#-plugin--extension-ecosystem)
+- [Repository Structure](#-repository-structure)
+- [Quality Gates & Testing](#-quality-gates--testing)
+- [Architecture Decision Records (ADRs)](#-architecture-decision-records-adrs)
+- [License](#-license)
+
+---
+
+## 🌟 Overview
+
+**Pi-Cordis** combines the raw speed, distraction-free terminal user interface (TUI), and coding power of [`earendil-works/pi`](https://github.com/earendil-works/pi) with the modular **Inversion-of-Control (IoC) microkernel** of **Cordis v4.0.1**.
+
+### Why Pi-Cordis?
+
+1. **100% Pi Parity**: Retains the complete interactive full-screen TUI, diff view, session branching tree, and prompt templates with zero user-facing regressions.
+2. **"Everything is a Plugin"**: All 10 core capabilities (settings, auth, AI runtime, tool registry, session persistence, skills, prompt templates, extension runner, package manager, and agent inference loop) are decoupled into first-class Cordis services.
+3. **Ecosystem Compatible**: Fully supports the [`pi.dev/packages`](https://pi.dev/packages) community marketplace. Install extensions via `npm:`, `git:`, or local paths out of the box.
+4. **Strict Isolation**: 100% standalone. Zero dependencies on proprietary DSH plugins.
+
+---
+
+## ⚡ Quick Start
+
+### 1. Prerequisites
+
+- **Node.js**: `>= 20.0.0`
+- **pnpm**: `>= 9.0.0`
+
+### 2. Clone and Install
 
 ```bash
+git clone https://github.com/civaapple-alt/pi-cordis.git
+cd pi-cordis
 pnpm install
 ```
 
-### 2. 配置环境变量
+### 3. Configure API Key
 
-在项目根目录下配置 `.env` 或设置环境变量：
+Set your preferred LLM provider in your environment or root `.env`:
 
 ```env
+# DeepSeek (Recommended)
 DEEPSEEK_API_KEY=sk-your-deepseek-api-key
-# 或
+
+# Or OpenAI / Anthropic / Gemini / Ollama
 OPENAI_API_KEY=sk-your-openai-api-key
-# 或
 ANTHROPIC_API_KEY=sk-your-anthropic-api-key
 ```
 
-### 3. 运行体验
+### 4. Launch
 
 ```bash
-# 启动交互式 TUI
+# Launch interactive full-screen TUI
 pnpm pi
 
-# 执行单次任务并打印结果
-pnpm pi -p "检查当前项目结构并列出核心模块"
+# Or run a single task non-interactively (print mode)
+pnpm pi -p "Inspect the repository and list the 10 Cordis core services"
 
-# 查看所有可用模型
-pnpm pi --list-models
-
-# 运行自动化测试
-pnpm test
+# Install a real community plugin from the ecosystem
+pnpm pi install npm:@juicesharp/rpiv-todo
 ```
 
 ---
 
-## 🏗️ 架构拓扑
+## 🎯 Core Feature Matrix
 
-```mermaid
-graph TD
-    subgraph "Cordis Microkernel (vendor/)"
-        Ctx[Context / IoC Container]
-        Events[Event Bus & Lifecycle]
-        Fiber[Fiber & Disposers]
-    end
+| Capability | Native Pi | Pi-Cordis | Highlights |
+| :--- | :---: | :---: | :--- |
+| **Interactive Terminal TUI** | ✅ | ✅ | Full-screen canvas, double-buffered diffs, branching tree selector, status dashboard |
+| **Core Coding Tools** | ✅ | ✅ | Built-in `read`, `write`, `edit`, `bash` + optional `grep`, `find`, `ls` |
+| **Multi-Model Support** | ✅ | ✅ | 1307+ models indexed (DeepSeek, OpenAI, Anthropic, Gemini, Ollama, Bedrock, etc.) |
+| **Microkernel IoC Architecture** | ❌ | ✅ | Reversible lifecycle effects (`ctx.effect`), service auto-injection (`static provide`) |
+| **Extension Marketplace** | ✅ | ✅ | 100% compatible with `pi.dev/packages` via transparent `ExtensionAPI` event bridging |
+| **Zero DSH Business Plugins** | N/A | ✅ | Self-contained, vendored Cordis framework under `vendor/` |
 
-    subgraph "Pi-Cordis Core Services (packages/)"
-        SettingsSvc[SettingsService ctx.settings]
-        AuthSvc[AuthService ctx.auth]
-        AiSvc[AIService ctx.ai]
-        ToolsSvc[ToolRegistryService ctx.tools]
-        SessionSvc[SessionService ctx.session]
-        SkillsSvc[SkillsService ctx.skills]
-        PromptsSvc[PromptsService ctx.prompts]
-        AgentSvc[AgentService ctx.agent]
-        ExtSvc[ExtensionService ctx.extensions]
-        PkgSvc[PackageManagerService ctx.packageManager]
-    end
+---
 
-    subgraph "Interaction Modes"
-        InteractiveTUI[Interactive Mode TUI]
-        PrintMode[Print / Headless Mode]
-        RPCMode[JSON-RPC Mode]
-    end
+## 🏗️ Architecture & Control Plane
 
-    Ctx --> SettingsSvc
-    Ctx --> AuthSvc
-    Ctx --> AiSvc
-    Ctx --> ToolsSvc
-    Ctx --> SessionSvc
-    Ctx --> SkillsSvc
-    Ctx --> PromptsSvc
-    Ctx --> AgentSvc
-    Ctx --> ExtSvc
-    Ctx --> PkgSvc
+Pi-Cordis adopts the **Strangler Fig Pattern**, separating the **Cordis Control Plane** from the **Pi Data & Algorithmic Plane**:
 
-    AgentSvc --> InteractiveTUI
-    AgentSvc --> PrintMode
-    AgentSvc --> RPCMode
+```text
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │         Cordis Microkernel Control Plane (packages/.../src/core/cordis)│
+  │  Context Container / static provide / Lifecycle Events / DI / IoC      │
+  └──────────────────┬──────────────────────────────────┬──────────────────┘
+                     │                                  │
+      ┌──────────────▼─────────────┐      ┌─────────────▼──────────────┐
+      │  Service Plugin Adapters   │      │  ExtensionAPI Bridge       │
+      │  (Settings, AI, Tools...)  │      │  (pi.on <-> ctx.on)        │
+      └──────────────┬─────────────┘      └─────────────┬──────────────┘
+                     │                                  │
+  ┌──────────────────▼──────────────────────────────────▼──────────────────┐
+  │         Pi Underlying Data & Algorithmic Plane (packages/*)            │
+  │  LLM Token Streams / Agent State Tree / SQLite / Double-Buffer TUI     │
+  └────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 🧩 Cordis Service Matrix
+
+All core subsystems are mounted onto the Cordis `Context` via typed Declaration Merging:
+
+| Service | Accessor | Responsibility |
+| :--- | :--- | :--- |
+| `SettingsService` | `ctx.settings` | User (`~/.pi/agent/settings.json`) & project (`.pi/settings.json`) configuration with schema validation |
+| `AuthService` | `ctx.auth` | API keys, OAuth tokens, and credential storage |
+| `AIService` | `ctx.ai` | Model catalog (1307+ models), token tracking, and streaming completion runtime |
+| `ToolRegistryService` | `ctx.tools` | Registry for the 4 core + 3 optional tools and dynamically registered extension tools |
+| `SessionService` | `ctx.session` | SQLite and in-memory session persistence, conversation branch trees, and export |
+| `SkillsService` | `ctx.skills` | Automatic scanning, parsing, and execution of skill directories |
+| `PromptsService` | `ctx.prompts` | Prompt template loading and variable interpolation |
+| `ExtensionService` | `ctx.extensions` | Loads Pi extensions and transparently bridges `ExtensionAPI` to the Cordis event bus |
+| `PackageManagerService` | `ctx.packageManager` | Cross-source package management (`pi.dev`, npm, git, local paths) |
+| `AgentService` | `ctx.agent` | Multi-turn reasoning loop orchestration and context assembly |
+
+---
+
+## 🔌 Plugin & Extension Ecosystem
+
+Pi-Cordis supports dual-track plugin authoring:
+
+### 1. Pi Community Extensions (`ExtensionAPI`)
+Write standard Pi extensions without worrying about Cordis internals:
+```typescript
+export default function(pi) {
+  pi.registerTool({
+    name: "my_tool",
+    description: "Custom tool",
+    parameters: { type: "object", properties: { query: { type: "string" } } },
+    execute: async ({ query }) => `Result for: ${query}`,
+  });
+}
+```
+
+### 2. Cordis Microkernel Plugins (`Context`)
+Advanced developers can write pure Cordis plugins leveraging full IoC and event interception:
+```typescript
+import { Context } from "@deepseek-ai/cordis";
+
+export default function(ctx: Context) {
+  ctx.on("pi/tool-call", async ({ name, args }) => {
+    console.log(`Tool invoked: ${name}`);
+  });
+}
+```
+
+---
+
+## 📂 Repository Structure
+
+```text
+pi-cordis/
+├── vendor/                           # Vendored Cordis v4.0.1 framework source
+│   ├── cordis/                       # Core IoC container
+│   ├── cosmokit/                     # Foundation utilities
+│   └── schemastery/                  # Schema validation
+├── packages/                         # Monorepo workspaces
+│   ├── coding-agent/                 # Main CLI, TUI, and Cordis integration
+│   │   └── src/core/cordis/          # Microkernel bootstrap and 10 core services
+│   ├── ai/                           # Multi-model runtime (1307+ models)
+│   ├── agent/                        # Inference loop & execution environments
+│   ├── tui/                          # Terminal UI rendering engine
+│   ├── session-backends/sqlite-node/ # SQLite session storage backend
+│   ├── protocol/                     # JSON-RPC protocol
+│   ├── client/                       # Client library
+│   ├── server/                       # Server library
+│   └── telemetry/                    # Telemetry and tracing
+├── .agents/notes/                    # Architecture Decision Records (ADRs)
+├── AGENTS.md                         # Contributor and AI coding guidelines
+├── CHANGELOG.md                      # Detailed release changelog (Chinese)
+└── README.md                         # Project documentation
+```
+
+---
+
+## 🧪 Quality Gates & Testing
+
+Pi-Cordis maintains comprehensive test coverage across all subpackages:
+
+```bash
+# Run all workspace unit tests
+pnpm test
+
+# Run microkernel bootstrap tests
+npx vitest run packages/coding-agent/test/cordis-bootstrap.test.ts
+
+# Run type checks across monorepo
+pnpm run check
+```
+
+---
+
+## 📚 Architecture Decision Records (ADRs)
+
+Deep-dive architectural decisions are documented in [`.agents/notes/`](.agents/notes/README.md):
+
+- [Pi-Cordis: Microkernel Architecture on Cordis v4.0.1](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-microkernel-architecture.md)
+- [Pi-Cordis: Services Matrix and Extension Ecosystem Integration](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-services-and-plugin-ecosystem.md)
+- [Pi-Cordis: TUI, UI Plugins, and Control Plane Refactoring Trade-offs](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-tui-and-control-plane-tradeoffs.md)
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
+Portions derived from [`earendil-works/pi`](https://github.com/earendil-works/pi) under MIT License.
+Microkernel components vendored from Cordis under MIT License.
