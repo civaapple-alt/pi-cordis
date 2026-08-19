@@ -18,6 +18,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  * 4. If the watcher has no error handler -> crash (exit != 0) -> bug present
  * 5. If the watcher has an error handler -> clean exit (exit 0) -> bug fixed
  */
+import { pathToFileURL } from "node:url";
+
 describe("issue #2791 fs.watch error event crashes process", () => {
 	let tempRoot: string;
 
@@ -39,7 +41,7 @@ describe("issue #2791 fs.watch error event crashes process", () => {
 	});
 
 	it("process should survive an error event on the theme FSWatcher", () => {
-		const themeModulePath = join(__dirname, "../../../src/modes/interactive/theme/theme.ts").replace(/\\/g, "/");
+		const themeModulePath = pathToFileURL(join(__dirname, "../../../src/modes/interactive/theme/theme.ts")).href;
 		const agentDir = join(tempRoot, "agent").replace(/\\/g, "/");
 
 		// Script that sets up the watcher and emits a synthetic error on it.

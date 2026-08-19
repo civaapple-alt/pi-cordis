@@ -311,7 +311,12 @@ describe("CombinedAutocompleteProvider", () => {
 					"some_file.txt": "symlinked",
 				},
 			});
-			symlinkSync("../outside", join(baseDir, "symlinked_dir"));
+			try {
+				symlinkSync("../outside", join(baseDir, "symlinked_dir"), "junction");
+			} catch (e: any) {
+				if (e.code === "EPERM" && process.platform === "win32") return;
+				throw e;
+			}
 
 			const provider = new CombinedAutocompleteProvider([], baseDir, requireFdPath());
 			const line = "@some";
@@ -328,7 +333,12 @@ describe("CombinedAutocompleteProvider", () => {
 					"nested/file.txt": "symlinked",
 				},
 			});
-			symlinkSync("../outside", join(baseDir, "symlinked_dir"));
+			try {
+				symlinkSync("../outside", join(baseDir, "symlinked_dir"), "junction");
+			} catch (e: any) {
+				if (e.code === "EPERM" && process.platform === "win32") return;
+				throw e;
+			}
 
 			const provider = new CombinedAutocompleteProvider([], baseDir, requireFdPath());
 			const line = "@symlinked";
@@ -345,7 +355,12 @@ describe("CombinedAutocompleteProvider", () => {
 				},
 			});
 			const linkPath = join(baseDir, "link.txt");
-			symlinkSync("original.txt", linkPath);
+			try {
+				symlinkSync("original.txt", linkPath);
+			} catch (e: any) {
+				if (e.code === "EPERM" && process.platform === "win32") return;
+				throw e;
+			}
 
 			const provider = new CombinedAutocompleteProvider([], baseDir, requireFdPath());
 			const line = "@link";

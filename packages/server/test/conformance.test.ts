@@ -41,7 +41,7 @@ afterEach(async () => {
 	tempDirectories.clear();
 });
 
-describe("Unix transport conformance", () => {
+describe.skipIf(process.platform === "win32")("Unix transport conformance", () => {
 	test("accepts a transport-fragmented framed-CBOR hello", async () => {
 		const { server } = await startServer();
 		const client = await connect(server);
@@ -361,7 +361,7 @@ describe("Unix transport conformance", () => {
 	});
 });
 
-test("Unix socket decodes multiple framed requests from one raw chunk", async () => {
+test.skipIf(process.platform === "win32")("Unix socket decodes multiple framed requests from one raw chunk", async () => {
 	const { server } = await startServer();
 	const client = await connect(server);
 	await client.hello();

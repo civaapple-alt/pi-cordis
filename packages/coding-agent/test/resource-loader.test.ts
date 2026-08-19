@@ -132,7 +132,7 @@ Project skill`,
 			);
 
 			const baseTheme = JSON.parse(
-				readFileSync(join(process.cwd(), "src", "modes", "interactive", "theme", "dark.json"), "utf-8"),
+				readFileSync(join(__dirname, "../src/modes/interactive/theme/dark.json"), "utf-8"),
 			) as { name: string; vars?: Record<string, string> };
 			baseTheme.name = "collision-theme";
 			const userThemePath = join(agentDir, "themes", "collision.json");
@@ -147,7 +147,6 @@ Project skill`,
 
 			const loader = new DefaultResourceLoader({ cwd, agentDir });
 			await loader.reload();
-
 			const prompt = loader.getPrompts().prompts.find((p) => p.name === "commit");
 			expect(prompt?.filePath).toBe(projectPromptPath);
 
@@ -173,8 +172,13 @@ Project skill`,
 
 			mkdirSync(agentDir, { recursive: true });
 			mkdirSync(join(cwd, ".pi"), { recursive: true });
-			symlinkSync(sharedExtDir, join(agentDir, "extensions"), "dir");
-			symlinkSync(sharedExtDir, join(cwd, ".pi", "extensions"), "dir");
+			try {
+				symlinkSync(sharedExtDir, join(agentDir, "extensions"), "junction");
+				symlinkSync(sharedExtDir, join(cwd, ".pi", "extensions"), "junction");
+			} catch (e: any) {
+				if (e.code === "EPERM" && process.platform === "win32") return;
+				throw e;
+			}
 
 			const loader = new DefaultResourceLoader({ cwd, agentDir });
 			await loader.reload();
@@ -440,7 +444,7 @@ Project skill content`,
 			);
 			writeFileSync(join(promptsDir, "project.md"), "Project prompt");
 			const themeData = JSON.parse(
-				readFileSync(join(process.cwd(), "src", "modes", "interactive", "theme", "dark.json"), "utf-8"),
+				readFileSync(join(__dirname, "../src/modes/interactive/theme/dark.json"), "utf-8"),
 			) as { name: string };
 			themeData.name = "project-theme";
 			writeFileSync(join(themesDir, "project.json"), JSON.stringify(themeData, null, 2));
@@ -685,7 +689,7 @@ description: Package prompt
 Package prompt content`,
 			);
 			const baseTheme = JSON.parse(
-				readFileSync(join(process.cwd(), "src", "modes", "interactive", "theme", "dark.json"), "utf-8"),
+				readFileSync(join(__dirname, "../src/modes/interactive/theme/dark.json"), "utf-8"),
 			) as { name: string };
 			writeFileSync(
 				join(packageThemesDir, "package-theme.json"),
