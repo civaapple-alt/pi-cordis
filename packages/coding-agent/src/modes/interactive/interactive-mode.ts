@@ -1737,6 +1737,28 @@ export class InteractiveMode {
 				addLoadedSection("Extensions", extensionCompactList, extList, "mdHeading");
 			}
 
+			// Show Cordis Microkernel services & plugins
+			const cordisServices = [
+				{ name: "settings", desc: "SettingsService (config & watch)" },
+				{ name: "auth", desc: "AuthService (API keys & OAuth)" },
+				{ name: "ai", desc: "AIService (1300+ models)" },
+				{ name: "tools", desc: "ToolRegistryService (7 core tools)" },
+				{ name: "session", desc: "SessionService (SQLite / tree branch)" },
+				{ name: "skills", desc: "SkillsService (auto-discovery)" },
+				{ name: "prompts", desc: "PromptsService (templates)" },
+				{ name: "extensions", desc: "ExtensionService (Cordis bridge)" },
+				{ name: "packageManager", desc: "PackageManagerService (pi.dev/npm)" },
+				{ name: "agent", desc: "AgentService (Inference loop)" },
+			];
+			const cordisCompactList = formatCompactList(
+				cordisServices.map((s) => `ctx.${s.name}`),
+				{ sort: false },
+			);
+			const cordisDetailedList = cordisServices
+				.map((s) => `  ${theme.fg("accent", `ctx.${s.name}`)} ${theme.fg("dim", `(${s.desc})`)}`)
+				.join("\n");
+			addLoadedSection("Cordis Microkernel", cordisCompactList, cordisDetailedList, "accent");
+
 			// Show loaded themes (excluding built-in)
 			const loadedThemes = themesResult.themes;
 			const customThemes = loadedThemes.filter((t) => t.sourcePath);
