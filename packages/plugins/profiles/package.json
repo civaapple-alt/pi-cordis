@@ -9,7 +9,8 @@
 		"@pi-cordis/plugin-safety-gate": "workspace:*",
 		"@pi-cordis/plugin-git-guard": "workspace:*",
 		"@pi-cordis/plugin-todo-tracker": "workspace:*",
-		"@pi-cordis/plugin-rules-injector": "workspace:*"
+		"@pi-cordis/plugin-rules-injector": "workspace:*",
+		"yaml": "^2.7.0"
 	},
 	"peerDependencies": {
 		"@deepseek-ai/cordis": "workspace:*"

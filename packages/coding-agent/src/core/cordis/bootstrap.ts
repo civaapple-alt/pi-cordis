@@ -46,7 +46,7 @@ export async function createPiContext(options: CreatePiContextOptions = {}): Pro
 
 	// 2. Apply chosen profile and native Cordis plugins
 	const profileName = options.profile ?? "default";
-	applyProfile(ctx, profileName, options.plugins);
+	applyProfile(ctx, profileName, options.plugins, { cwd, agentDir });
 
 	await Promise.resolve();
 	await ctx.ai.init();

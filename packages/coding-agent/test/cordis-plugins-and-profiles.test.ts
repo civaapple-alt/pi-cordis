@@ -1,6 +1,9 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 import { describe, expect, it } from "vitest";
 import { createPiContext } from "../src/core/cordis/index.ts";
-import { BUILTIN_PROFILES, applyProfile } from "@pi-cordis/profiles";
+import { BUILTIN_PROFILES, applyProfile, loadProfilesFromYaml } from "@pi-cordis/profiles";
 
 describe("Cordis Native Plugins and Profiles System", () => {
 	it("should define standard built-in profiles", () => {
@@ -104,5 +107,55 @@ describe("Cordis Native Plugins and Profiles System", () => {
 		await registeredCommand.handler("safe", mockUI);
 		expect(notification).toContain('Switched to profile: "safe"');
 		expect(notification).toContain("safety-gate");
+	});
+
+	it("should load and merge custom profiles from YAML configuration", async () => {
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-cordis-test-"));
+		const yamlContent = `
+profiles:
+  custom-audit:
+    description: "Custom audit profile"
+    plugins:
+      safety-gate:
+        readOnly: true
+      rules-injector: true
+`;
+		fs.writeFileSync(path.join(tmpDir, "cordis.yml"), yamlContent, "utf-8");
+
+		const profiles = loadProfilesFromYaml(tmpDir);
+		expect(profiles["custom-audit"]).toBeDefined();
+		expect(profiles["custom-audit"].description).toBe("Custom audit profile");
+		expect(profiles["custom-audit"].plugins["safety-gate"]).toEqual({ readOnly: true });
+
+		// Cleanup
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("should load directory-based presets with preset.yml and cordis.yml", async () => {
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-cordis-preset-test-"));
+		const presetDir = path.join(tmpDir, "presets", "reviewer");
+		fs.mkdirSync(presetDir, { recursive: true });
+
+		fs.writeFileSync(
+			path.join(presetDir, "preset.yml"),
+			"name: 代码审查模式\ndescription: 专属代码审查与诊断预设\n",
+			"utf-8",
+		);
+
+		fs.writeFileSync(
+			path.join(presetDir, "cordis.yml"),
+			"- name: '@pi-cordis/plugin-safety-gate'\n  config:\n    readOnly: true\n- name: '@pi-cordis/plugin-rules-injector'\n",
+			"utf-8",
+		);
+
+		const profiles = loadProfilesFromYaml(tmpDir);
+		expect(profiles.reviewer).toBeDefined();
+		expect(profiles.reviewer.name).toBe("代码审查模式");
+		expect(profiles.reviewer.description).toBe("专属代码审查与诊断预设");
+		expect(profiles.reviewer.plugins["safety-gate"]).toEqual({ readOnly: true });
+		expect(profiles.reviewer.plugins["rules-injector"]).toBe(true);
+
+		// Cleanup
+		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 });

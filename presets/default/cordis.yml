@@ -1,0 +1,10 @@
+# ==========================================
+# Default Profile Cordis Plugins Composition
+# ==========================================
+- name: '@pi-cordis/plugin-rules-injector'
+  config:
+    scanClaudeRules: true
+
+- name: '@pi-cordis/plugin-todo-tracker'
+  config:
+    injectToPrompt: true

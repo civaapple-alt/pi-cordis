@@ -1,0 +1,7 @@
+# =======================================
+# Full Profile Cordis Plugins Composition
+# =======================================
+- name: '@pi-cordis/plugin-safety-gate'
+- name: '@pi-cordis/plugin-git-guard'
+- name: '@pi-cordis/plugin-todo-tracker'
+- name: '@pi-cordis/plugin-rules-injector'

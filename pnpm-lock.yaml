@@ -167,6 +167,9 @@ importers:
       '@pi-cordis/plugin-todo-tracker':
         specifier: workspace:*
         version: link:../todo-tracker
+      yaml:
+        specifier: ^2.7.0
+        version: 2.9.0
 
   packages/plugins/rules-injector:
     dependencies:
