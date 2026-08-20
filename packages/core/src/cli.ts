@@ -4,6 +4,8 @@
  * Bootstraps Cordis microkernel, mounts 10 core services & active profile,
  * then hands over to upstream @earendil-works/pi-coding-agent main loop.
  */
+import * as os from "node:os";
+import * as path from "node:path";
 import { createPiContext } from "./core/cordis/index.ts";
 import {
 	createProfileCommandExtension,
@@ -17,6 +19,10 @@ async function runCli() {
 	process.env.PI_CODING_AGENT = "true";
 	process.env.AI_AGENT = "picds";
 	process.emitWarning = (() => {}) as typeof process.emitWarning;
+
+	const homedir = os.homedir();
+	process.env.PI_CODING_AGENT_DIR = process.env.PI_CODING_AGENT_DIR ?? path.join(homedir, ".picds", "agent");
+	process.env.PI_CODING_AGENT_SESSION_DIR = process.env.PI_CODING_AGENT_SESSION_DIR ?? path.join(homedir, ".picds", "agent", "sessions");
 
 	const rawArgs = process.argv.slice(2);
 	let profileName = "default";

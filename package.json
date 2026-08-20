@@ -20,14 +20,6 @@
     "typescript": "5.9.3",
     "vitest": "4.1.9"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@google/genai",
-      "canvas",
-      "esbuild",
-      "protobufjs"
-    ]
-  },
   "engines": {
     "node": ">=22.19.0"
   }
