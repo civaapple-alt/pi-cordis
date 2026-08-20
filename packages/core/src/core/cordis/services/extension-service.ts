@@ -1,5 +1,6 @@
 import { Service, type Context } from "@deepseek-ai/cordis";
 import { discoverAndLoadExtensions, getAgentDir } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 
 export interface ExtensionCommandDefinition {
 	description: string;
@@ -104,8 +105,35 @@ export class ExtensionService extends Service {
 			label: tool.label ?? tool.name,
 			description: tool.description,
 			parameters: tool.parameters ?? { type: "object", properties: {} },
-			renderCall: tool.renderCall,
-			renderResult: tool.renderResult,
+			renderCall: tool.renderCall
+				? (args: any, theme: any, context: any) => {
+					try {
+						const res = tool.renderCall(args, theme, context);
+						if (!res) return undefined;
+						if (typeof res === "object" && typeof res.render === "function") {
+							return res;
+						}
+						return new Text(typeof res === "string" ? res : String(res), 0, 0);
+					} catch {
+						return undefined;
+					}
+				}
+				: undefined,
+			renderResult: tool.renderResult
+				? (result: any, options: any, theme: any, context: any) => {
+					try {
+						const pluginResult = result?.details !== undefined ? result.details : result?.content ?? result;
+						const res = tool.renderResult(pluginResult, options, theme, context);
+						if (!res) return undefined;
+						if (typeof res === "object" && typeof res.render === "function") {
+							return res;
+						}
+						return new Text(typeof res === "string" ? res : String(res), 0, 0);
+					} catch {
+						return undefined;
+					}
+				}
+				: undefined,
 			execute: async (toolCallId: string, params: any, signal?: AbortSignal, onUpdate?: any, ctx?: any) => {
 				const result = (await this.ctx.tools?.executeTool?.(tool.name, params, {
 					toolCallId,

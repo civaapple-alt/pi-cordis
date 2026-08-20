@@ -60,7 +60,7 @@ CHANGELOG.md Progressively updated changelog (Keep a Changelog)
 
 ```sh
 pnpm install            # pnpm workspaces, node >=22.19
-pnpm test               # vitest unit tests across core and plugins (34 tests)
+pnpm test               # vitest unit tests across core and plugins (38 tests)
 pnpm run check          # TypeScript strict typecheck (tsc --noEmit)
 pnpm picds              # launch interactive terminal (Default is Best mode)
 pnpm picds --profile plan # launch in read-only plan mode

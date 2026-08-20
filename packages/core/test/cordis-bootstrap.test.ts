@@ -174,4 +174,45 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		(ctx.packageManager as any).manager.progressCallback?.("Installing cordis-plugin...");
 		expect(progressMessage).toBe("Installing cordis-plugin...");
 	});
+
+	it("9. ExtensionService: adapts plugin tool renderCall/renderResult strings to valid TUI Components", async () => {
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false });
+		let registeredTool: any = null;
+		const mockPi: any = {
+			registerTool: (t: any) => {
+				registeredTool = t;
+			},
+			registerCommand: () => {},
+			on: () => {},
+		};
+
+		const bridge = ctx.extensions.createBridgeExtensionFactory();
+		bridge.factory(mockPi);
+
+		ctx.tools.register({
+			name: "test_custom_render_tool",
+			description: "test",
+			renderCall: (args: any) => `Calling with ${args.param}`,
+			renderResult: (result: any) => `Result is ${result.val}`,
+			execute: async (params: any) => ({ val: params.param * 2 }),
+		});
+
+		expect(registeredTool).toBeDefined();
+		expect(registeredTool.name).toBe("test_custom_render_tool");
+
+		// Test renderCall returns Component with .render(width)
+		const callComp = registeredTool.renderCall({ param: 42 }, {}, {});
+		expect(callComp).toBeDefined();
+		expect(typeof callComp.render).toBe("function");
+		const callLines = callComp.render(80);
+		expect(callLines.join("\n")).toContain("Calling with 42");
+
+		// Test renderResult returns Component with .render(width)
+		const resultComp = registeredTool.renderResult({ details: { val: 84 } }, {}, {}, {});
+		expect(resultComp).toBeDefined();
+		expect(typeof resultComp.render).toBe("function");
+		const resultLines = resultComp.render(80);
+		expect(resultLines.join("\n")).toContain("Result is 84");
+	});
 });
+
