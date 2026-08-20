@@ -20,7 +20,7 @@ export interface TruncateResult {
 }
 
 export const name = "output-truncator";
-export const inject = [];
+export const inject = ["settings"];
 
 /**
  * Truncate oversized output with Head/Tail preservation and optional Spill persistence

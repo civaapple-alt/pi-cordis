@@ -13,6 +13,7 @@ export class SkillsService extends Service {
 	private cwd: string;
 	private agentDir: string;
 	private skillPaths: string[];
+	private customSkills: Map<string, Skill> = new Map();
 
 	constructor(ctx: Context, config?: SkillsServiceConfig) {
 		super(ctx, "skills");
@@ -25,6 +26,35 @@ export class SkillsService extends Service {
 		const cwd = options?.cwd ?? this.cwd;
 		const agentDir = options?.agentDir ?? this.agentDir;
 		const paths = options?.skillPaths ?? this.skillPaths;
-		return loadSkills({ cwd, agentDir, skillPaths: paths, includeDefaults: true });
+		const diskResult = loadSkills({ cwd, agentDir, skillPaths: paths, includeDefaults: true });
+		return {
+			skills: [...diskResult.skills, ...this.customSkills.values()],
+		};
+	}
+
+	/**
+	 * Register a custom dynamic skill with Cordis fiber effect cleanup
+	 */
+	public registerSkill(skill: Skill): () => void {
+		return this.ctx.effect(() => {
+			this.customSkills.set(skill.name, skill);
+			this.ctx.emit("pi/skill-registered", skill);
+			return () => {
+				this.customSkills.delete(skill.name);
+				this.ctx.emit("pi/skill-unregistered", skill.name);
+			};
+		});
+	}
+
+	public getSkill(name: string): Skill | undefined {
+		if (this.customSkills.has(name)) return this.customSkills.get(name);
+		const all = this.load().skills;
+		return all.find((s) => s.name === name);
+	}
+
+	public getAllSkills(): Skill[] {
+		return this.load().skills;
 	}
 }
+
+export default SkillsService;

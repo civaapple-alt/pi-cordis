@@ -13,6 +13,7 @@ export class PromptsService extends Service {
 	private cwd: string;
 	private agentDir: string;
 	private promptPaths: string[];
+	private customPrompts: Map<string, PromptTemplate> = new Map();
 
 	constructor(ctx: Context, config?: PromptsServiceConfig) {
 		super(ctx, "prompts");
@@ -25,6 +26,32 @@ export class PromptsService extends Service {
 		const cwd = options?.cwd ?? this.cwd;
 		const agentDir = options?.agentDir ?? this.agentDir;
 		const paths = options?.promptPaths ?? this.promptPaths;
-		return loadPromptTemplates({ cwd, agentDir, promptPaths: paths, includeDefaults: true });
+		const diskPrompts = loadPromptTemplates({ cwd, agentDir, promptPaths: paths, includeDefaults: true });
+		return [...diskPrompts, ...this.customPrompts.values()];
+	}
+
+	/**
+	 * Register a custom dynamic prompt template with Cordis fiber effect cleanup
+	 */
+	public registerPrompt(template: PromptTemplate): () => void {
+		return this.ctx.effect(() => {
+			this.customPrompts.set(template.name, template);
+			this.ctx.emit("pi/prompt-registered", template);
+			return () => {
+				this.customPrompts.delete(template.name);
+			};
+		});
+	}
+
+	public getPrompt(name: string): PromptTemplate | undefined {
+		if (this.customPrompts.has(name)) return this.customPrompts.get(name);
+		const all = this.load();
+		return all.find((p) => p.name === name);
+	}
+
+	public getAllPrompts(): PromptTemplate[] {
+		return this.load();
 	}
 }
+
+export default PromptsService;

@@ -28,6 +28,17 @@ export class ExtensionService extends Service {
 		const paths = options?.extensionPaths ?? this.extensionPaths;
 		const result = await loadExtensions(paths, cwd);
 		this.lastLoadedResult = result;
+		this.ctx.emit("pi/extension-loaded", result);
 		return result;
 	}
+
+	public getLoadedExtensions() {
+		return this.lastLoadedResult?.extensions ?? [];
+	}
+
+	public getLoadedTools() {
+		return this.lastLoadedResult?.tools ?? [];
+	}
 }
+
+export default ExtensionService;

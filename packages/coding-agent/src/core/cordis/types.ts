@@ -1,5 +1,11 @@
 import type { AgentSession } from "../agent-session.ts";
-import type { Model } from "@earendil-works/pi-ai";
+import type { Model, CustomProviderConfig, ProviderConfig } from "@earendil-works/pi-ai";
+import type { ToolDef } from "../tools/index.ts";
+import type { Skill } from "../skills.ts";
+import type { PromptTemplate } from "../prompt-templates.ts";
+import type { SessionManager } from "../session-manager.ts";
+import type { Settings } from "../settings-manager.ts";
+import type { LoadExtensionsResult } from "../extensions/types.ts";
 import type { SettingsService } from "./services/settings-service.ts";
 import type { AuthService } from "./services/auth-service.ts";
 import type { AIService } from "./services/ai-service.ts";
@@ -26,14 +32,47 @@ declare module "@deepseek-ai/cordis" {
 	}
 
 	interface Events {
+		// Session lifecycle
 		"pi/session-start"(session: AgentSession): void;
 		"pi/session-before"(event: { session: AgentSession; prompt: string }): void;
 		"pi/session-after"(event: { session: AgentSession }): void;
+		"pi/session-turn-start"(event: { session: AgentSession; prompt: string }): void;
+		"pi/session-turn-end"(event: { session: AgentSession; response?: unknown }): void;
+		"pi/session-created"(event: { session: SessionManager; cwd: string }): void;
+		"pi/session-forked"(event: { session: SessionManager; sourcePath: string }): void;
+		"pi/session-closed"(event: { id: string }): void;
+
+		// Tool lifecycle & execution
+		"pi/tool-registered"(tool: ToolDef): void;
+		"pi/tool-unregistered"(name: string): void;
 		"pi/tool-call"(event: { toolName?: string; name?: string; args: Record<string, unknown> }): void;
 		"pi/tool-result"(event: { toolName?: string; name?: string; args?: Record<string, unknown>; result: unknown }): void;
+
+		// AI & Model lifecycle
 		"pi/model-change"(model: Model<any>): void;
+		"pi/provider-registered"(event: { name: string; config?: CustomProviderConfig }): void;
+		"pi/provider-unregistered"(name: string): void;
+
+		// Settings & Auth
+		"pi/settings-updated"(event: { settings: Settings; changedKeys: string[] }): void;
+		"pi/auth-updated"(event: { provider?: string }): void;
+
+		// Resources & Extensions
+		"pi/skill-registered"(skill: Skill): void;
+		"pi/skill-unregistered"(name: string): void;
+		"pi/prompt-registered"(prompt: PromptTemplate): void;
+		"pi/extension-loaded"(result: LoadExtensionsResult): void;
+
+		// Package Manager
+		"pi/package-installed"(event: { source: string; local?: boolean }): void;
+		"pi/package-removed"(event: { source: string; local?: boolean }): void;
+		"pi/package-updated"(event: { source?: string }): void;
+		"pi/package-progress"(event: { message: string }): void;
+
+		// Prompts & Features
 		"pi/prompt-transform"(event: { prompt: string }): void;
-		"pi/compact"(event: { reason: string; timestamp: number }): void;
+		"pi/compact"(event: { reason: string; timestamp: number; modifiedFiles?: string[]; keyDecisions?: string[]; resolvedIssues?: string[]; pendingBlockers?: string[] }): void;
 		"pi/handoff"(event: Record<string, unknown>): void;
+		"pi/plan-completed"(event: { totalSteps: number }): void;
 	}
 }

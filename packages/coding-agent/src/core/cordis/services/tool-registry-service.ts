@@ -1,5 +1,4 @@
 import { Service, type Context } from "@deepseek-ai/cordis";
-import type { ToolDefinition } from "../../extensions/types.ts";
 import {
 	allToolNames,
 	createToolDefinition,
@@ -13,6 +12,8 @@ export interface CordisPluginToolDef {
 	description: string;
 	parameters?: any;
 	execute: (args: any, ...rest: any[]) => Promise<any>;
+	renderCall?: (args: any, theme?: any) => any;
+	renderResult?: (result: any, options?: any, theme?: any) => any;
 }
 
 export type ToolFilterFn = (tool: ToolDef) => boolean;
@@ -42,8 +43,10 @@ export class ToolRegistryService extends Service {
 	public registerCustomTool(tool: ToolDef | CordisPluginToolDef | any): () => void {
 		return this.ctx.effect(() => {
 			this.customTools.set(tool.name, tool as ToolDef);
+			this.ctx.emit("pi/tool-registered", tool as ToolDef);
 			return () => {
 				this.customTools.delete(tool.name);
+				this.ctx.emit("pi/tool-unregistered", tool.name);
 			};
 		});
 	}
@@ -120,4 +123,27 @@ export class ToolRegistryService extends Service {
 	public has(toolName: string): boolean {
 		return this.customTools.has(toolName) || allToolNames.has(toolName as ToolName);
 	}
+
+	/**
+	 * Execute a tool with pre/post Cordis lifecycle hooks and event emissions
+	 */
+	public async executeTool(toolName: string, args: Record<string, unknown>, ...rest: any[]): Promise<any> {
+		const tool = this.get(toolName);
+		if (!tool) {
+			throw new Error(`Tool "${toolName}" not found in registry.`);
+		}
+
+		// 1. Pre-execution hook
+		await this.ctx.serial("pi/tool-call" as any, { toolName, name: toolName, args });
+
+		// 2. Execution
+		const result = await tool.execute(args, ...rest);
+
+		// 3. Post-execution hook
+		await this.ctx.parallel("pi/tool-result" as any, { toolName, name: toolName, args, result });
+
+		return result;
+	}
 }
+
+export default ToolRegistryService;

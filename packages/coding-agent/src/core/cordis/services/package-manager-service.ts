@@ -19,26 +19,41 @@ export class PackageManagerService extends Service {
 		const agentDir = config?.agentDir ?? getAgentDir();
 		const settingsManager = config?.settingsManager ?? SettingsManager.create(cwd, agentDir);
 		this.manager = new DefaultPackageManager({ cwd, agentDir, settingsManager });
+
+		// Forward progress events to Cordis event bus
+		this.manager.setProgressCallback((message: string) => {
+			this.ctx.emit("pi/package-progress", { message });
+		});
 	}
 
 	public async install(source: string, options?: { local?: boolean }) {
-		return this.manager.install(source, options);
+		const result = await this.manager.install(source, options);
+		this.ctx.emit("pi/package-installed", { source, local: options?.local });
+		return result;
 	}
 
 	public async installAndPersist(source: string, options?: { local?: boolean }) {
-		return this.manager.installAndPersist(source, options);
+		const result = await this.manager.installAndPersist(source, options);
+		this.ctx.emit("pi/package-installed", { source, local: options?.local });
+		return result;
 	}
 
 	public async remove(source: string, options?: { local?: boolean }) {
-		return this.manager.remove(source, options);
+		const result = await this.manager.remove(source, options);
+		this.ctx.emit("pi/package-removed", { source, local: options?.local });
+		return result;
 	}
 
 	public async removeAndPersist(source: string, options?: { local?: boolean }) {
-		return this.manager.removeAndPersist(source, options);
+		const result = await this.manager.removeAndPersist(source, options);
+		this.ctx.emit("pi/package-removed", { source, local: options?.local });
+		return result;
 	}
 
 	public async update(source?: string) {
-		return this.manager.update(source);
+		const result = await this.manager.update(source);
+		this.ctx.emit("pi/package-updated", { source });
+		return result;
 	}
 
 	public listConfiguredPackages() {
@@ -46,6 +61,11 @@ export class PackageManagerService extends Service {
 	}
 
 	public setProgressCallback(callback: ProgressCallback | undefined) {
-		this.manager.setProgressCallback(callback);
+		this.manager.setProgressCallback((msg) => {
+			callback?.(msg);
+			this.ctx.emit("pi/package-progress", { message: msg });
+		});
 	}
 }
+
+export default PackageManagerService;

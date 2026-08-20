@@ -2,6 +2,7 @@ import { Service, type Context } from "@deepseek-ai/cordis";
 import { AuthStorage, ReadOnlyAuthStorage } from "../../auth-storage.ts";
 import { getAgentDir } from "../../../config.ts";
 import { join } from "path";
+import type { Credential, CredentialInfo } from "@earendil-works/pi-ai";
 
 export interface AuthServiceConfig {
 	agentDir?: string;
@@ -27,7 +28,39 @@ export class AuthService extends Service {
 		}
 	}
 
-	public getStorage() {
+	public getStorage(): AuthStorage | ReadOnlyAuthStorage {
 		return this.storage;
 	}
+
+	public async read(provider: string): Promise<Credential | undefined> {
+		return this.storage.read(provider);
+	}
+
+	public async getApiKey(provider: string): Promise<string | undefined> {
+		const cred = await this.storage.read(provider);
+		if (!cred) return undefined;
+		if (cred.type === "api_key") return cred.key;
+		return (cred as any).apiKey;
+	}
+
+	public async setApiKey(provider: string, apiKey: string): Promise<void> {
+		await (this.storage as any).modify?.(provider, async () => ({ type: "api_key", key: apiKey }));
+		this.ctx.emit("pi/auth-updated", { provider });
+	}
+
+	public async remove(provider: string): Promise<void> {
+		await (this.storage as any).delete?.(provider);
+		this.ctx.emit("pi/auth-updated", { provider });
+	}
+
+	public async has(provider: string): Promise<boolean> {
+		const cred = await this.storage.read(provider);
+		return cred !== undefined;
+	}
+
+	public async list(): Promise<readonly CredentialInfo[]> {
+		return this.storage.list();
+	}
 }
+
+export default AuthService;
