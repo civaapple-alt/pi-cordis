@@ -2,6 +2,10 @@
   "name": "pi-cordis-monorepo",
   "private": true,
   "type": "module",
+  "bin": {
+    "picds": "./bin/picds.js",
+    "picordis": "./bin/picds.js"
+  },
   "scripts": {
     "picds": "tsx packages/core/src/cli.ts",
     "picordis": "tsx packages/core/src/cli.ts",
