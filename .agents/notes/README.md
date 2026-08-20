@@ -21,6 +21,8 @@ This directory records architectural decision records (ADRs), technology selecti
 | `2026-08-20` | [Pi-Cordis: Capability Seams, Explicit Injection (inject), and TUI Interaction Bridge](implemented/architecture/2026-08-20-pi-cordis-capability-seams-inject-and-tui-bridge.md) | DSH tripartite seam alignment, Cordis v4 inject access sandbox and out-of-order resolution, and ExtensionService 7 TUI interaction slots |
 | `2026-08-20` | [Pi-Cordis: "Registrations are Effects, and Effects must be Reversible" and Disposer Pattern](implemented/architecture/2026-08-20-pi-cordis-reversible-side-effects-and-disposer-pattern.md) | Reversible side effect axiom, 4 key scenarios beyond HMR (profile switching, subagent sandboxing, plan mode, atomic rollback) |
 | `2026-08-20` | [Pi-Cordis: Programmatic Tool Calling (PTC / Code Mode) Architecture Proposal](proposed/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.md) | DSH Code Mode deep dive, round-trip collapse & context preservation, dynamic SDK synthesis, and `presets/ptc/` implementation plan |
+| `2026-08-20` | [Pi-Cordis: Minimalist Design Philosophy and "Default is Best" Preset Simplification](proposed/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.md) | Deprecating 5 internal permutations, aligning with Pi's minimalist soul, Default is Best, and 3 distinct agent modes |
+
 
 
 

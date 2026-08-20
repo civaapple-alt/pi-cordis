@@ -21,6 +21,8 @@
 | `2026-08-20` | [Pi-Cordis: 能力 Seams、显式依赖注入（inject）与 TUI 交互桥接架构设计](implemented/architecture/2026-08-20-pi-cordis-capability-seams-inject-and-tui-bridge.zh.md) | DSH 三层 Seam 角色对齐、Cordis v4 inject 权限沙箱与无序拓扑解析、ExtensionService 桥接与 pi-tui 7 大终端交互槽位 |
 | `2026-08-20` | [Pi-Cordis: “注册即副作用，副作用必可逆”与 Disposer 模式架构哲学](implemented/architecture/2026-08-20-pi-cordis-reversible-side-effects-and-disposer-pattern.zh.md) | 副作用必可逆的核心公理、脱离 HMR 的 4 大生产场景（Profile切换/Subagent隔离/Plan模式/事务回滚）与 Disposer 清理闭环 |
 | `2026-08-20` | [Pi-Cordis: 编程化工具调用（PTC / Code Mode）架构设计与演进提案](proposed/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.zh.md) | DSH Code Mode 深度解析、轮次坍缩与上下文防爆、TypeScript SDK 动态合成与 `presets/ptc/` 落地规划 |
+| `2026-08-20` | [Pi-Cordis: 极简设计哲学与 “Default is Best” 预设体系重构提案](proposed/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md) | 废除 5 大内部插件技术排列组合、回归 Pi 极简主义、Default 默认即最佳与 3 大场景级工作形态（Default/Plan/PTC） |
+
 
 
 
