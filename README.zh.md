@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](vendor/)
 [![TypeScript: Strict](https://img.shields.io/badge/TypeScript-Strict_Mode-blue.svg?style=flat-square)](tsconfig.json)
-[![Tests: 32 Passing](https://img.shields.io/badge/Tests-32_Passing-success.svg?style=flat-square)](packages/)
+[![Tests: 34 Passing](https://img.shields.io/badge/Tests-34_Passing-success.svg?style=flat-square)](packages/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/civaapple-alt/pi-cordis/pulls)
 
 [English](README.md) | [中文说明](README.zh.md) | [架构决策记录 (ADR)](.agents/notes/README.zh.md) | [开发与贡献规范](AGENTS.md)
@@ -20,6 +20,7 @@
 
 - [第一层：快速上手与核心概览](#-第一层快速上手与核心概览)
   - [项目定位与核心价值](#项目定位与核心价值)
+  - [清晰的 4 层架构金字塔](#清晰的-4-层架构金字塔)
   - [1 分钟快速上手](#1-分钟快速上手)
   - [核心特性全景对比矩阵](#核心特性全景对比矩阵)
 - [第二层：3 大场景预设 (Default is Best)](#-第二层3-大场景预设-default-is-best)
@@ -45,9 +46,36 @@
 
 1. **100% 保持 Pi 的功能与 TUI 体验**：保留全屏 Canvas、双缓冲 Diff 对比、分支树选择器、状态看板与流式 Markdown 高亮，零用户体验降级；
 2. **“一切皆插件”的服务化解耦**：将配置、鉴权、多模型驱动、工具注册、会话存储、技能、提示词、扩展系统、包管理器与智能体推理循环 10 大能力全面重构为 Cordis 响应式服务；
-3. **“Default is Best” 极简哲学**：无需复杂配置，默认启动即具备完整安全拦截、Git 检查点、规则自动注入与待办追踪；
-4. **PTC 编程化调用 (Code Mode)**：将 5~10 轮串行网络交互坍缩为 1 轮本地程序化执行（在独立 Node.js Worker 线程中执行强类型 TypeScript SDK），节省 90%+ 上下文；
-5. **生态完全兼容**：全面支持 [`pi.dev/packages`](https://pi.dev/packages) 社区扩展市场。
+3. **上游彻底解耦直连**：直接通过 npm 消费官方 `@earendil-works/pi-coding-agent: ^0.84.2`，清空本地冗余克隆源码，一条 `pnpm update` 即可无感升级上游能力；
+4. **“Default is Best” 极简哲学**：无需复杂配置，默认启动即具备完整安全拦截、Git 检查点、规则自动注入与待办追踪；
+5. **PTC 编程化调用 (Code Mode)**：将 5~10 轮串行网络交互坍缩为 1 轮本地程序化执行（在独立 Node.js Worker 线程中执行强类型 TypeScript SDK），节省 90%+ 上下文；
+6. **命令行与用户数据物理隔离**：独立注册 `picds`/`picordis` CLI 命令与 `~/.picds/agent/` 用户空间，防止与本地全局安装的原生 Pi 发生冲突；
+7. **生态完全兼容**：全面支持 [`pi.dev/packages`](https://pi.dev/packages) 社区扩展市场。
+
+### 清晰的 4 层架构金字塔
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ Level 4: 场景预设与原生插件生态 (presets/*, packages/plugins/*)        │
+│   ├── 3 大场景化预设 (default, plan, ptc)                              │
+│   └── 15 个原生 Cordis 插件 (safety-gate, git-guard, todo-tracker...)   │
+├────────────────────────────────────────────────────────────────────────┤
+│ Level 3: Cordis 微内核控制面与服务网格 (@pi-cordis/core)               │
+│   ├── 10 大核心响应式服务 (Settings, Auth, AI, Tools, Session...)      │
+│   ├── 统一中央事件总线 (Central EventBus -> pi/* 响应式事件流)         │
+│   ├── 原生终端增强能力 (OSC 777 系统级通知, /btw 零污染侧信道问答)     │
+│   └── 两阶段微内核 CLI 启动器 (picds, picordis)                        │
+├────────────────────────────────────────────────────────────────────────┤
+│ Level 2: 上游 Coding 场景特化层 (@earendil-works/pi-coding-agent)      │
+│   ├── 交互式终端 TUI Canvas & Diff 差异对比组件                        │
+│   ├── 编程场景专用系统提示词与编码工具实现                             │
+│   └── 多轮智能体推理循环调度器                                         │
+├────────────────────────────────────────────────────────────────────────┤
+│ Level 1: 上游通用 Agent 底座内核 (@earendil-works/pi-agent-core)       │
+│   ├── LLM 供应商适配器与多模型流式传输                                 │
+│   └── 核心工具抽象与执行基元                                           │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
 ### 1 分钟快速上手
 
@@ -61,7 +89,7 @@ pnpm install
 echo "DEEPSEEK_API_KEY=sk-your-key" > .env
 
 # 3. 启动交互式终端 (Default is Best: 全功能就绪且自带最高安全防线)
-pnpm pi
+pnpm picds
 
 # 4. 在终端中即时切换场景模式
 /profile plan
@@ -81,6 +109,8 @@ pnpm pi
 | **双轨分层 HMR** | ❌ | ✅ | 极速编程式核心启动 + 零重启 YAML 预设与插件源码热重载 |
 | **3 大场景化预设** | ❌ | ✅ | `default` (标准开发), `plan` (只读规划), `ptc` (编程调用) |
 | **PTC / Code Mode** | ❌ | ✅ | 动态 `.d.ts` SDK + 单一 `run_code` 入口 + Worker 线程沙箱 |
+| **系统级终端通知 (OSC 777)** | ❌ | ✅ | 长轮次完成或等待提问时向 Warp / Ghostty / iTerm2 发送桌面通知 |
+| **零污染侧信道问答** | ❌ | ✅ | `/btw <问题>` 快捷解答旁支疑问，不污染主会话上下文与历史日志 |
 
 ---
 
@@ -101,17 +131,17 @@ pnpm pi
 ### 1. 标准开发模式 (`default`)
 - **定位**：**默认即最佳**。适用于 95% 以上的日常 AI 辅助编码工作；
 - **激活能力**：`safety-gate` (高危命令与敏感路径拦截)、`git-guard` (快照检查点)、`rules-injector` (自动扫描 `AGENTS.md`/`CLAUDE.md`)、`todo-tracker` (四态任务管理)、`output-truncator` (双端保留与 Spill 溢出转存)、`ask-question` (推荐高亮问答)、`subagent` (子智能体派生)、`context-compactor`、`git-automation`、`session-handoff`、`ssh-delegator`、`tools-manager`。
-- **使用**：直接执行 `pnpm pi`，零配置启动。
+- **使用**：直接执行 `pnpm picds`，零配置启动。
 
 ### 2. 规划与审计模式 (`plan`)
 - **定位**：专用于大型重构、架构探索、需求拆解与安全审计的**只读沙箱模式**；
 - **激活能力**：`plan-mode` (步骤状态机与进度条)、`safety-gate` (`readOnly: true` 强制阻断一切写操作)、`rules-injector`、`todo-tracker`、`output-truncator`、`ask-question`、`context-compactor`。
-- **使用**：在 TUI 中输入 `/profile plan` 或 CLI 启动 `pnpm pi --profile plan`。
+- **使用**：在 TUI 中输入 `/profile plan` 或 CLI 启动 `pnpm picds --profile plan`。
 
 ### 3. 编程化工具调用模式 (`ptc`)
 - **定位**：专用于海量文件扫描、批量文本替换与复杂数据过滤的**程序化调用模式**；
 - **激活能力**：`code-mode` (动态 `.d.ts` 生成 + 表现层工具遮蔽 + `worker_threads.Worker` 独立线程沙箱)、`safety-gate`、`git-guard`、`rules-injector`、`todo-tracker`、`output-truncator`、`context-compactor`。
-- **使用**：在 TUI 中输入 `/profile ptc` 或 CLI 启动 `pnpm pi --profile ptc`。
+- **使用**：在 TUI 中输入 `/profile ptc` 或 CLI 启动 `pnpm picds --profile ptc`。
 
 ---
 
@@ -127,7 +157,7 @@ pnpm pi
 
 ### 10 大原生 Cordis 核心服务
 
-各服务详细使用指南与接口文档见 [`packages/coding-agent/docs/cordis/services/`](packages/coding-agent/docs/cordis/services/README.zh.md)：
+各服务详细使用指南与接口文档见 [`packages/core/docs/cordis/services/`](packages/core/docs/cordis/services/README.zh.md)：
 
 | 核心服务 | 挂载属性 | 核心职责与事件流 |
 | :--- | :--- | :--- |
@@ -233,6 +263,7 @@ pnpm picds
 | `2026-08-20` | [Pi-Cordis 编程化工具调用（PTC / Code Mode）架构设计](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.zh.md) | `implemented` |
 | `2026-08-20` | [Pi-Cordis 极简设计哲学与 “Default is Best” 预设体系重构](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md) | `implemented` |
 | `2026-08-20` | [Pi-Cordis 全套内置插件最优解架构演进蓝图与实践指南](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.zh.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis: 核心控制面彻底解耦、分层架构落地与上游零负担升级方案](.agents/notes/implemented/simplification/2026-08-20-pi-cordis-core-decoupling-and-layered-architecture.zh.md) | `implemented` |
 | `2026-08-19` | [Pi AgentHarness 工业级事务规格与 Cordis 微内核架构融合](.agents/notes/archived/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.zh.md) | `archived` |
 
 ---

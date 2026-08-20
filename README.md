@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](vendor/)
 [![TypeScript: Strict](https://img.shields.io/badge/TypeScript-Strict_Mode-blue.svg?style=flat-square)](tsconfig.json)
-[![Tests: 32 Passing](https://img.shields.io/badge/Tests-32_Passing-success.svg?style=flat-square)](packages/)
+[![Tests: 34 Passing](https://img.shields.io/badge/Tests-34_Passing-success.svg?style=flat-square)](packages/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/civaapple-alt/pi-cordis/pulls)
 
 [English](README.md) | [中文说明](README.zh.md) | [Architecture Notes](.agents/notes/README.md) | [Contributing Guide](AGENTS.md)
@@ -20,6 +20,7 @@
 
 - [Level 1: Quick Start & Essential Overview](#-level-1-quick-start--essential-overview)
   - [Overview & Why Pi-Cordis](#overview)
+  - [The 4-Layer Architecture Pyramid](#the-4-layer-architecture-pyramid)
   - [Quick Start](#quick-start)
   - [Core Feature Matrix](#core-feature-matrix)
 - [Level 2: The 3 Canonical Presets (Default is Best)](#-level-2-the-3-canonical-presets-default-is-best)
@@ -45,9 +46,36 @@
 
 1. **100% Pi Parity**: Retains the full-screen interactive TUI, diff viewer, session branching tree, and prompt templates with zero regressions;
 2. **"Everything is a Plugin"**: All 10 core capabilities are decoupled into reactive Cordis services;
-3. **"Default is Best" Philosophy**: Out of the box, standard runs activate destructive command interception, git checkpoints, prompt rules injection, and task tracking with zero manual configuration;
-4. **PTC (Programmatic Tool Calling / Code Mode)**: Collapses 5~10 multi-turn network round-trips into a single local TypeScript execution in an isolated Node.js Worker thread;
-5. **Ecosystem Compatible**: Fully supports the [`pi.dev/packages`](https://pi.dev/packages) community marketplace.
+3. **Clean Upstream Decoupling**: Direct npm ingestion of `@earendil-works/pi-coding-agent: ^0.84.2`, tracking upstream updates seamlessly via `pnpm update`;
+4. **"Default is Best" Philosophy**: Out of the box, standard runs activate destructive command interception, git checkpoints, prompt rules injection, and task tracking with zero manual configuration;
+5. **PTC (Programmatic Tool Calling / Code Mode)**: Collapses 5~10 multi-turn network round-trips into a single local TypeScript execution in an isolated Node.js Worker thread;
+6. **Isolated User Space**: Dedicated `~/.picds/agent/` user directory and `picds`/`picordis` CLI binaries, preventing collision with globally installed native Pi;
+7. **Ecosystem Compatible**: Fully supports the [`pi.dev/packages`](https://pi.dev/packages) community marketplace.
+
+### The 4-Layer Architecture Pyramid
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ Level 4: Presets & Native Plugin Ecosystem (presets/*, packages/plugins/*) │
+│   ├── 3 Canonical Presets (default, plan, ptc)                         │
+│   └── 15 Native Cordis Plugins (safety-gate, git-guard, todo-tracker...)│
+├────────────────────────────────────────────────────────────────────────┤
+│ Level 3: Microkernel Control Plane & Services (@pi-cordis/core)        │
+│   ├── 10 Core Reactive Services (Settings, Auth, AI, Tools, Session...)│
+│   ├── Central EventBus (pi/* reactive streams)                         │
+│   ├── Native Terminal Capabilities (OSC 777 Notifier, /btw Side-channel)│
+│   └── 2-Phase Microkernel CLI Bootstrapper (picds, picordis)           │
+├────────────────────────────────────────────────────────────────────────┤
+│ Level 2: Upstream Coding Specialization (@earendil-works/pi-coding-agent)│
+│   ├── Interactive TUI Canvas & Diff Components                         │
+│   ├── Coding System Prompts & Tool Handlers                            │
+│   └── Multi-turn Agent Loop Implementation                             │
+├────────────────────────────────────────────────────────────────────────┤
+│ Level 1: Upstream Generic Agent Core (@earendil-works/pi-agent-core)   │
+│   ├── LLM Provider Adapters & Multi-model Transport                    │
+│   └── Core Tool Definition & Execution Primitives                      │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Quick Start
 
@@ -61,7 +89,7 @@ pnpm install
 echo "DEEPSEEK_API_KEY=sk-your-key" > .env
 
 # 3. Launch interactive terminal (Default is Best: full capabilities & safety)
-pnpm pi
+pnpm picds
 
 # 4. Switch presets live in terminal
 /profile plan
@@ -81,6 +109,8 @@ pnpm pi
 | **Dual-Track Layered HMR** | ❌ | ✅ | Fast programmatic core boot + live zero-restart plugin code & preset HMR |
 | **3 Scenario-Driven Presets** | ❌ | ✅ | `default` (Default is Best), `plan` (Read-only), `ptc` (Code Mode) |
 | **PTC / Code Mode** | ❌ | ✅ | Dynamic `.d.ts` SDK + single `run_code` execution in Worker thread |
+| **Terminal Notification (OSC 777)** | ❌ | ✅ | Native desktop notifications on long turn completion for Warp / Ghostty / iTerm2 |
+| **Zero-Pollution Side Questions** | ❌ | ✅ | `/btw <question>` answers side queries without polluting conversation history |
 
 ---
 
@@ -101,17 +131,17 @@ In accordance with the **"Default is Best" Minimalist Philosophy**, artificial p
 ### 1. Standard Coding Mode (`default`)
 - **Philosophy**: **Default is Best**. The definitive choice for 95% of daily engineering tasks;
 - **Active Capabilities**: `safety-gate` (destructive command blocking), `git-guard` (checkpoints), `rules-injector` (auto-scans `AGENTS.md`/`CLAUDE.md`), `todo-tracker` (task state machine), `output-truncator` (spill protection), `ask-question` (disambiguation), `subagent` (delegation), `context-compactor`, `git-automation`, `session-handoff`, `ssh-delegator`, `tools-manager`.
-- **Usage**: Run `pnpm pi` directly with zero arguments.
+- **Usage**: Run `pnpm picds` directly with zero arguments.
 
 ### 2. Planning & Audit Mode (`plan`)
 - **Philosophy**: Dedicated **read-only sandbox mode** for complex refactoring, architecture exploration, and proposal design;
 - **Active Capabilities**: `plan-mode` (step state machine & progress bar), `safety-gate` (`readOnly: true`), `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `context-compactor`.
-- **Usage**: `/profile plan` in TUI or `pnpm pi --profile plan`.
+- **Usage**: `/profile plan` in TUI or `pnpm picds --profile plan`.
 
 ### 3. Programmatic Tool Calling (`ptc`)
 - **Philosophy**: Dedicated **programmatic execution mode** for batch file operations and complex data filtering;
 - **Active Capabilities**: `code-mode` (dynamic `.d.ts` generation + presentation tool masking + `worker_threads.Worker` sandbox), `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `context-compactor`.
-- **Usage**: `/profile ptc` in TUI or `pnpm pi --profile ptc`.
+- **Usage**: `/profile ptc` in TUI or `pnpm picds --profile ptc`.
 
 ---
 
@@ -127,7 +157,7 @@ Every service and plugin in Pi-Cordis adheres to:
 
 ### 10 Native Cordis Core Services
 
-Detailed guides available in [`packages/coding-agent/docs/cordis/services/`](packages/coding-agent/docs/cordis/services/README.md):
+Detailed guides available in [`packages/core/docs/cordis/services/`](packages/core/docs/cordis/services/README.md):
 
 | Service | Property | Core Responsibility & Event Stream |
 | :--- | :--- | :--- |
@@ -233,6 +263,7 @@ Full ADR index available at [`.agents/notes/README.md`](.agents/notes/README.md)
 | `2026-08-20` | [Pi-Cordis: Programmatic Tool Calling (PTC / Code Mode) Architecture](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.md) | `implemented` |
 | `2026-08-20` | [Pi-Cordis: Minimalist Presets and "Default is Best" Philosophy](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.md) | `implemented` |
 | `2026-08-20` | [Pi-Cordis: Built-in Plugin Ecosystem Optimal Architecture Blueprint](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis: Core Decoupling, Layered Architecture, and Clean Upstream Ingestion](.agents/notes/implemented/simplification/2026-08-20-pi-cordis-core-decoupling-and-layered-architecture.md) | `implemented` |
 | `2026-08-19` | [Pi AgentHarness: Specification & Cordis Integration](.agents/notes/archived/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.md) | `archived` |
 
 ---
