@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-output-truncator",
+	"version": "0.1.0",
+	"description": "Large tool output truncation and context overflow protection plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

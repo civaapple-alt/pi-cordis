@@ -30,10 +30,12 @@ export class ToolRegistryService extends Service {
 	}
 
 	public registerCustomTool(tool: ToolDef): () => void {
-		this.customTools.set(tool.name, tool);
-		return () => {
-			this.customTools.delete(tool.name);
-		};
+		return this.ctx.effect(() => {
+			this.customTools.set(tool.name, tool);
+			return () => {
+				this.customTools.delete(tool.name);
+			};
+		});
 	}
 
 	public getBuiltinToolDefinition(toolName: ToolName, cwd: string = this.cwd): ToolDef {
@@ -51,5 +53,19 @@ export class ToolRegistryService extends Service {
 
 	public getToolNames(cwd: string = this.cwd): string[] {
 		return this.getAllToolDefinitions(cwd).map((t) => t.name);
+	}
+
+	public get(toolName: string, cwd: string = this.cwd): ToolDef | undefined {
+		if (this.customTools.has(toolName)) {
+			return this.customTools.get(toolName);
+		}
+		if (allToolNames.has(toolName as ToolName)) {
+			return this.getBuiltinToolDefinition(toolName as ToolName, cwd);
+		}
+		return undefined;
+	}
+
+	public has(toolName: string): boolean {
+		return this.customTools.has(toolName) || allToolNames.has(toolName as ToolName);
 	}
 }

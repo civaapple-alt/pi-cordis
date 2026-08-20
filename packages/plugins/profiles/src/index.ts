@@ -6,12 +6,32 @@ import safetyGatePlugin from "@pi-cordis/plugin-safety-gate";
 import gitGuardPlugin from "@pi-cordis/plugin-git-guard";
 import todoTrackerPlugin from "@pi-cordis/plugin-todo-tracker";
 import rulesInjectorPlugin from "@pi-cordis/plugin-rules-injector";
+import subagentPlugin from "@pi-cordis/plugin-subagent";
+import planModePlugin from "@pi-cordis/plugin-plan-mode";
+import codeModePlugin from "@pi-cordis/plugin-code-mode";
+import askQuestionPlugin from "@pi-cordis/plugin-ask-question";
+import outputTruncatorPlugin from "@pi-cordis/plugin-output-truncator";
+import contextCompactorPlugin from "@pi-cordis/plugin-context-compactor";
+import toolsManagerPlugin from "@pi-cordis/plugin-tools-manager";
+import sessionHandoffPlugin from "@pi-cordis/plugin-session-handoff";
+import gitAutomationPlugin from "@pi-cordis/plugin-git-automation";
+import sshDelegatorPlugin from "@pi-cordis/plugin-ssh-delegator";
 
 export const builtinPlugins = {
 	"safety-gate": safetyGatePlugin,
 	"git-guard": gitGuardPlugin,
 	"todo-tracker": todoTrackerPlugin,
 	"rules-injector": rulesInjectorPlugin,
+	subagent: subagentPlugin,
+	"plan-mode": planModePlugin,
+	"code-mode": codeModePlugin,
+	"ask-question": askQuestionPlugin,
+	"output-truncator": outputTruncatorPlugin,
+	"context-compactor": contextCompactorPlugin,
+	"tools-manager": toolsManagerPlugin,
+	"session-handoff": sessionHandoffPlugin,
+	"git-automation": gitAutomationPlugin,
+	"ssh-delegator": sshDelegatorPlugin,
 } as const;
 
 export type BuiltinPluginName = keyof typeof builtinPlugins;
@@ -34,10 +54,13 @@ export interface ProfileDefinition {
 export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 	default: {
 		name: "default",
-		description: "标准日常开发模式 (规则自动注入 + 待办任务追踪)",
+		description: "标准日常开发模式 (规则自动注入 + 待办任务追踪 + 安全防护)",
 		plugins: {
+			"safety-gate": true,
+			"git-guard": true,
 			"rules-injector": true,
 			"todo-tracker": true,
+			"output-truncator": true,
 		},
 	},
 	safe: {
@@ -48,6 +71,7 @@ export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 			"git-guard": true,
 			"rules-injector": true,
 			"todo-tracker": true,
+			"output-truncator": true,
 		},
 	},
 	strict: {
@@ -57,16 +81,47 @@ export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 			"safety-gate": { strict: true, readOnly: true },
 			"git-guard": true,
 			"rules-injector": true,
+			"output-truncator": true,
+		},
+	},
+	plan: {
+		name: "plan",
+		description: "规划模式 (只读探索 + 方案步骤拆解 + 审批执行)",
+		plugins: {
+			"plan-mode": true,
+			"rules-injector": true,
+			"todo-tracker": true,
+			"output-truncator": true,
+		},
+	},
+	ptc: {
+		name: "ptc",
+		description: "编程化工具调用模式 (PTC / Code Mode: 动态 TypeScript SDK + run_code 批量执行)",
+		plugins: {
+			"code-mode": true,
+			"rules-injector": true,
+			"todo-tracker": true,
+			"output-truncator": true,
 		},
 	},
 	full: {
 		name: "full",
-		description: "全能极客模式 (激活全部 4 大原生 Cordis 插件能力)",
+		description: "全能极客模式 (激活全部 14 大原生 Cordis 插件能力)",
 		plugins: {
 			"safety-gate": true,
 			"git-guard": true,
 			"todo-tracker": true,
 			"rules-injector": true,
+			subagent: true,
+			"plan-mode": true,
+			"code-mode": true,
+			"ask-question": true,
+			"output-truncator": true,
+			"context-compactor": true,
+			"tools-manager": true,
+			"session-handoff": true,
+			"git-automation": true,
+			"ssh-delegator": true,
 		},
 	},
 	minimal: {

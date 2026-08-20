@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-code-mode",
+	"version": "0.1.0",
+	"description": "Programmatic Tool Calling (PTC / Code Mode) plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

@@ -144,7 +144,43 @@ importers:
         specifier: 0.3.9
         version: 0.3.9
 
+  packages/plugins/ask-question:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/code-mode:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/context-compactor:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/git-automation:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
   packages/plugins/git-guard:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/output-truncator:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/plan-mode:
     dependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:*
@@ -155,18 +191,48 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:*
         version: link:../../../vendor/cordis
+      '@pi-cordis/plugin-ask-question':
+        specifier: workspace:*
+        version: link:../ask-question
+      '@pi-cordis/plugin-code-mode':
+        specifier: workspace:*
+        version: link:../code-mode
+      '@pi-cordis/plugin-context-compactor':
+        specifier: workspace:*
+        version: link:../context-compactor
+      '@pi-cordis/plugin-git-automation':
+        specifier: workspace:*
+        version: link:../git-automation
       '@pi-cordis/plugin-git-guard':
         specifier: workspace:*
         version: link:../git-guard
+      '@pi-cordis/plugin-output-truncator':
+        specifier: workspace:*
+        version: link:../output-truncator
+      '@pi-cordis/plugin-plan-mode':
+        specifier: workspace:*
+        version: link:../plan-mode
       '@pi-cordis/plugin-rules-injector':
         specifier: workspace:*
         version: link:../rules-injector
       '@pi-cordis/plugin-safety-gate':
         specifier: workspace:*
         version: link:../safety-gate
+      '@pi-cordis/plugin-session-handoff':
+        specifier: workspace:*
+        version: link:../session-handoff
+      '@pi-cordis/plugin-ssh-delegator':
+        specifier: workspace:*
+        version: link:../ssh-delegator
+      '@pi-cordis/plugin-subagent':
+        specifier: workspace:*
+        version: link:../subagent
       '@pi-cordis/plugin-todo-tracker':
         specifier: workspace:*
         version: link:../todo-tracker
+      '@pi-cordis/plugin-tools-manager':
+        specifier: workspace:*
+        version: link:../tools-manager
       yaml:
         specifier: ^2.7.0
         version: 2.9.0
@@ -183,7 +249,31 @@ importers:
         specifier: workspace:*
         version: link:../../../vendor/cordis
 
+  packages/plugins/session-handoff:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/ssh-delegator:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/subagent:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
   packages/plugins/todo-tracker:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/tools-manager:
     dependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:*

@@ -1,0 +1,6 @@
+- name: '@pi-cordis/plugin-code-mode'
+  config:
+    timeoutMs: 30000
+- name: '@pi-cordis/plugin-rules-injector'
+- name: '@pi-cordis/plugin-todo-tracker'
+- name: '@pi-cordis/plugin-output-truncator'

@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-context-compactor",
+	"version": "0.1.0",
+	"description": "Conversation compaction and token optimization plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

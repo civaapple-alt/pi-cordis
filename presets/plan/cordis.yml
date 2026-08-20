@@ -1,0 +1,7 @@
+- name: '@pi-cordis/plugin-plan-mode'
+  config:
+    autoBlockWrites: true
+    injectGuidelines: true
+- name: '@pi-cordis/plugin-rules-injector'
+- name: '@pi-cordis/plugin-todo-tracker'
+- name: '@pi-cordis/plugin-output-truncator'

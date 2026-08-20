@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-git-automation",
+	"version": "0.1.0",
+	"description": "Git smart commit, issue autocomplete, and workflow automation plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

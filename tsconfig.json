@@ -19,7 +19,17 @@
 			"@pi-cordis/plugin-safety-gate": ["./packages/plugins/safety-gate/src/index.ts"],
 			"@pi-cordis/plugin-git-guard": ["./packages/plugins/git-guard/src/index.ts"],
 			"@pi-cordis/plugin-todo-tracker": ["./packages/plugins/todo-tracker/src/index.ts"],
-			"@pi-cordis/plugin-rules-injector": ["./packages/plugins/rules-injector/src/index.ts"]
+			"@pi-cordis/plugin-rules-injector": ["./packages/plugins/rules-injector/src/index.ts"],
+			"@pi-cordis/plugin-subagent": ["./packages/plugins/subagent/src/index.ts"],
+			"@pi-cordis/plugin-plan-mode": ["./packages/plugins/plan-mode/src/index.ts"],
+			"@pi-cordis/plugin-code-mode": ["./packages/plugins/code-mode/src/index.ts"],
+			"@pi-cordis/plugin-ask-question": ["./packages/plugins/ask-question/src/index.ts"],
+			"@pi-cordis/plugin-output-truncator": ["./packages/plugins/output-truncator/src/index.ts"],
+			"@pi-cordis/plugin-context-compactor": ["./packages/plugins/context-compactor/src/index.ts"],
+			"@pi-cordis/plugin-tools-manager": ["./packages/plugins/tools-manager/src/index.ts"],
+			"@pi-cordis/plugin-session-handoff": ["./packages/plugins/session-handoff/src/index.ts"],
+			"@pi-cordis/plugin-git-automation": ["./packages/plugins/git-automation/src/index.ts"],
+			"@pi-cordis/plugin-ssh-delegator": ["./packages/plugins/ssh-delegator/src/index.ts"]
 		}
 	},
 	"include": [

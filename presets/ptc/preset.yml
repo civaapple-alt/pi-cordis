@@ -1,0 +1,3 @@
+name: 编程化工具调用模式 (PTC / Code Mode)
+description: 动态 TypeScript SDK 结合 run_code，用一个脚本组合多步工具操作
+order: 6

@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-ask-question",
+	"version": "0.1.0",
+	"description": "Interactive question asking and requirement clarification plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

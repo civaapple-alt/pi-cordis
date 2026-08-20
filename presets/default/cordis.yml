@@ -1,10 +1,12 @@
 # ==========================================
-# Default Profile Cordis Plugins Composition
+# Default Profile Cordis Plugins Composition (Default is Best)
 # ==========================================
+- name: '@pi-cordis/plugin-safety-gate'
+- name: '@pi-cordis/plugin-git-guard'
 - name: '@pi-cordis/plugin-rules-injector'
   config:
     scanClaudeRules: true
-
 - name: '@pi-cordis/plugin-todo-tracker'
   config:
     injectToPrompt: true
+- name: '@pi-cordis/plugin-output-truncator'

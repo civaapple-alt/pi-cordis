@@ -10,6 +10,16 @@
 		"@pi-cordis/plugin-git-guard": "workspace:*",
 		"@pi-cordis/plugin-todo-tracker": "workspace:*",
 		"@pi-cordis/plugin-rules-injector": "workspace:*",
+		"@pi-cordis/plugin-subagent": "workspace:*",
+		"@pi-cordis/plugin-plan-mode": "workspace:*",
+		"@pi-cordis/plugin-code-mode": "workspace:*",
+		"@pi-cordis/plugin-ask-question": "workspace:*",
+		"@pi-cordis/plugin-output-truncator": "workspace:*",
+		"@pi-cordis/plugin-context-compactor": "workspace:*",
+		"@pi-cordis/plugin-tools-manager": "workspace:*",
+		"@pi-cordis/plugin-session-handoff": "workspace:*",
+		"@pi-cordis/plugin-git-automation": "workspace:*",
+		"@pi-cordis/plugin-ssh-delegator": "workspace:*",
 		"yaml": "^2.7.0"
 	},
 	"peerDependencies": {

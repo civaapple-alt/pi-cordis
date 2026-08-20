@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-ssh-delegator",
+	"version": "0.1.0",
+	"description": "Remote SSH tool proxy and remote environment delegation plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

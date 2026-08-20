@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-tools-manager",
+	"version": "0.1.0",
+	"description": "Interactive tool enablement, inspection, and toggle panel plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

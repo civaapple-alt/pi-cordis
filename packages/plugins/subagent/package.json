@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-subagent",
+	"version": "0.1.0",
+	"description": "Subagent spawning and context isolation plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

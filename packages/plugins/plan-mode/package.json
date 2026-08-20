@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-plan-mode",
+	"version": "0.1.0",
+	"description": "Claude Code style Plan Mode and step tracking plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}
