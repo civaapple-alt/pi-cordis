@@ -10,6 +10,8 @@ import toolsManagerPlugin from "@pi-cordis/plugin-tools-manager";
 import sessionHandoffPlugin from "@pi-cordis/plugin-session-handoff";
 import gitAutomationPlugin from "@pi-cordis/plugin-git-automation";
 import sshDelegatorPlugin from "@pi-cordis/plugin-ssh-delegator";
+import safetyGatePlugin from "@pi-cordis/plugin-safety-gate";
+import gitGuardPlugin from "@pi-cordis/plugin-git-guard";
 import { BUILTIN_PROFILES } from "@pi-cordis/profiles";
 
 describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
@@ -142,11 +144,15 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ctx.tools.has("ask_question")).toBe(false);
 	});
 
-	it("5. @pi-cordis/plugin-output-truncator: truncates oversized output to protect context", () => {
+	it("5. @pi-cordis/plugin-output-truncator: truncates oversized output with Spill storage and Head/Tail", () => {
 		const lines = Array.from({ length: 3000 }, (_, i) => `Line ${i}`).join("\n");
-		const res = truncateText(lines, 50 * 1024, 2000);
+		const res = truncateText(lines, { maxBytes: 50 * 1024, maxLines: 2000, headLines: 30, tailLines: 20, enableSpill: true });
 		expect(res.truncated).toBe(true);
-		expect(res.text).toContain("Truncated: 1000 lines omitted");
+		expect(res.text).toContain("Line 0");
+		expect(res.text).toContain("Line 29");
+		expect(res.text).toContain("Line 2999");
+		expect(res.text).toContain("omitted by @pi-cordis/plugin-output-truncator");
+		expect(res.spillPath).toBeDefined();
 	});
 
 	it("6. @pi-cordis/plugin-context-compactor: registers trigger_compact tool and emits compact event", async () => {
@@ -260,5 +266,41 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(fullCtx.tools.has("session_handoff")).toBe(true);
 		expect(fullCtx.tools.has("git_smart_commit")).toBe(true);
 		expect(fullCtx.tools.has("ssh_exec")).toBe(true);
+	});
+
+	it("12. @pi-cordis/plugin-safety-gate: blocks destructive commands, sensitive path writes, and read-only breaches", async () => {
+		const fork = await ctx.plugin(safetyGatePlugin);
+
+		// 1. Destructive command check
+		await expect(ctx.serial("pi/tool-call", { name: "bash", args: { command: "rm -rf /" } })).rejects.toThrow(
+			"Dangerous command blocked",
+		);
+
+		// 2. Secret file dump check
+		await expect(ctx.serial("pi/tool-call", { name: "bash", args: { command: "cat .env" } })).rejects.toThrow(
+			"Dangerous command blocked",
+		);
+
+		// 3. Protected file write check
+		await expect(ctx.serial("pi/tool-call", { name: "write", args: { path: ".env" } })).rejects.toThrow(
+			"is a protected file",
+		);
+
+		await fork.dispose();
+	});
+
+	it("13. @pi-cordis/plugin-git-guard: manages git_checkpoint tool creation and listing", async () => {
+		const fork = await ctx.plugin(gitGuardPlugin);
+		expect(ctx.tools.has("git_checkpoint")).toBe(true);
+
+		const tool = ctx.tools.get("git_checkpoint");
+		const listRes = await tool!.execute({ action: "list" });
+		expect(listRes.total).toBeDefined();
+
+		const createRes = await tool!.execute({ action: "create", description: "Test checkpoint" });
+		expect(createRes.success).toBe(true);
+
+		await fork.dispose();
+		expect(ctx.tools.has("git_checkpoint")).toBe(false);
 	});
 });

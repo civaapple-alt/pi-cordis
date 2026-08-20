@@ -2,16 +2,27 @@
 
 English | [中文](README.zh.md)
 
-Native Cordis Git repository guard and checkpoint plugin. It monitors working tree cleanliness upon session start and automatically generates `git stash create` checkpoints before risky operations.
+Native Cordis Git repository guard and atomic snapshot checkpoint plugin. It monitors working tree cleanliness, automatically generates `git stash create` snapshot references, and registers the `git_checkpoint` tool for instant rollbacks.
+
+## Tool
+
+### `git_checkpoint`
+
+Accepts:
+- `action` (`"create"` | `"restore"` | `"list"`, required): Checkpoint action to execute.
+- `checkpointId` (string, optional): Target checkpoint identifier for restore operations.
+- `description` (string, optional): Human-readable note for the checkpoint.
+
+Returns:
+- `success` (boolean): Checkpoint operation outcome.
+- `checkpoint` (object, optional): Created checkpoint details (id, sha, timestamp).
+- `checkpoints` (array, optional): Active session checkpoints on list action.
 
 ## Configuration
 
-- `autoCheckpoint` (boolean, default: `true`): Automatically creates git stash checkpoints before session turns.
+- `autoCheckpoint` (boolean, default: `true`): Automatically creates lightweight stash references before mutating turns.
 - `warnDirtyOnStart` (boolean, default: `false`): Warns if uncommitted changes exist when the session starts.
 
-## Role
-Consumer of `ctx.settings` and listener for `pi/session-start` and `pi/session-before` events.
-
 ## Model Experience
-- **Reversible Experiments**: Provides background stash references that can be restored if experimental edits fail.
-- **Silent Reliability**: Executes git checks without cluttering conversational token context.
+- **Atomic Rollbacks**: Allows the model or user to safely snapshot experimental code changes and revert with zero Git reflog pollution.
+- **Silent Protection**: Background stash operations execute quietly without inflating prompt tokens.
