@@ -109,12 +109,15 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 			if (!theme?.fg) return `✓ User answer: ${ans}${noteText}`;
 			return `${theme.fg("success", "✓ User answer:")} ${theme.fg("foreground", ans)}${theme.fg("dim", noteText)}`;
 		},
-		execute: async (args: {
-			questions?: QuestionItem[];
-			question?: string;
-			options?: QuestionOption[];
-			allowCustom?: boolean;
-		}): Promise<AskQuestionResult> => {
+		execute: async (
+			args: {
+				questions?: QuestionItem[];
+				question?: string;
+				options?: QuestionOption[];
+				allowCustom?: boolean;
+			},
+			execContext?: any,
+		): Promise<AskQuestionResult> => {
 			const items: QuestionItem[] = [];
 
 			if (Array.isArray(args.questions) && args.questions.length > 0) {
@@ -128,16 +131,81 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 				});
 			}
 
-			const answers: QuestionAnswer[] = items.map((q, idx) => {
+			const answers: QuestionAnswer[] = [];
+			const ui = execContext?.ctx?.ui;
+			const hasUI = Boolean(execContext?.ctx?.hasUI && ui?.select);
+			const signal = execContext?.signal;
+
+			for (let idx = 0; idx < items.length; idx++) {
+				const q = items[idx];
 				const id = q.id ?? `q_${idx + 1}`;
-				const firstOption = q.options?.[0]?.label ?? "Yes";
-				const note = q.options?.[0]?.note;
-				return {
+				let selected: string[] = [];
+				let custom: string | undefined;
+				let notes: string | undefined;
+
+				if (hasUI && ui && typeof ui.select === "function") {
+					if (q.options && q.options.length > 0) {
+						const optionMap = new Map<string, QuestionOption>();
+						const displayLabels: string[] = [];
+
+						for (const opt of q.options) {
+							const display = opt.description ? `${opt.label} (${opt.description})` : opt.label;
+							displayLabels.push(display);
+							optionMap.set(display, opt);
+							optionMap.set(opt.label, opt);
+						}
+
+						if (args.allowCustom !== false) {
+							displayLabels.push("✍️ Other (Type custom answer)");
+						}
+
+						const chosen = await ui.select(q.question, displayLabels, { signal });
+
+						if (chosen === "✍️ Other (Type custom answer)") {
+							const inputVal = await ui.input(q.question, "Enter your answer...", { signal });
+							const trimmed = inputVal?.trim();
+							if (trimmed) {
+								custom = trimmed;
+								selected = [trimmed];
+							} else {
+								selected = [q.options[0]?.label ?? "Yes"];
+								notes = q.options[0]?.note;
+							}
+						} else if (chosen) {
+							const matched = optionMap.get(chosen);
+							const label = matched?.label ?? chosen;
+							selected = [label];
+							notes = matched?.note;
+						} else {
+							// Cancelled by user
+							selected = [q.options[0]?.label ?? "Cancelled"];
+							notes = q.options[0]?.note;
+						}
+					} else {
+						// Free-text question without options
+						const inputVal = await ui.input(q.question, "Enter your answer...", { signal });
+						const trimmed = inputVal?.trim();
+						if (trimmed) {
+							custom = trimmed;
+							selected = [trimmed];
+						} else {
+							selected = ["No answer provided"];
+						}
+					}
+				} else {
+					// Non-interactive / Headless fallback (e.g. CI / automated tests)
+					const firstOption = q.options?.[0]?.label ?? "Yes";
+					selected = [firstOption];
+					notes = q.options?.[0]?.note;
+				}
+
+				answers.push({
 					id,
-					selected: [firstOption],
-					notes: note,
-				};
-			});
+					selected,
+					custom,
+					notes,
+				});
+			}
 
 			const primaryAnswer = answers[0]?.selected?.[0] ?? "";
 			const primaryOptions = items[0]?.options?.map((o) => o.label) ?? [];
@@ -147,7 +215,7 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 				question: items[0]?.question,
 				options: primaryOptions,
 				selected: primaryAnswer,
-				wasCustom: false,
+				wasCustom: Boolean(answers[0]?.custom),
 				notes: answers[0]?.notes,
 			};
 		},
@@ -159,3 +227,4 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 }
 
 export default { name, inject, apply };
+

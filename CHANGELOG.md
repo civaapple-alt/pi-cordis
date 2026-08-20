@@ -26,6 +26,8 @@
   - 触发 `pi/btw-query` 与 `pi/btw-response` 响应式事件。
 - **新建 `@pi-cordis/plugin-terminal-notifier`（原生桌面通知）**：
   - 独立插件工作区（`packages/plugins/terminal-notifier`），监听智能体交互等待与轮次完成，向 Warp / Ghostty / iTerm2 发射 `OSC 777` 桌面弹窗通知。
+- **`@pi-cordis/plugin-ask-question` 终端真实交互式弹窗 (Interactive Terminal UI Select & Input)**：
+  - 深度集成 Pi 原生终端交互上下文 `ctx.ui.select()` 与 `ctx.ui.input()`，工具调用时在终端呈现交互式多选列表与自定义输入框，阻塞等待用户键盘上下移动与回车确认，彻底告别单选伪造；非交互/CI 模式平滑自动回退。
 - **“Default is Best” 3 大场景化预设**：
   - 废除 5 大内部排列组合，收敛为 3 大极简场景预设：
     1. `default`（标准开发模式，内置安全守门、Git 检查点、规则注入、待办追踪、输出防爆、多智能体协同、旁路问答与桌面通知）；

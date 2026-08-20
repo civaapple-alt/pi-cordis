@@ -221,7 +221,9 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ctx.tools.has("ask_question")).toBe(true);
 
 		const tool = ctx.tools.get("ask_question");
-		const result = await tool!.execute({
+
+		// 1. Non-interactive fallback
+		const resultFallback = await tool!.execute({
 			questions: [
 				{
 					id: "db_choice",
@@ -234,10 +236,62 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 			],
 		});
 
-		expect(result.answers).toBeDefined();
-		expect(result.answers[0].id).toBe("db_choice");
-		expect(result.answers[0].selected[0]).toContain("PostgreSQL");
-		expect(result.answers[0].notes).toBe("Best for transactional data");
+		expect(resultFallback.answers).toBeDefined();
+		expect(resultFallback.answers[0].id).toBe("db_choice");
+		expect(resultFallback.answers[0].selected[0]).toContain("PostgreSQL");
+		expect(resultFallback.answers[0].notes).toBe("Best for transactional data");
+
+		// 2. Interactive UI select
+		let selectTitle = "";
+		let selectOptions: string[] = [];
+		const mockUI: any = {
+			select: async (title: string, options: string[]) => {
+				selectTitle = title;
+				selectOptions = options;
+				return "Redis (In-memory)";
+			},
+			input: async () => "Custom Answer",
+		};
+
+		const resultInteractive = await tool!.execute(
+			{
+				questions: [
+					{
+						id: "db_choice",
+						question: "Which database do you prefer?",
+						options: [
+							{ label: "PostgreSQL (Recommended)", description: "Relational" },
+							{ label: "Redis", description: "In-memory", note: "Fast key-value cache" },
+						],
+					},
+				],
+			},
+			{ ctx: { hasUI: true, ui: mockUI } },
+		);
+
+		expect(selectTitle).toBe("Which database do you prefer?");
+		expect(selectOptions).toContain("PostgreSQL (Recommended) (Relational)");
+		expect(selectOptions).toContain("Redis (In-memory)");
+		expect(selectOptions).toContain("✍️ Other (Type custom answer)");
+		expect(resultInteractive.answers[0].selected[0]).toBe("Redis");
+		expect(resultInteractive.answers[0].notes).toBe("Fast key-value cache");
+
+		// 3. Interactive custom answer input
+		const mockCustomUI: any = {
+			select: async () => "✍️ Other (Type custom answer)",
+			input: async () => "SQLite",
+		};
+
+		const resultCustom = await tool!.execute(
+			{
+				question: "What DB do you want?",
+				options: [{ label: "PostgreSQL" }, { label: "MySQL" }],
+			},
+			{ ctx: { hasUI: true, ui: mockCustomUI } },
+		);
+
+		expect(resultCustom.answers[0].selected[0]).toBe("SQLite");
+		expect(resultCustom.wasCustom).toBe(true);
 
 		await fork.dispose();
 		expect(ctx.tools.has("ask_question")).toBe(false);
