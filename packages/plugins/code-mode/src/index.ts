@@ -230,6 +230,12 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 	});
 
 	// Reversible disposal
+	ctx.effect(() => () => {
+		unregisterTool();
+		removeFilter?.();
+		removePromptHook();
+	});
+
 	return () => {
 		unregisterTool();
 		removeFilter?.();
@@ -238,3 +244,4 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 }
 
 export default { name, inject, apply };
+

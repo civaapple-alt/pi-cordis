@@ -229,12 +229,26 @@ export function loadProfilesFromYaml(
 /**
  * Apply a profile or custom plugin configuration to a Cordis Context
  */
-export function applyProfile(
+export async function applyProfile(
 	ctx: Context,
 	profileName: string = "default",
 	customPluginConfigs?: Partial<Record<BuiltinPluginName | string, boolean | Record<string, unknown>>>,
 	options: { cwd?: string; agentDir?: string } = {},
-): string[] {
+): Promise<string[]> {
+	// 1. Unload previously active profile plugins via ctx.registry.delete
+	if ((ctx as any)._activeProfilePluginKeys) {
+		const prevKeys = (ctx as any)._activeProfilePluginKeys as string[];
+		for (const key of prevKeys) {
+			const plugin = builtinPlugins[key as BuiltinPluginName];
+			if (plugin) {
+				ctx.registry.delete(plugin);
+			}
+		}
+		(ctx as any)._activeProfilePluginKeys = [];
+		// Allow Cordis fiber disposal to settle
+		await new Promise((r) => setTimeout(r, 0));
+	}
+
 	const allProfiles = loadProfilesFromYaml(options.cwd, options.agentDir);
 	const profile = allProfiles[profileName] ?? allProfiles.default ?? BUILTIN_PROFILES.default;
 
@@ -261,13 +275,18 @@ export function applyProfile(
 		loadedPlugins.push(pluginKey);
 	}
 
+	(ctx as any)._activeProfilePluginKeys = loadedPlugins;
+
+	// 3. Synchronize active tools in upstream Pi runtime
+	(ctx as any).extensions?.syncActiveTools?.();
+
 	return loadedPlugins;
 }
 
 export * from "./hmr.js";
 
 export const name = "profiles";
-export const inject = ["extensions", "settings"];
+export const inject = ["extensions", "settings", "tools"];
 
 export interface ProfilesPluginConfig {
 	defaultProfile?: string;
@@ -295,7 +314,7 @@ export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 			const availableProfiles = Object.keys(allProfiles);
 
 			if (targetProfile && allProfiles[targetProfile]) {
-				const loaded = applyProfile(ctx, targetProfile, undefined, { cwd });
+				const loaded = await applyProfile(ctx, targetProfile, undefined, { cwd });
 				if (cmdCtx.hasUI) {
 					cmdCtx.ui.notify(
 						`Switched to profile: "${targetProfile}"\nActive plugins: ${loaded.join(", ") || "none"}`,
@@ -313,7 +332,7 @@ export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 				if (selected) {
 					const chosenName = selected.split(" - ")[0];
 					if (allProfiles[chosenName]) {
-						const loaded = applyProfile(ctx, chosenName, undefined, { cwd });
+						const loaded = await applyProfile(ctx, chosenName, undefined, { cwd });
 						cmdCtx.ui.notify(
 							`Switched to profile: "${chosenName}"\nActive plugins: ${loaded.join(", ") || "none"}`,
 							"info",
@@ -326,3 +345,4 @@ export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 }
 
 export default { name, inject, apply };
+

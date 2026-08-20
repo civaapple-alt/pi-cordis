@@ -48,7 +48,7 @@ export async function createPiContext(options: CreatePiContextOptions = {}): Pro
 	// 2. Mount profiles management plugin & apply active profile
 	ctx.plugin(profilesPlugin);
 	const profileName = options.profile ?? "default";
-	applyProfile(ctx, profileName, options.plugins, { cwd, agentDir });
+	await applyProfile(ctx, profileName, options.plugins, { cwd, agentDir });
 
 	// 3. Optional HMR Watcher for presets and packages/plugins
 	if (options.enableHmr) {

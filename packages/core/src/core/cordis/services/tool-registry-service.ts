@@ -89,9 +89,11 @@ export class ToolRegistryService extends Service {
 		return this.ctx.effect(() => {
 			this.customTools.set(tool.name, tool as ToolDef);
 			this.ctx.emit("pi/tool-registered", tool as ToolDef);
+			this.ctx.emit("pi/tools-changed" as any);
 			return () => {
 				this.customTools.delete(tool.name);
 				this.ctx.emit("pi/tool-unregistered", tool.name);
+				this.ctx.emit("pi/tools-changed" as any);
 			};
 		});
 	}
@@ -103,8 +105,10 @@ export class ToolRegistryService extends Service {
 	public addFilter(filter: ToolFilterFn): () => void {
 		return this.ctx.effect(() => {
 			this.filters.add(filter);
+			this.ctx.emit("pi/tools-changed" as any);
 			return () => {
 				this.filters.delete(filter);
+				this.ctx.emit("pi/tools-changed" as any);
 			};
 		});
 	}

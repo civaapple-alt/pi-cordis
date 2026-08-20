@@ -299,4 +299,43 @@ profiles:
 		expect(queryEventReceived).toBe(true);
 		expect(responseEventReceived).toBe(true);
 	});
+
+	it("should dynamically mask tools and expose run_code when switching to ptc profile", async () => {
+		const ctx = await createPiContext({ profile: "default" });
+
+		let activeToolsInPi: string[] = [];
+		const mockPi: any = {
+			registerCommand: () => {},
+			registerTool: () => {},
+			setActiveTools: (tools: string[]) => {
+				activeToolsInPi = tools;
+			},
+		};
+
+		const bridge = ctx.extensions.createBridgeExtensionFactory();
+		bridge.factory(mockPi);
+
+		expect(activeToolsInPi).toContain("grep");
+		expect(activeToolsInPi).toContain("ask_question");
+
+		// Switch to ptc profile
+		const profileDef = ctx.extensions.getRegisteredCommands().get("profile");
+		expect(profileDef).toBeDefined();
+
+		await profileDef!.handler("ptc", { hasUI: false });
+
+		// In PTC mode, raw tools are masked, and run_code is active
+		expect(activeToolsInPi).toContain("run_code");
+		expect(activeToolsInPi).not.toContain("read");
+		expect(activeToolsInPi).not.toContain("bash");
+		expect(activeToolsInPi).not.toContain("edit");
+		expect(activeToolsInPi).not.toContain("grep");
+
+		// Switch back to default
+		await profileDef!.handler("default", { hasUI: false });
+		expect(activeToolsInPi).toContain("read");
+		expect(activeToolsInPi).toContain("bash");
+		expect(activeToolsInPi).not.toContain("run_code");
+	});
 });
+

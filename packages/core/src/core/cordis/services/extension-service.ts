@@ -14,8 +14,11 @@ export interface ExtensionServiceConfig {
 	extensionPaths?: string[];
 }
 
+export const inject = ["tools"];
+
 export class ExtensionService extends Service {
 	static provide = "extensions";
+	static inject = ["tools"];
 	private cwd: string;
 	private agentDir: string;
 	private extensionPaths: string[];
@@ -29,15 +32,20 @@ export class ExtensionService extends Service {
 		this.agentDir = config?.agentDir ?? getAgentDir();
 		this.extensionPaths = config?.extensionPaths ?? [];
 
-		// Listen for dynamically registered tools and bridge to active Pi instance
+		// Listen for dynamically registered tools and tool changes to bridge to active Pi instance
 		this.ctx.on("pi/tool-registered" as any, (tool: any) => {
 			if (this.activePi && tool) {
 				try {
-					this.activePi.registerTool(this.adaptToolForPi(tool));
+					this.activePi.registerTool?.(this.adaptToolForPi(tool));
 				} catch {
 					// Ignore duplicate
 				}
+				this.syncActiveTools();
 			}
+		});
+
+		this.ctx.on("pi/tools-changed" as any, () => {
+			this.syncActiveTools();
 		});
 	}
 
@@ -163,7 +171,10 @@ export class ExtensionService extends Service {
 					}
 				}
 
-				// 3. Forward tool_call and tool_result events to Cordis EventBus
+				// 4. Synchronize active tools according to active filters (e.g. PTC code-mode)
+				this.syncActiveTools();
+
+				// 5. Forward tool_call and tool_result events to Cordis EventBus
 				pi.on?.("tool_call", async (event: any) => {
 					await this.ctx.parallel("pi/tool-call", {
 						toolName: event.toolName,
@@ -183,6 +194,31 @@ export class ExtensionService extends Service {
 			},
 		};
 	}
+
+	/**
+	 * Synchronize active tools in the upstream Pi runtime according to Cordis tool filters
+	 */
+	public syncActiveTools(): void {
+		if (!this.activePi || !this.ctx.tools) return;
+
+		// 1. Register any new custom tools
+		for (const tool of this.ctx.tools.getCustomTools()) {
+			try {
+				this.activePi.registerTool?.(this.adaptToolForPi(tool));
+			} catch {
+				// Ignore duplicate
+			}
+		}
+
+		// 2. Compute exported tool names (taking active filters like code-mode into account)
+		const exportedToolNames = this.ctx.tools.getExportedToolNames();
+		try {
+			this.activePi.setActiveTools?.(exportedToolNames);
+		} catch {
+			// Ignore
+		}
+	}
 }
 
 export default ExtensionService;
+

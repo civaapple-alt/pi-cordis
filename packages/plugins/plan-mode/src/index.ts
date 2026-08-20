@@ -592,6 +592,14 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 	}
 
 	// Reversible disposal
+	ctx.effect(() => () => {
+		unregisterTool();
+		removeToolInterceptor();
+		removePromptHook?.();
+		removeSessionStartHook();
+		plans.clear();
+	});
+
 	return () => {
 		unregisterTool();
 		removeToolInterceptor();
@@ -602,3 +610,4 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 }
 
 export default { name, inject, apply };
+
