@@ -68,14 +68,26 @@ export function apply(ctx: Context) {
     execute: async () => ({ success: true })
   });
 
-  // 2. 绑定销毁句柄
-  ctx.effect(() => () => {
-    unregisterTool();
+  // 2. 注册终端斜杠命令（自动桥接至 TUI，支持自动补全与 TUI 交互）
+  const unregisterCmd = ctx.extensions?.registerCommand?.("my_cmd", {
+    description: "我的终端斜杠指令",
+    handler: async (args, cmdCtx) => {
+      if (cmdCtx.hasUI) {
+        cmdCtx.ui.notify(`Command executed with: ${args}`, "info");
+      }
+    }
   });
 
   // 3. 监听事件（ctx.on 会自动参与 Fiber 回收）
   ctx.on("pi/tool-call", ({ toolName }) => {
     console.log(`Tool invoked: ${toolName}`);
   });
+
+  // 4. 绑定可逆销毁句柄
+  return () => {
+    unregisterTool();
+    unregisterCmd?.();
+  };
 }
 ```
+

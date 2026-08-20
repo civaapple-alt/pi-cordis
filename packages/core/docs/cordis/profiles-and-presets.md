@@ -20,7 +20,7 @@ Following the "Default is Best" minimalist philosophy, Pi-Cordis delivers 3 cano
 
 | Preset | Configuration | Purpose & Active Plugins |
 |---|---|---|
-| **`default`** | `presets/default/cordis.yml` | **Default is Best**. Everyday coding, activating `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `subagent`, `context-compactor`, etc. |
+| **`default`** | `presets/default/cordis.yml` | **Default is Best**. Everyday coding, activating `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `btw`, `terminal-notifier`, `subagent`, `context-compactor`, etc. |
 | **`plan`** | `presets/plan/cordis.yml` | Architecture planning, review, and audit. Activates `plan-mode` and `safety-gate: { readOnly: true }` to block all mutations. |
 | **`ptc`** | `presets/ptc/cordis.yml` | Programmatic Tool Calling. Activates `code-mode` to expose a dynamic `.d.ts` SDK while masking granular single-step tools. |
 

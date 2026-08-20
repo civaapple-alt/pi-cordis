@@ -68,14 +68,26 @@ export function apply(ctx: Context) {
     execute: async () => ({ success: true })
   });
 
-  // 2. Bind disposer to fiber lifecycle
-  ctx.effect(() => () => {
-    unregisterTool();
+  // 2. Register a terminal slash command (auto-bridged to TUI with completions)
+  const unregisterCmd = ctx.extensions?.registerCommand?.("my_cmd", {
+    description: "My custom terminal slash command",
+    handler: async (args, cmdCtx) => {
+      if (cmdCtx.hasUI) {
+        cmdCtx.ui.notify(`Command executed with: ${args}`, "info");
+      }
+    }
   });
 
   // 3. Listen to events (ctx.on auto-disposes on fiber unload)
   ctx.on("pi/tool-call", ({ toolName }) => {
     console.log(`Tool invoked: ${toolName}`);
   });
+
+  // 4. Return combined disposer
+  return () => {
+    unregisterTool();
+    unregisterCmd?.();
+  };
 }
 ```
+

@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](vendor/)
 [![TypeScript: Strict](https://img.shields.io/badge/TypeScript-Strict_Mode-blue.svg?style=flat-square)](tsconfig.json)
-[![Tests: 34 Passing](https://img.shields.io/badge/Tests-34_Passing-success.svg?style=flat-square)](packages/)
+[![Tests: 36 Passing](https://img.shields.io/badge/Tests-36_Passing-success.svg?style=flat-square)](packages/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/civaapple-alt/pi-cordis/pulls)
 
 [English](README.md) | [中文说明](README.zh.md) | [Architecture Notes](.agents/notes/README.md) | [Contributing Guide](AGENTS.md)
@@ -172,7 +172,7 @@ Detailed guides available in [`packages/core/docs/cordis/services/`](packages/co
 | **PackageManagerService** | `ctx.packageManager` | Installs extensions from `pi.dev`, npm, git; streams `pi/package-progress`. |
 | **AgentService** | `ctx.agent` | Agent multi-turn inference loop orchestration & turn lifecycle events. |
 
-### 15 Built-in Plugins Workspace
+### 17 Built-in Plugins Workspace
 
 All native plugins are located in `packages/plugins/*`:
 
@@ -184,15 +184,17 @@ All native plugins are located in `packages/plugins/*`:
 | **`git-guard`** | `@pi-cordis/plugin-git-guard` | Dirty repository warning + atomic `git stash create` checkpoints. |
 | **`ask-question`** | `@pi-cordis/plugin-ask-question` | Interactive multi-question batching + `(Recommended)` selection UI. |
 | **`plan-mode`** | `@pi-cordis/plugin-plan-mode` | Step state machine + progress bar + mutating tool interceptor. |
-| **`todo-tracker`** | `@pi-cordis/plugin-todo-tracker` | 4-state task progression + adaptive prompt compression. |
-| **`subagent`** | `@pi-cordis/plugin-subagent` | `ctx.extend()` scope isolation + recursion depth limits + structured summaries. |
+| **`todo-tracker`** | `@pi-cordis/plugin-todo-tracker` | 4-state task progression + topological cycle detection + prompt compression. |
+| **`subagent`** | `@pi-cordis/plugin-subagent` | `ctx.session.inMemory()` physical session isolation + depth limits + role slicing. |
 | **`context-compactor`**| `@pi-cordis/plugin-context-compactor` | 4-dimensional structured retention (files, decisions, fixes, blockers). |
 | **`session-handoff`** | `@pi-cordis/plugin-session-handoff` | Standardized Handoff Envelope & Markdown briefings. |
 | **`git-automation`** | `@pi-cordis/plugin-git-automation` | Staged diff semantic analysis & Conventional Commits. |
 | **`ssh-delegator`** | `@pi-cordis/plugin-ssh-delegator` | Remote SSH tool execution proxy & latency measurement. |
 | **`rules-injector`** | `@pi-cordis/plugin-rules-injector` | Hierarchical rules discovery with SHA-256 caching for KV-cache stability. |
 | **`tools-manager`** | `@pi-cordis/plugin-tools-manager` | Dynamic capability slicing & tool visibility toggling. |
-| **`profiles`** | `@pi-cordis/profiles` | Preset loader, YAML parser & dual-track HMR engine. |
+| **`btw`** | `@pi-cordis/plugin-btw` | Zero-context-pollution side-channel Q&A via `ctx.ai` without writing logs. |
+| **`terminal-notifier`** | `@pi-cordis/plugin-terminal-notifier` | Native desktop notifications via `OSC 777` to Warp/Ghostty/iTerm2. |
+| **`profiles`** | `@pi-cordis/profiles` | Preset loader, `/profile` live switcher & dual-track HMR engine. |
 
 ### Dual-Track HMR & 7-Slot TUI Bridge
 - **Dual-Track HMR**: Fast programmatic core boot + live zero-restart YAML and plugin code reloading (`pathToFileURL + ?t=timestamp`), preserving conversation history and registers;

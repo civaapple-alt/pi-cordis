@@ -107,6 +107,7 @@ If a proposed approach is rejected during review:
 |---|---|---|
 | `2026-08-20` | [Pi-Cordis: Native Subagent Plugin Lean Enhancement Implementation](implemented/feature/2026-08-20-pi-cordis-subagent-plugin-lean-enhancement.md) | Rejecting 130+ file monolithic clones, delivering `ctx.session.inMemory()` physical session isolation and `scout`/`worker` role tool slicing in < 50 lines |
 | `2026-08-20` | [Pi-Cordis: rpiv-mono Lean Feature Absorption Implementation](implemented/feature/2026-08-20-pi-cordis-rpiv-mono-lean-feature-absorption.md) | Rejecting plugin fragmentation, delivering zero-pollution `/btw` command, question Markdown previews, Todo cycle detection, and OSC 777 terminal notifications in < 100 lines |
+| `2026-08-20` | [Pi-Cordis: Native Slash Command Pluginization and Ephemeral Side-Channel LLM Query Architecture](implemented/feature/2026-08-20-pi-cordis-native-slash-commands-and-ephemeral-btw-architecture.md) | ExtensionService command bridge hub, pure Cordis pluginization of @pi-cordis/profiles and @pi-cordis/plugin-btw, real single-turn LLM bypass query with 100% physical isolation |
 
 #### Simplification (`implemented/simplification/`)
 | Date | Title | Focus |

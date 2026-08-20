@@ -107,6 +107,7 @@ graph LR
 |---|---|---|
 | `2026-08-20` | [基于极简哲学的 Pi-Cordis 原生 Subagent 插件精准增强实现](implemented/feature/2026-08-20-pi-cordis-subagent-plugin-lean-enhancement.zh.md) | 拒绝复刻 130+ 文件重型巨石，以不到 50 行增量原地落地 `ctx.session.inMemory()` 物理会话隔离与 `scout`/`worker` 角色工具切片 |
 | `2026-08-20` | [基于极简哲学的 rpiv-mono 优秀特性吸收与轻量演进实现](implemented/feature/2026-08-20-pi-cordis-rpiv-mono-lean-feature-absorption.zh.md) | 拒绝插件碎片化拆包，以不到 100 行增量原地交付零污染 `/btw` 指令、问答 Markdown 预览、Todo 依赖环路检测与 OSC 777 终端通知 |
+| `2026-08-20` | [终端斜杠命令原生插件化与零污染旁路问答架构重构](implemented/feature/2026-08-20-pi-cordis-native-slash-commands-and-ephemeral-btw-architecture.zh.md) | ExtensionService 双向命令桥接中心、@pi-cordis/profiles 与 @pi-cordis/plugin-btw 纯正 Cordis 插件化、真实单轮 LLM 旁路流式问答与 100% 物理隔离 |
 
 #### 精简类决策 (`implemented/simplification/`)
 | 制定日期 | 决策标题 | 核心关注点 |

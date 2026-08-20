@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](vendor/)
 [![TypeScript: Strict](https://img.shields.io/badge/TypeScript-Strict_Mode-blue.svg?style=flat-square)](tsconfig.json)
-[![Tests: 34 Passing](https://img.shields.io/badge/Tests-34_Passing-success.svg?style=flat-square)](packages/)
+[![Tests: 36 Passing](https://img.shields.io/badge/Tests-36_Passing-success.svg?style=flat-square)](packages/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/civaapple-alt/pi-cordis/pulls)
 
 [English](README.md) | [中文说明](README.zh.md) | [架构决策记录 (ADR)](.agents/notes/README.zh.md) | [开发与贡献规范](AGENTS.md)
@@ -172,7 +172,7 @@ pnpm picds
 | **PackageManagerService** | `ctx.packageManager` | 扩展包安装生命周期与实时进度流 `pi/package-progress`。 |
 | **AgentService** | `ctx.agent` | 编排 `AgentSession` 完整生命周期与多轮事件映射。 |
 
-### 15 个内置插件工作区
+### 17 个内置插件工作区
 
 所有原生插件均位于 `packages/plugins/*`：
 
@@ -184,15 +184,17 @@ pnpm picds
 | **`git-guard`** | `@pi-cordis/plugin-git-guard` | 脏仓库状态告警 + 轮次级 `git stash create` 轻量快照。 |
 | **`ask-question`** | `@pi-cordis/plugin-ask-question` | 交互式多问题批处理 + `(Recommended)` 推荐选项高亮。 |
 | **`plan-mode`** | `@pi-cordis/plugin-plan-mode` | 步骤状态机 + 进度仪表盘 + 规划期写工具强制拦截。 |
-| **`todo-tracker`** | `@pi-cordis/plugin-todo-tracker` | 四态任务管理 + 提示词自适应折叠压缩。 |
-| **`subagent`** | `@pi-cordis/plugin-subagent` | `ctx.extend()` 作用域隔离 + 派生深度限制 + 结构化产出。 |
+| **`todo-tracker`** | `@pi-cordis/plugin-todo-tracker` | 四态任务管理 + 拓扑排序依赖环路校验 + 提示词自适应折叠压缩。 |
+| **`subagent`** | `@pi-cordis/plugin-subagent` | `ctx.session.inMemory()` 物理会话隔离 + 派生深度限制 + 角色工具切片。 |
 | **`context-compactor`**| `@pi-cordis/plugin-context-compactor` | 四维资产结构化压缩（文件、决策、修复、待办）。 |
 | **`session-handoff`** | `@pi-cordis/plugin-session-handoff` | 标准化交接信封 (Handoff Envelope) 与 Markdown 产物。 |
 | **`git-automation`** | `@pi-cordis/plugin-git-automation` | 暂存区语义分析与 Conventional Commit 规范生成。 |
 | **`ssh-delegator`** | `@pi-cordis/plugin-ssh-delegator` | 远程 SSH 工具代理与连接延迟探测。 |
 | **`rules-injector`** | `@pi-cordis/plugin-rules-injector` | 多目录规则发现与 SHA-256 缓存（维持 KV-Cache 稳定）。 |
 | **`tools-manager`** | `@pi-cordis/plugin-tools-manager` | 动态能力切片与工具可见性管理。 |
-| **`profiles`** | `@pi-cordis/profiles` | 预设解析加载器、YAML 解析器与双轨 HMR 引擎。 |
+| **`btw`** | `@pi-cordis/plugin-btw` | 零上下文污染旁路问答：通过 `ctx.ai` 单轮推理并在 TUI 展示，不写日志。 |
+| **`terminal-notifier`** | `@pi-cordis/plugin-terminal-notifier` | 原生桌面通知：向 Warp/Ghostty/iTerm2 发射 `OSC 777` 弹窗。 |
+| **`profiles`** | `@pi-cordis/profiles` | 预设解析加载器、`/profile` 切换命令与双轨 HMR 引擎。 |
 
 ### 双轨 HMR 热重载与 7 大 TUI 交互槽位
 - **双轨分层 HMR**：极速编程式核心启动 + 零重启 YAML 预设与插件源码热重载（通过 `pathToFileURL + ?t=timestamp` 穿透 Node.js 缓存），会话树与内存寄存器全程无损；

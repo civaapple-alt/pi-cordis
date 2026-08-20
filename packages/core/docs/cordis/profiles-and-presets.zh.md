@@ -20,7 +20,7 @@ Pi-Cordis 践行“默认即最佳（Default is Best）”的极简哲学，提�
 
 | 预设名称 | 配置文件 | 适用场景与激活插件 |
 |---|---|---|
-| **`default`** | `presets/default/cordis.yml` | **默认即最佳**。日常 95% 编码任务，激活 `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `subagent`, `context-compactor` 等全套插件 |
+| **`default`** | `presets/default/cordis.yml` | **默认即最佳**。日常 95% 编码任务，激活 `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `btw`, `terminal-notifier`, `subagent`, `context-compactor` 等全套插件 |
 | **`plan`** | `presets/plan/cordis.yml` | 架构探索、重构规划与只读审计。激活 `plan-mode`、`safety-gate: { readOnly: true }` 强制阻断一切写操作 |
 | **`ptc`** | `presets/ptc/cordis.yml` | 批量文本替换与海量文件扫描。激活 `code-mode` 动态暴露 `.d.ts` SDK 并遮蔽底层单步工具 |
 
