@@ -465,7 +465,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 				const md = syncPlanToDisk(planDoc);
 				const { bar } = calculateProgress(planDoc.steps);
 				return {
-					message: `Implementation plan for session [${sId}] created and ready for user review at ${planDoc.planFilePath}`,
+					message: `Implementation plan for session [${sId}] created and ready for user review at ${planDoc.planFilePath}. Once approved, instruct user to switch to default mode via '/profile default' to begin implementation.`,
 					sessionId: sId,
 					planFilePath: planDoc.planFilePath,
 					isApproved: planDoc.isApproved,
@@ -481,7 +481,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 				syncPlanToDisk(planDoc);
 				(ctx as any).emit?.("pi/plan-approved", { sessionId: sId, plan: planDoc });
 				return {
-					message: `Implementation plan for session [${sId}] approved! File modification tools unblocked.`,
+					message: `Implementation plan for session [${sId}] approved! In read-only Plan Mode, file modifications remain blocked. Please instruct user to type '/profile default' in terminal, then send '按照 implementation_plan.md 开始实现' to begin execution.`,
 					sessionId: sId,
 					isApproved: true,
 					planFilePath: planDoc.planFilePath,
@@ -555,7 +555,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 		if (mutatingTools.includes(toolName)) {
 			throw new Error(
 				`[plan-mode] File modification tool "${toolName}" is blocked in session [${sId}] while in Plan Mode. ` +
-				`Please present your implementation plan (${planDoc.planFilePath}) for user review and obtain approval via plan_step({ action: "approve" }) before making changes.`
+				`Please present your implementation plan (${planDoc.planFilePath}) for user review and obtain approval (or switch to default mode via '/profile default') before making changes.`
 			);
 		}
 	});
@@ -587,9 +587,8 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 					.join("\n") + "\n";
 			}
 
-			if (!planDoc.isApproved && autoBlockWrites) {
-				planText += `\n> ⚠️ Modifying tools (write, edit) are BLOCKED until the user approves the plan. Call plan_step({ action: "request_review" }) or ask the user to approve.\n`;
-			}
+			planText += `\n> ⚠️ [Plan Mode Policy]: You are in read-only Plan Mode. Formulate/update the plan in \`${planDoc.planFilePath}\`. Do NOT attempt to write or edit files in this mode.\n`;
+			planText += `> When the user agrees, approves, or asks to start execution, confirm approval and explicitly instruct the user: "请在终端输入 \`/profile default\` 切换至默认开发模式，然后发送 \`按照 implementation_plan.md 开始实现\` 即可开始执行。"\n`;
 
 			event.prompt += planText;
 		});

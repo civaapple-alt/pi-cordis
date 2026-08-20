@@ -87,9 +87,11 @@ export function apply(ctx: Context, config: SafetyGateConfig = {}) {
 		if (!event) return;
 		const toolName = event.toolName ?? event.name ?? "";
 
-		// 1. Read-only mode enforcement
+		// 1. Read-only mode enforcement for mutating tools
 		if (config.readOnly && ["write", "edit", "patch", "apply_patch"].includes(toolName)) {
-			throw new Error(`[safety-gate] Operation blocked: "${toolName}" is not permitted in read-only mode.`);
+			throw new Error(
+				`[safety-gate] Operation blocked: "${toolName}" is not permitted in read-only mode. To modify files, please switch to default mode by typing '/profile default'.`
+			);
 		}
 
 		// 2. Protect sensitive files from write / edit / patch
@@ -103,9 +105,20 @@ export function apply(ctx: Context, config: SafetyGateConfig = {}) {
 			}
 		}
 
-		// 3. Block destructive shell commands
+		// 3. Shell commands inspection
 		if (toolName === "bash") {
 			const cmd = String(event.args?.command ?? "");
+
+			// In read-only mode, block file-writing shell commands
+			if (config.readOnly) {
+				const isFileWritingCmd = /(?:>|>>|\btee\b|\brm\s|\bmv\s|\bcp\s|\bmkdir\s|\btouch\s|\bsed\s+-i)/.test(cmd);
+				if (isFileWritingCmd) {
+					throw new Error(
+						`[safety-gate] Shell file modification blocked in read-only mode: "${cmd}". To modify files, please switch to default mode by typing '/profile default'.`
+					);
+				}
+			}
+
 			const check = isCommandDangerous(cmd, dangerousCommands, allowedCommands);
 			if (check.dangerous) {
 				throw new Error(
