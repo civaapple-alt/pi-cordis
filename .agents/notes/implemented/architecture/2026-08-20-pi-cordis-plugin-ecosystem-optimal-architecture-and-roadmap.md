@@ -1,6 +1,6 @@
 # Agent Note: Pi-Cordis Built-in Plugin Ecosystem Optimal Architecture Blueprint and Guide
 
-Status: proposed
+Status: implemented
 Created: 2026-08-20
 
 English | [中文](2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.zh.md)
@@ -9,7 +9,7 @@ English | [中文](2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-an
 
 Following the successful upgrade of `@pi-cordis/plugin-code-mode` to the industry standard of **"Dynamic .d.ts Generation + Tool Presentation Masking + Node.js worker_threads Isolate Sandbox + TUI Polymorphic Render Cards"**, this architectural blueprint systematically defines the **Optimal Solution standards and evolution roadmap for all 15 built-in plugins in Pi-Cordis**.
 
-By aligning with the industrial agent design philosophy of **DeepSeek Harness (DSH)**, we elevate each plugin from a basic implementation into a robust native Cordis extension featuring **crash prevention, token & KV-cache efficiency, rich terminal visualization, strong-typed contracts, and 100% reversible side-effects**.
+By aligning with the industrial agent design philosophy of **DeepSeek Harness (DSH)**, we elevated each plugin from a basic implementation into a robust native Cordis extension featuring **crash prevention, token & KV-cache efficiency, rich terminal visualization, strong-typed contracts, and 100% reversible side-effects**.
 
 ---
 
@@ -57,22 +57,9 @@ By aligning with the industrial agent design philosophy of **DeepSeek Harness (D
 
 ---
 
-## 3. Implementation Phases
+## 3. Delivered Implementation Phases
 
-### Phase 1: Robustness & Spill Protection (Top Priority)
-1. **`output-truncator` -> Spill Mechanism**: Implement `.pi/spill/` storage and Head/Tail preservation.
-2. **`safety-gate` -> Multi-Tier Security Engine**: Pattern-based command checks and protected file boundaries.
-3. **`git-guard` -> Atomic Stash Checkpoints**: Lightweight snapshots before mutating operations.
-
-### Phase 2: Interaction & Reasoning Efficiency (Second Priority)
-4. **`ask-question` -> Batch Questions & Recommended Choices**.
-5. **`plan-mode` -> Step State Machine & Mutating Interceptor**.
-6. **`todo-tracker` -> Adaptive Prompt Injection & Task State Machine**.
-7. **`subagent` -> AbortSignal Cascades & Depth Boundaries**.
-
-### Phase 3: Long-Session & Collaboration Optimization (Third Priority)
-8. **`context-compactor` -> 4-Dimensional Decision Compaction**.
-9. **`session-handoff` -> Standardized Handoff Envelope**.
-10. **`git-automation` -> Staged Diff Semantic Analysis**.
-11. **`ssh-delegator` -> SSH Multiplexing & Remote Probing**.
-12. **`rules-injector` -> Hash Caching & Hierarchical Merging**.
+All 3 optimization phases have been fully executed, tested, and shipped:
+- **Phase 1 (Robustness & Spill Protection)**: `output-truncator`, `safety-gate`, `git-guard`.
+- **Phase 2 (Interaction & Efficacy)**: `ask-question`, `plan-mode`, `todo-tracker`, `subagent`.
+- **Phase 3 (Long-Session & Continuity)**: `context-compactor`, `session-handoff`, `git-automation`, `ssh-delegator`, `rules-injector`.

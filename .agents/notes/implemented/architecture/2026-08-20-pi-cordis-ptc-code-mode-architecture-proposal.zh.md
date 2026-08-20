@@ -1,13 +1,13 @@
-# Agent Note: Pi-Cordis 编程化工具调用（PTC / Code Mode）架构设计与演进提案
+# Agent Note: Pi-Cordis 编程化工具调用（PTC / Code Mode）架构设计
 
-Status: proposed
+Status: implemented
 Created: 2026-08-20
 
 [English](2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.md) | 中文
 
 ## 摘要 (Executive Summary)
 
-本篇架构提案（ADR Proposal）深入分析了 **DeepSeek Harness (DSH) 中备受赞誉的 PTC 模式（Programmatic Tool Calling / 编程化工具调用，又称 Code Mode）** 的核心设计哲学与技术实现，并提出了在 **Pi-Cordis 微内核体系中落地 `@pi-cordis/plugin-code-mode` 与 `presets/ptc/` 预设的架构方案**。
+本篇架构决策记录（ADR）深入分析了 **DeepSeek Harness (DSH) 中备受赞誉的 PTC 模式（Programmatic Tool Calling / 编程化工具调用，又称 Code Mode）** 的核心设计哲学与技术实现，并总结了在 **Pi-Cordis 微内核体系中落地 `@pi-cordis/plugin-code-mode` 与 `presets/ptc/` 预设的架构方案**。
 
 PTC 模式通过将零散的 JSON Function Calling 转换为**强类型 TypeScript SDK + 单一 `run_code` 执行器**，能够将原本需要 5~10 轮串行网络往返的复杂长任务**坍缩为 1 轮本地程序化执行**，在将任务执行耗时降低 80%+ 的同时，实现 90%+ 的 Context Window 空间节省。
 
@@ -48,7 +48,7 @@ const results = await Promise.all(
 
 console.log(`包含 deprecated 的文件:`, results.filter(Boolean));
 ```
-- **核心优势**：在本地 Node.js Worker 隔离环境中毫秒级并发执行完毕，模型在 **1 轮（Single Round-Trip）** 内直接拿到最终提炼结论！
+- **核心优势**：在本地 Node.js `worker_threads` 隔离环境中毫秒级并发执行完毕，模型在 **1 轮（Single Round-Trip）** 内直接拿到最终提炼结论！
 
 ---
 
@@ -58,84 +58,57 @@ console.log(`包含 deprecated 的文件:`, results.filter(Boolean));
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        PTC 模式的核心架构收益                          │
 ├────────────────────────────────────────────────────────────────────────┤
-│ 1. 轮次坍缩 (Round-Trip Collapse) : 5~10 轮串行往返 ──> 坍缩为 1 轮    │
-│ 2. 上下文防爆 (Context Preservation) : 中间数据内存过滤，不回传 LLM   │
-│ 3. 编程原语赋能 (Control Flow Power) : 支持 for / while / Promise.all   │
-│ 4. 类型驱动推理 (Type-Driven Reasoning) : d.ts 比 JSON Schema 更懂代码 │
+│ 1. 轮次坍缩 (Round-Trip Collapse) : 5~10 轮交互 ──> 坍缩至 1 轮        │
+│ 2. 上下文无损保护 (Context Preservation) : 中间数据不进上下文，零 Token 泛洪 │
+│ 3. 原生控制流表达力 (Control Flow Power) : 支持 for / while / Promise.all 并发 │
+│ 4. 类型驱动逻辑推理 (Type-Driven Reasoning) : .d.ts 类型声明对大模型极度友好 │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **轮次坍缩（延迟降低 80%+）**：消除了多轮 LLM 串行等待开销；
-2. **上下文防爆（Token 节省 90%+）**：中间大数据留存在 Worker 内存中，只有 `console.log` 的提炼结果返回给大模型；
-3. **编程原语赋能**：模型可直接使用 `if-else` 分支、`try-catch` 容错重试与 `Promise.all` 高并发；
-4. **类型驱动推理**：代码大模型在海量开源代码库上预训练，对 `.d.ts` 强类型定义的理解能力远超冷冰冰的 JSON Schema。
+1. **轮次极速坍缩（Round-Trip Collapse）**：消除多次等待 LLM 响应的网络开销，任务总体执行耗时降低 80%+；
+2. **上下文窗口极致保护（Context Preservation）**：海量中间输出（如读几百个文件）仅在本地 Worker 内存中流转，模型只获取精炼结论，从根源杜绝爆窗；
+3. **原生控制流表达力（Control Flow Power）**：大模型可自由编写复杂的条件分支判断、错误捕获与并发请求；
+4. **强类型驱动推理（Type-Driven Reasoning）**：现代大模型（如 DeepSeek V3/R1）在大规模代码库上经过深度预训练，对强类型 `.d.ts` 的理解力显著超越冗长的 JSON Schema。
 
 ---
 
-## 三、DSH 的微内核实现参考
-
-在 DSH（DeepSeek Harness）中，PTC 模式的装配展示了 Cordis 表现层解耦的极致优雅：
-
-```yaml
-# apps/cli/config/agent-presets/code/agent.cordis.yml
-# 1. 挂载所有标准底层工具 (文件系统, Shell, Web 等)
-- id: tool-fs
-  name: '@deepseek-ai/dsh-tool-fs'
-- id: tool-bash
-  name: '@deepseek-ai/dsh-tool-bash'
-- id: tool-web
-  name: '@deepseek-ai/dsh-tool-web'
-
-# 2. 仅通过一行插件配置，将所有工具的表现形式切换为 Code Mode！
-- id: tool-presentation
-  name: '@deepseek-ai/dsh-agent-tool-presentation'
-  config:
-    mode: code
-```
-
-- **底层驱动零修改**：`dsh-fs`、`dsh-bash` 等底层驱动无需做任何修改；
-- **表现层动态合成**：`dsh-agent-tool-presentation` 自动扫描可见工具并动态生成 SDK 类型定义，仅向模型暴露 `run_code`。
-
----
-
-## 四、Pi-Cordis 落地架构方案设计
-
-在 Pi-Cordis 中，我们可以基于现有的 **10 大核心 Services** 与 **`presets/` 独立目录体系**，通过以下 3 步实现原生 PTC 模式：
+## 三、Pi-Cordis 落地实现架构
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ 1. 新增插件: packages/plugins/code-mode                     │
-│    • 声明 inject = ['tools']                                │
-│    • 扫描 ctx.tools.getAllToolDefinitions()                 │
-│    • 动态生成 virtual: @pi/agent-sdk 的 .d.ts 声明与运行时   │
-│    • 注册 run_code / execute_script 工具供 LLM 调用         │
+│ 1. 插件实现: packages/plugins/code-mode                     │
+│    • 声明 inject = ['tools', 'prompts']                     │
+│    • 遍历 ctx.tools.getAllToolDefinitions()                 │
+│    • 基于 jsonSchemaToTypeScript 动态生成 .d.ts 类型定义     │
+│    • 工具屏蔽过滤器 (遮蔽底层原子工具，仅暴露 run_code)       │
+│    • run_code TUI 多态折叠卡片渲染器                        │
 └──────────────────────────────┬──────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 2. 新增预设: presets/ptc/ (preset.yml + cordis.yml)         │
-│    • 包含 rules-injector, todo-tracker, code-mode 插件      │
-│    • 支持在 CLI 中一键指定: pnpm pi --profile ptc           │
-│    • 支持在 TUI 中交互切换: /profile ptc                    │
+│ 2. 预设组合: presets/ptc/ (preset.yml + cordis.yml)         │
+│    • 组合 code-mode, rules-injector, todo-tracker           │
+│    • CLI 支持: pnpm pi --profile ptc                        │
+│    • TUI 动态切换: /profile ptc                             │
 └──────────────────────────────┬──────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 3. 轻量沙箱执行引擎: Worker / isolated-vm                   │
-│    • 接收模型编写的 TypeScript 脚本                         │
-│    • 注入 SDK 代理对象并执行                                │
-│    • 捕获 stdout 与结果，在 pi-tui 中以代码折叠卡片渲染      │
+│ 3. 生产级执行引擎: Node.js worker_threads.Worker            │
+│    • 独立工作线程隔离执行                                   │
+│    • 注入 SDK 代理对象与 IPC 工具分发                       │
+│    • 物理强杀超时保护 (worker.terminate())                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 五、预设目录结构设计 (`presets/ptc/`)
+## 四、预设配置 (`presets/ptc/`)
 
 ```yaml
 # presets/ptc/preset.yml
-name: 编程化工具调用模式 (PTC / Code Mode)
-description: 具备标准模式的全部工具能力，并通过 TypeScript SDK 呈现，让模型用一段程序组合多步操作
+name: Programmatic Tool Calling Mode (PTC / Code Mode)
+description: All standard tool capabilities exposed via a TypeScript SDK, allowing the model to compose multi-step workflows in one script
 order: 6
 ```
 
@@ -149,11 +122,3 @@ order: 6
 - name: '@pi-cordis/plugin-todo-tracker'
 - name: '@pi-cordis/plugin-git-guard'
 ```
-
----
-
-## 六、演进计划与预期收益
-
-1. **第一阶段（MVP）**：实现基于 Node.js `node:vm` 或 Worker 线程的轻量 TypeScript 执行器，将内置 7 大工具（`read`, `write`, `edit`, `bash` 等）映射为 `pi.fs.*` 与 `pi.bash.*`；
-2. **第二阶段（TUI 渲染增强）**：在 `pi-tui` 中为 `run_code` 提供专属的富文本渲染器，实时展示脚本执行进度与控制台输出；
-3. **第三阶段（完整 Preset 推出）**：发布 `presets/ptc/` 预设，并支持通过 `/profile ptc` 在终端中随时体验！

@@ -1,15 +1,15 @@
-# Agent Note: Pi-Cordis Minimalist Design Philosophy and "Default is Best" Preset Simplification Proposal
+# Agent Note: Pi-Cordis Minimalist Design Philosophy and "Default is Best" Preset Simplification
 
-Status: proposed
+Status: implemented
 Created: 2026-08-20
 
 English | [中文](2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md)
 
 ## Executive Summary
 
-This Architecture Decision Record (ADR) Proposal addresses the **over-engineering and fragmented technical permutations** in `pi-cordis`'s initial preset system, establishing the core tenets of **Minimalist Design Philosophy** and **"Default is Best"**.
+This Architecture Decision Record (ADR) addresses the **over-engineering and fragmented technical permutations** in `pi-cordis`'s initial preset system, establishing the core tenets of **Minimalist Design Philosophy** and **"Default is Best"**.
 
-This proposal deprecates the 5 cluttered internal permutations (`default`, `safe`, `strict`, `full`, `minimal`) in favor of **2~3 distinct, scenario-driven Agent Modes (Default Standard, Plan/Review, and PTC Code Mode)**, eliminating user cognitive burden and realigning with Pi's lightweight product soul.
+This decision deprecated the 5 cluttered internal permutations (`default`, `safe`, `strict`, `full`, `minimal`) in favor of **3 distinct, scenario-driven Agent Modes (Default Standard, Plan/Review, and PTC Code Mode)**, eliminating user cognitive burden and realigning with Pi's lightweight product soul.
 
 ---
 

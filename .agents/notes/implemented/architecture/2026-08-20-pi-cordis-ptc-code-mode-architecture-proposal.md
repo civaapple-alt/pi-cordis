@@ -1,13 +1,13 @@
-# Agent Note: Pi-Cordis Programmatic Tool Calling (PTC / Code Mode) Architecture Design Proposal
+# Agent Note: Pi-Cordis Programmatic Tool Calling (PTC / Code Mode) Architecture Design
 
-Status: proposed
+Status: implemented
 Created: 2026-08-20
 
 English | [中文](2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.zh.md)
 
 ## Executive Summary
 
-This Architecture Decision Record (ADR) Proposal provides an in-depth analysis of **DeepSeek Harness (DSH)'s acclaimed PTC (Programmatic Tool Calling / Code Mode)** architecture and outlines the design for implementing `@pi-cordis/plugin-code-mode` and the `presets/ptc/` preset in the **Pi-Cordis microkernel ecosystem**.
+This Architecture Decision Record (ADR) provides an in-depth analysis of **DeepSeek Harness (DSH)'s acclaimed PTC (Programmatic Tool Calling / Code Mode)** architecture and documents the shipped design for `@pi-cordis/plugin-code-mode` and the `presets/ptc/` preset in the **Pi-Cordis microkernel ecosystem**.
 
 By transforming scattered JSON function calls into a **strongly-typed TypeScript SDK + single `run_code` executor**, PTC mode collapses complex multi-step workflows (which traditionally require 5~10 serial network round-trips) into **a single local programmatic execution**, cutting latency by 80%+ and saving over 90% of Context Window token budgets.
 
@@ -48,7 +48,7 @@ const results = await Promise.all(
 
 console.log(`Files with deprecated usages:`, results.filter(Boolean));
 ```
-- **Benefit**: Runs in milliseconds within a local Worker sandbox, returning only the distilled output in **one single round-trip**!
+- **Benefit**: Runs in milliseconds within a local `worker_threads` isolate sandbox, returning only the distilled output in **one single round-trip**!
 
 ---
 
@@ -72,44 +72,21 @@ console.log(`Files with deprecated usages:`, results.filter(Boolean));
 
 ---
 
-## 3. DSH Microkernel Reference Architecture
-
-In DSH, Code Mode is activated through a single presentation plugin:
-
-```yaml
-# apps/cli/config/agent-presets/code/agent.cordis.yml
-# 1. Mount standard driver tools
-- id: tool-fs
-  name: '@deepseek-ai/dsh-tool-fs'
-- id: tool-bash
-  name: '@deepseek-ai/dsh-tool-bash'
-
-# 2. Switch tool presentation to Code Mode
-- id: tool-presentation
-  name: '@deepseek-ai/dsh-agent-tool-presentation'
-  config:
-    mode: code
-```
-
-- **Zero Driver Rewrite**: Underlying `fs` and `bash` drivers remain untouched;
-- **Dynamic SDK Synthesis**: The presentation plugin scans visible tools and synthesizes SDK declarations on the fly.
-
----
-
-## 4. Pi-Cordis Implementation Proposal
+## 3. Delivered Implementation
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ 1. New Plugin: packages/plugins/code-mode                   │
-│    • Declares inject = ['tools']                            │
+│ 1. Plugin: packages/plugins/code-mode                       │
+│    • Declares inject = ['tools', 'prompts']                 │
 │    • Scans ctx.tools.getAllToolDefinitions()                │
-│    • Generates virtual: @pi/agent-sdk declarations & runtime│
-│    • Registers run_code / execute_script tool for LLMs      │
+│    • Dynamic .d.ts generation via jsonSchemaToTypeScript    │
+│    • Presentation tool masking (masks underlying tools)     │
+│    • Single run_code entry with TUI folded card renderers   │
 └──────────────────────────────┬──────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 2. New Preset: presets/ptc/ (preset.yml + cordis.yml)       │
+│ 2. Preset: presets/ptc/ (preset.yml + cordis.yml)           │
 │    • Composes code-mode, rules-injector, todo-tracker       │
 │    • CLI flag support: pnpm pi --profile ptc                │
 │    • Interactive TUI switch: /profile ptc                   │
@@ -117,16 +94,16 @@ In DSH, Code Mode is activated through a single presentation plugin:
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 3. Lightweight Sandbox Engine: Worker / node:vm             │
-│    • Executes TypeScript scripts locally in milliseconds    │
-│    • Injects SDK proxy objects                              │
-│    • Captures stdout and renders in pi-tui code widgets     │
+│ 3. Robust Sandbox Engine: Node.js worker_threads.Worker     │
+│    • Executes in isolated worker thread                     │
+│    • Injects SDK proxy objects with IPC tool dispatch       │
+│    • Physical timeout termination via worker.terminate()   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 5. Preset Specification (`presets/ptc/`)
+## 4. Preset Specification (`presets/ptc/`)
 
 ```yaml
 # presets/ptc/preset.yml
@@ -145,11 +122,3 @@ order: 6
 - name: '@pi-cordis/plugin-todo-tracker'
 - name: '@pi-cordis/plugin-git-guard'
 ```
-
----
-
-## Roadmap
-
-1. **Phase 1 (MVP)**: Implement a lightweight TypeScript runner mapping the 7 built-in tools (`read`, `write`, `edit`, `bash`) to `pi.fs.*` and `pi.bash.*`;
-2. **Phase 2 (TUI Rich Rendering)**: Provide dedicated `pi-tui` renderers for `run_code` execution cards with live console logs;
-3. **Phase 3 (Official Preset Release)**: Ship `presets/ptc/` with seamless `/profile ptc` switching!

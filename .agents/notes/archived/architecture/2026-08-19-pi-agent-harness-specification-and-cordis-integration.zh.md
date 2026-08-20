@@ -1,6 +1,7 @@
 # Agent Note: Pi AgentHarness 工业级事务规格与 Cordis 微内核架构融合
 
 Status: implemented
+Archived: 2026-08-20
 Created: 2026-08-19
 
 [English](2026-08-19-pi-agent-harness-specification-and-cordis-integration.md) | 中文
@@ -48,7 +49,7 @@ Created: 2026-08-19
 
 ---
 
-### 2. 副作用三明治模式（The Effect Sandwich）
+## 二、副作用三明治模式（The Effect Sandwich）
 针对 LLM 流式输出中途断网、工具执行破坏性命令（如删除文件）中途掉电的极端场景，Harness 建立了双阶段提交机制：
 
 ```text
@@ -66,20 +67,20 @@ Created: 2026-08-19
 
 ---
 
-### 3. 多车道体系（Lanes Concurrency）
+## 三、多车道体系（Lanes Concurrency）
 * 一个 Session 内部不仅有 `main` 主车道，还可以为 Slack 线程、Subagent 任务创建独立的 **Lane**；
 * 所有 Lane 共享底层的不可变历史 Entry 树，各自持有独立的叶子节点游标（`lane.leaf`）与推理状态机，实现**零冗余开销的并发多 Agent 共享记忆**。
 
 ---
 
-### 4. 存储后端（Storage Backends）
+## 四、存储后端（Storage Backends）
 * **Memory**：纯内存 Map，适用于单元测试；
 * **JSONL (v4 格式)**：以 Replay Recipe 形式追加记录，具备基于快照压缩（Snapshot Compaction）的物理垃圾清理能力；
 * **SQLite**：**一个 Session 一个 `.sqlite` 文件**，全面采用 `BEGIN IMMEDIATE` 防止死锁升级，并通过 `writer_lease` 实现单进程排他租约。
 
 ---
 
-## 二、Pi-Cordis 与 AgentHarness 的微内核融合蓝图
+## 五、Pi-Cordis 与 AgentHarness 的微内核融合蓝图
 
 Pi 原生的 `AgentHarness` 与 Cordis 微内核并非竞争关系，而是**极致互补的数据面与控制面关系**：
 
@@ -106,7 +107,7 @@ Pi 原生的 `AgentHarness` 与 Cordis 微内核并非竞争关系，而是**极
 
 ---
 
-## 三、结论与架构意义
+## 六、结论与架构意义
 
 1. **工业级鲁棒性**：借助 `AgentHarness` 的三存储模型与 Effect Sandwich，`pi-cordis` 拥有了业界顶级的容灾与崩溃恢复能力；
 2. **微内核解耦灵活性**：借助 Cordis v4.0.1，所有 Harness 状态机能力均可被外部插件监听、增强与拦截，达成了“底层坚如磐石，上层灵活多变”的完美架构平衡。

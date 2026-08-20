@@ -1,6 +1,7 @@
 # Agent Note: Pi AgentHarness Specification and Cordis Microkernel Integration
 
 Status: implemented
+Archived: 2026-08-20
 Created: 2026-08-19
 
 English | [中文](2026-08-19-pi-agent-harness-specification-and-cordis-integration.zh.md)
@@ -48,7 +49,7 @@ All durable state belongs strictly to one of three storage types:
 
 ---
 
-### 2. The Effect Sandwich Pattern
+## 2. The Effect Sandwich Pattern
 To handle unexpected crashes during streaming or destructive tool execution (e.g. file deletions), Harness mandates a two-phase commit wrapper:
 
 ```text
@@ -66,20 +67,20 @@ To handle unexpected crashes during streaming or destructive tool execution (e.g
 
 ---
 
-### 3. Lanes Concurrency
+## 3. Lanes Concurrency
 - A session can host multiple named cursors (**Lanes**) over the same conversation history;
 - Enables subagents, Slack threads, and parallel workflows to branch off the root tree without duplicating stored history.
 
 ---
 
-### 4. Storage Backends
+## 4. Storage Backends
 - **Memory**: In-memory maps for tests and transient sessions;
 - **JSONL (v4)**: Replay recipe with snapshot compaction;
 - **SQLite**: One `.sqlite` file per session, utilizing `BEGIN IMMEDIATE` and `writer_lease` for single-writer process fencing.
 
 ---
 
-## 2. Fusion with Cordis Microkernel
+## 5. Fusion with Cordis Microkernel
 
 The relationship between AgentHarness and Cordis is a classic **Data Plane vs Control Plane** synergy:
 
@@ -106,7 +107,7 @@ The relationship between AgentHarness and Cordis is a classic **Data Plane vs Co
 
 ---
 
-## 3. Conclusion
+## 6. Conclusion
 
 1. **Rock-Solid Durability**: AgentHarness provides deterministic crash resilience and transactional integrity;
 2. **Microkernel Flexibility**: Cordis v4.0.1 brings modularity, inversion of control, and full plugin extensibility on top.

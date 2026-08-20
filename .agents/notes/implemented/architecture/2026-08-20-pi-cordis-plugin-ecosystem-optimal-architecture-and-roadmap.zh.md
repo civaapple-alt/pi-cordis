@@ -1,6 +1,6 @@
 # Agent Note: Pi-Cordis 全套内置插件最优解架构演进蓝图与实践指南
 
-Status: proposed
+Status: implemented
 Created: 2026-08-20
 
 [English](2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.md) | 中文
@@ -48,40 +48,18 @@ Created: 2026-08-20
 | **7. `safety-gate`** | `sandbox/`, `guard/tool-hygiene` | **多层级安全规则引擎**：命令 AST/正则解析拦截 `rm -rf /`、`chmod -R 777`，受保护路径黑名单（`.env`, `.ssh/`），环境变量防泄漏。 |
 | **8. `git-guard`** | `guard/` | **轻量级暂存快照与一键回滚**：在执行风险写操作前通过 `git stash create` 生成轻量快照引用，支持任务失败时无损恢复。 |
 | **9. `context-compactor`** | `compaction/` (`compaction-basic`) | **决策保留式分段压缩**：结构化提取 4 大核心资产（已改文件、关键架构决策、已解决问题、待办阻塞项），保留稳定 System Prompt 前缀。 |
-| **10. `tools-manager`** | `core/tools` | **能力切片与场景化动态开关**：支持按场景一键切换工具集（如只读审查模式、代码生成模式），结合 Cordis Effect 实现即时生效与回滚。 |
-| **11. `git-automation`** | `shell/` | **暂存区差异语义分析**：自动解析 `git diff --staged`，智能推导变更作用域（Scope），生成标准 Conventional Commits 与关联 Issue。 |
-| **12. `ssh-delegator`** | `e2b/`, `shell/` | **持久化连接池与环境探针**：基于 SSH Multiplexing 复用连接握手，自动探查远程主机 OS/环境工具并返回结构化执行结果。 |
-| **13. `rules-injector`** | `context/workspace-rules` | **层级规则合并与哈希缓存**：递归向上扫描项目规范文件（`AGENTS.md`、`CLAUDE.md`），基于 SHA-256 哈希缓存，未改动时不破坏 Prompt 缓存。 |
-| **14. `session-handoff`** | `session/`, `goal/` | **标准化交接信封 (Handoff Envelope)**：生成标准结构化交接简报（目标、里程碑、关键文件、下一步指令），支持一键转存为新会话。 |
-| **15. `profiles`** | `preset/`, `bundle/` | **预设继承与双轨增量 HMR**：支持 Preset 继承与叠加（如 `default + code-mode`），完善 YAML 目录与 TS 插件源码的双轨热重载。 |
+| **10. `tools-manager`** | `core/tools` | **动态能力切片**：根据使用场景批量挂载/卸载工具集（如纯读代码审查、纯写业务生成），配合 Cordis Disposer 实现即时生效。 |
+| **11. `git-automation`** | `shell/` | **暂存区语义分析与 Conventional Commit**：深度解析 `git diff --staged` 自动推断 commit 影响范围（`feat`, `fix`, `refactor`），联动 Issue 编号自动关联。 |
+| **12. `ssh-delegator`** | `e2b/`, `shell/` | **长连接会话池与远程环境嗅探**：通过 SSH 复用长连接握手，自动嗅探远端操作系统与可用工具链，提供结构化命令执行结果。 |
+| **13. `rules-injector`** | `context/workspace-rules` | **多目录层级合并与哈希缓存**：递归扫描项目指令文件（`AGENTS.md`, `CLAUDE.md` 等），基于 SHA-256 哈希缓存避免不必要的 Prompt 变动，维持 KV-Cache 稳定。 |
+| **14. `session-handoff`** | `session/`, `goal/` | **标准化交接信封 (Handoff Envelope)**：打包核心目标、已完成里程碑、关键文件与下一步行动清单，生成结构化 Markdown 产物以供新会话读取。 |
+| **15. `profiles`** | `preset/`, `bundle/` | **预设组合与增量 HMR**：支持预设的继承与叠加（如 `default + code-mode`），通过 Cordis 增量 Loader 实现预设无缝热切换。 |
 
 ---
 
-## 三、分阶段推进与实施计划 (Implementation Phases)
+## 三、三阶段全量落地总结
 
-### 阶段一：防爆与鲁棒性增强（第一优先级）
-1. **`output-truncator` 升级为 Spill 机制**：实现 `.pi/spill/` 溢出转存与 Head/Tail 保护；
-2. **`safety-gate` 升级为多层级安全引擎**：增强命令 AST 模式解析与敏感文件保护；
-3. **`git-guard` 增加原子级 Stash 检查点**：实现写操作前的安全快照。
-
-### 阶段二：交互与推理效能优化（第二优先级）
-4. **`ask-question` 升级为多题批处理与推荐选项**；
-5. **`plan-mode` 升级为步骤状态机与写操作拦截控制**；
-6. **`todo-tracker` 升级为自适应 Prompt 注入与四态任务管理**；
-7. **`subagent` 增加 AbortSignal 级联取消与深度保护**。
-
-### 阶段三：长会话与工程协同优化（第三优先级）
-8. **`context-compactor` 升级为 4 维决策结构化压缩**；
-9. **`session-handoff` 升级为标准化交接信封**；
-10. **`git-automation` 升级为 Staged Diff 语义分析**；
-11. **`ssh-delegator` 引入连接复用与环境探针**；
-12. **`rules-injector` 增加哈希去重与层级继承**。
-
----
-
-## 四、预期收益
-
-- **稳定性提升 100%**：彻底消除死循环、超长输出爆内存、误删敏感文件等风险；
-- **Token 开销降低 50%~80%**：通过表现层遮蔽、Spill 溢出转存与 Todo 自适应压缩，显著节省上下文预算；
-- **KV Cache 命中率提升**：所有提示词注入与规则合并均采用稳定前缀与哈希去重；
-- **交互体验大幅跃升**：每个工具均具备专属的 TUI 折叠卡片与多态渲染。
+全套 15 个插件的最优解改造已全部完成并通过自动化测试验证：
+- **第一阶段（鲁棒性与防爆）**：`output-truncator`、`safety-gate`、`git-guard`。
+- **第二阶段（交互与能效）**：`ask-question`、`plan-mode`、`todo-tracker`、`subagent`。
+- **第三阶段（长效会话与工程连续性）**：`context-compactor`、`session-handoff`、`git-automation`、`ssh-delegator`、`rules-injector`。
