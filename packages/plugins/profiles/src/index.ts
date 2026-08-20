@@ -96,53 +96,6 @@ export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 			"context-compactor": true,
 		},
 	},
-	// Backwards-compatibility aliases
-	safe: {
-		name: "safe",
-		description: "安全模式 (已收敛至 default 模式)",
-		plugins: {
-			"safety-gate": true,
-			"git-guard": true,
-			"rules-injector": true,
-			"todo-tracker": true,
-			"output-truncator": true,
-		},
-	},
-	strict: {
-		name: "strict",
-		description: "严格审计模式 (已收敛至 plan 模式)",
-		plugins: {
-			"plan-mode": true,
-			"safety-gate": { strict: true, readOnly: true },
-			"rules-injector": true,
-			"output-truncator": true,
-		},
-	},
-	full: {
-		name: "full",
-		description: "全能模式 (激活全部 14 大原生 Cordis 插件能力)",
-		plugins: {
-			"safety-gate": true,
-			"git-guard": true,
-			"rules-injector": true,
-			"todo-tracker": true,
-			"output-truncator": true,
-			"ask-question": true,
-			"context-compactor": true,
-			subagent: true,
-			"plan-mode": true,
-			"code-mode": true,
-			"git-automation": true,
-			"session-handoff": true,
-			"ssh-delegator": true,
-			"tools-manager": true,
-		},
-	},
-	minimal: {
-		name: "minimal",
-		description: "零额外插件纯净模式 (仅保留 10 大核心服务)",
-		plugins: {},
-	},
 };
 
 function normalizePluginName(name: string): string {

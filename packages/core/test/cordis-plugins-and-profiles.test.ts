@@ -6,12 +6,11 @@ import { createPiContext } from "../src/core/cordis/index.ts";
 import { BUILTIN_PROFILES, applyProfile, loadProfilesFromYaml, setupPluginHmr } from "@pi-cordis/profiles";
 
 describe("Cordis Native Plugins and Profiles System", () => {
-	it("should define standard built-in profiles", () => {
+	it("should define 3 standard canonical presets", () => {
 		expect(BUILTIN_PROFILES.default).toBeDefined();
-		expect(BUILTIN_PROFILES.safe).toBeDefined();
-		expect(BUILTIN_PROFILES.strict).toBeDefined();
-		expect(BUILTIN_PROFILES.full).toBeDefined();
-		expect(BUILTIN_PROFILES.minimal).toBeDefined();
+		expect(BUILTIN_PROFILES.plan).toBeDefined();
+		expect(BUILTIN_PROFILES.ptc).toBeDefined();
+		expect(Object.keys(BUILTIN_PROFILES)).toEqual(["default", "plan", "ptc"]);
 	});
 
 	it("should initialize Pi context with default profile (rules-injector + todo-tracker)", async () => {
@@ -28,8 +27,8 @@ describe("Cordis Native Plugins and Profiles System", () => {
 		expect(toolNames).toContain("todo_read");
 	});
 
-	it("should support safe profile with safety-gate interceptor", async () => {
-		const ctx = await createPiContext({ allowModelNetwork: false, profile: "safe" });
+	it("should support default profile with safety-gate interceptor", async () => {
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
 
 		// Trigger safety-gate on protected file write
 		let blocked = false;
@@ -48,7 +47,7 @@ describe("Cordis Native Plugins and Profiles System", () => {
 	});
 
 	it("should block dangerous bash commands under safety-gate", async () => {
-		const ctx = await createPiContext({ allowModelNetwork: false, profile: "safe" });
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
 
 		let blocked = false;
 		try {
@@ -65,15 +64,15 @@ describe("Cordis Native Plugins and Profiles System", () => {
 		expect(blocked).toBe(true);
 	});
 
-	it("should support minimal profile without extra plugins", async () => {
-		const ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
+	it("should support plan profile with read-only protection", async () => {
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "plan" });
 		const toolNames = ctx.tools.getToolNames();
-		expect(toolNames).not.toContain("todo_write");
+		expect(toolNames).toContain("plan_step");
 	});
 
 	it("should provide /profile slash command with completions and switching handler", async () => {
 		const { createProfileCommandExtension } = await import("../src/core/cordis/profile-command.ts");
-		const ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
 
 		let registeredCommand: any;
 		const mockPi: any = {
@@ -89,9 +88,9 @@ describe("Cordis Native Plugins and Profiles System", () => {
 		expect(registeredCommand.name).toBe("profile");
 
 		// Test autocompletions
-		const completions = registeredCommand.getArgumentCompletions("s");
-		expect(completions.some((c: any) => c.value === "safe")).toBe(true);
-		expect(completions.some((c: any) => c.value === "strict")).toBe(true);
+		const completions = registeredCommand.getArgumentCompletions("p");
+		expect(completions.some((c: any) => c.value === "plan")).toBe(true);
+		expect(completions.some((c: any) => c.value === "ptc")).toBe(true);
 
 		// Test switching via handler
 		let notification = "";
@@ -104,9 +103,9 @@ describe("Cordis Native Plugins and Profiles System", () => {
 			},
 		};
 
-		await registeredCommand.handler("safe", mockUI);
-		expect(notification).toContain('Switched to profile: "safe"');
-		expect(notification).toContain("safety-gate");
+		await registeredCommand.handler("plan", mockUI);
+		expect(notification).toContain('Switched to profile: "plan"');
+		expect(notification).toContain("plan-mode");
 	});
 
 	it("should load and merge custom profiles from YAML configuration", async () => {

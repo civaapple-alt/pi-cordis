@@ -344,7 +344,7 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ctx.tools.has("ssh_exec")).toBe(false);
 	});
 
-	it("11. @pi-cordis/profiles: plan, ptc, and full profiles mount all required plugins cleanly", async () => {
+	it("11. @pi-cordis/profiles: default, plan, and ptc profiles mount all required plugins cleanly", async () => {
 		// Plan profile
 		const planCtx = await createPiContext({ allowModelNetwork: false, profile: "plan" });
 		expect(planCtx.tools.has("plan_step")).toBe(true);
@@ -355,16 +355,15 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ptcCtx.tools.has("run_code")).toBe(true);
 		expect(ptcCtx.tools.has("todo_write")).toBe(true);
 
-		// Full profile
-		const fullCtx = await createPiContext({ allowModelNetwork: false, profile: "full" });
-		expect(fullCtx.tools.has("subagent")).toBe(true);
-		expect(fullCtx.tools.has("plan_step")).toBe(true);
-		expect(fullCtx.tools.has("run_code")).toBe(true);
-		expect(fullCtx.tools.has("ask_question")).toBe(true);
-		expect(fullCtx.tools.has("manage_tools")).toBe(true);
-		expect(fullCtx.tools.has("session_handoff")).toBe(true);
-		expect(fullCtx.tools.has("git_smart_commit")).toBe(true);
-		expect(fullCtx.tools.has("ssh_exec")).toBe(true);
+		// Default profile (Default is Best: full capabilities)
+		const defaultCtx = await createPiContext({ allowModelNetwork: false, profile: "default" });
+		expect(defaultCtx.tools.has("subagent")).toBe(true);
+		expect(defaultCtx.tools.has("todo_write")).toBe(true);
+		expect(defaultCtx.tools.has("ask_question")).toBe(true);
+		expect(defaultCtx.tools.has("manage_tools")).toBe(true);
+		expect(defaultCtx.tools.has("session_handoff")).toBe(true);
+		expect(defaultCtx.tools.has("git_smart_commit")).toBe(true);
+		expect(defaultCtx.tools.has("ssh_exec")).toBe(true);
 	});
 
 	it("12. @pi-cordis/plugin-safety-gate: blocks destructive commands, sensitive path writes, and read-only breaches", async () => {
