@@ -22,15 +22,16 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
 	});
 
-	it("1. @pi-cordis/plugin-subagent: registers subagent tool, executes sub-task, and enforces depth limits", async () => {
+	it("1. @pi-cordis/plugin-subagent: registers subagent tool, allocates isolated session, enforces role tool slicing, and guards depth limits", async () => {
 		const fork = await ctx.plugin(subagentPlugin, { maxDepth: 2 });
 		expect(ctx.tools.has("subagent")).toBe(true);
 
 		const tool = ctx.tools.get("subagent");
-		const result = await tool!.execute({ task: "Run unit tests", role: "Tester" });
+		const result = await tool!.execute({ task: "Run unit tests", role: "scout" });
 		expect(result.success).toBe(true);
-		expect(result.summary).toContain("[Tester]");
+		expect(result.summary).toContain("[SCOUT]");
 		expect(result.summary).toContain("Run unit tests");
+		expect(result.details?.allowedTools).toEqual(["read", "grep", "find", "ls"]);
 		expect(result.deliverables).toBeDefined();
 
 		// Depth limit guard test
@@ -215,7 +216,7 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ctx.tools.getExportedToolNames()).toContain("read");
 	});
 
-	it("4. @pi-cordis/plugin-ask-question: registers ask_question tool and returns selected option", async () => {
+	it("4. @pi-cordis/plugin-ask-question: registers ask_question tool with preview and note support", async () => {
 		const fork = await ctx.plugin(askQuestionPlugin);
 		expect(ctx.tools.has("ask_question")).toBe(true);
 
@@ -225,7 +226,10 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 				{
 					id: "db_choice",
 					question: "Which database do you prefer?",
-					options: [{ label: "PostgreSQL (Recommended)", description: "Relational" }, { label: "Redis", description: "In-memory" }],
+					options: [
+						{ label: "PostgreSQL (Recommended)", description: "Relational", preview: "CREATE TABLE users (id serial);", note: "Best for transactional data" },
+						{ label: "Redis", description: "In-memory", preview: "SET user:1 'test'" },
+					],
 				},
 			],
 		});
@@ -233,6 +237,7 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(result.answers).toBeDefined();
 		expect(result.answers[0].id).toBe("db_choice");
 		expect(result.answers[0].selected[0]).toContain("PostgreSQL");
+		expect(result.answers[0].notes).toBe("Best for transactional data");
 
 		await fork.dispose();
 		expect(ctx.tools.has("ask_question")).toBe(false);

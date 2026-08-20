@@ -3,6 +3,8 @@ import type { Context } from "@deepseek-ai/cordis";
 export interface QuestionOption {
 	label: string;
 	description?: string;
+	preview?: string;
+	note?: string;
 }
 
 export interface QuestionItem {
@@ -21,6 +23,7 @@ export interface QuestionAnswer {
 	id: string;
 	selected: string[];
 	custom?: string;
+	notes?: string;
 }
 
 export interface AskQuestionResult {
@@ -29,6 +32,7 @@ export interface AskQuestionResult {
 	options?: string[];
 	selected?: string;
 	wasCustom?: boolean;
+	notes?: string;
 }
 
 export const name = "ask-question";
@@ -37,7 +41,7 @@ export const inject = ["tools"];
 export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 	const unregisterTool = ctx.tools.register({
 		name: "ask_question",
-		description: "Ask the user one or more clarifying questions with selectable options or custom text input.",
+		description: "Ask the user one or more clarifying questions with selectable options, markdown previews, or custom text input.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -57,6 +61,7 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 									properties: {
 										label: { type: "string", description: "Option label (append (Recommended) if suggested)" },
 										description: { type: "string", description: "Optional explanation" },
+										preview: { type: "string", description: "Optional Markdown/Code diff preview content" },
 									},
 									required: ["label"],
 								},
@@ -79,6 +84,7 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 						properties: {
 							label: { type: "string" },
 							description: { type: "string" },
+							preview: { type: "string" },
 						},
 						required: ["label"],
 					},
@@ -92,13 +98,16 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 		renderCall: (args: { questions?: QuestionItem[]; question?: string }, theme?: any) => {
 			const count = args.questions?.length ?? (args.question ? 1 : 0);
 			const title = args.questions?.[0]?.question ?? args.question ?? "Clarifying question";
-			if (!theme?.fg) return `❓ ask_question (${count} question${count > 1 ? "s" : ""}): ${title}`;
-			return `${theme.fg("accent", theme.bold("❓ ask_question "))}${theme.fg("dim", `(${count} question${count > 1 ? "s" : ""})`)}\n${theme.fg("foreground", title)}`;
+			const hasPreview = args.questions?.some((q) => q.options?.some((o) => Boolean(o.preview)));
+			const previewTag = hasPreview ? " [with preview]" : "";
+			if (!theme?.fg) return `❓ ask_question (${count} question${count > 1 ? "s" : ""}${previewTag}): ${title}`;
+			return `${theme.fg("accent", theme.bold("❓ ask_question "))}${theme.fg("dim", `(${count} question${count > 1 ? "s" : ""}${previewTag})`)}\n${theme.fg("foreground", title)}`;
 		},
 		renderResult: (result: AskQuestionResult, options?: any, theme?: any) => {
 			const ans = result?.answers?.[0]?.selected?.join(", ") ?? result?.selected ?? "Answered";
-			if (!theme?.fg) return `✓ User answer: ${ans}`;
-			return `${theme.fg("success", "✓ User answer:")} ${theme.fg("foreground", ans)}`;
+			const noteText = result?.notes ? ` (Note: ${result.notes})` : "";
+			if (!theme?.fg) return `✓ User answer: ${ans}${noteText}`;
+			return `${theme.fg("success", "✓ User answer:")} ${theme.fg("foreground", ans)}${theme.fg("dim", noteText)}`;
 		},
 		execute: async (args: {
 			questions?: QuestionItem[];
@@ -122,9 +131,11 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 			const answers: QuestionAnswer[] = items.map((q, idx) => {
 				const id = q.id ?? `q_${idx + 1}`;
 				const firstOption = q.options?.[0]?.label ?? "Yes";
+				const note = q.options?.[0]?.note;
 				return {
 					id,
 					selected: [firstOption],
+					notes: note,
 				};
 			});
 
@@ -137,6 +148,7 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 				options: primaryOptions,
 				selected: primaryAnswer,
 				wasCustom: false,
+				notes: answers[0]?.notes,
 			};
 		},
 	});

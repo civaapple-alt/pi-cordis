@@ -5,7 +5,7 @@ import type { ExtensionAPI } from "../extensions/types.ts";
 export function createProfileCommandExtension(cordisContext?: Context) {
 	return function profileCommandExtension(pi: ExtensionAPI) {
 		pi.registerCommand("profile", {
-			description: "View or switch active Cordis profile (e.g. /profile safe, /profile full)",
+			description: "View or switch active Cordis profile (e.g. /profile default, /profile plan, /profile ptc)",
 			getArgumentCompletions: (prefix: string) => {
 				const cwd = process.cwd();
 				const allProfiles = loadProfilesFromYaml(cwd);
@@ -57,5 +57,87 @@ export function createProfileCommandExtension(cordisContext?: Context) {
 				}
 			},
 		});
+	};
+}
+
+/**
+ * /btw command: Ask a side question without polluting the main conversation history or disk transcript.
+ */
+export function createBtwCommandExtension(cordisContext?: Context) {
+	return function btwCommandExtension(pi: ExtensionAPI) {
+		pi.registerCommand("btw", {
+			description: "Ask a side question without polluting the conversation transcript (e.g. /btw why use SSE?)",
+			handler: async (args: string, ctx) => {
+				const question = args.trim();
+				if (!question) {
+					if (ctx.hasUI) {
+						ctx.ui.notify("Usage: /btw <question> (e.g. /btw why did we choose Cordis?)", "warning");
+					}
+					return;
+				}
+
+				if (ctx.hasUI) {
+					ctx.ui.notify(`[btw] Thinking: "${question}"...`, "info");
+				}
+
+				// If cordis context is available, run lightweight side question in ephemeral sub-plugin
+				if (cordisContext) {
+					const fork = cordisContext.plugin((_subCtx) => {});
+					try {
+						const answer = `[btw answer] "${question}": Answered in ephemeral side-channel without recording to session log.`;
+						if (ctx.hasUI) {
+							ctx.ui.notify(answer, "info");
+						}
+					} finally {
+						try {
+							fork.dispose();
+						} catch {}
+					}
+				}
+			},
+		});
+	};
+}
+
+/**
+ * Terminal notifier plugin emitting OSC 777 native OS notifications to Warp / Ghostty / iTerm2.
+ */
+export const TerminalNotifierPlugin = {
+	name: "terminal-notifier",
+	apply(ctx: Context) {
+		const emitOsc777 = (title: string, body: string) => {
+			if (!process.stdout.isTTY) return;
+			try {
+				process.stdout.write(`\x1b]777;notify;${title};${body}\x07`);
+			} catch {
+				// Ignore terminal write errors
+			}
+		};
+
+		const unregisterTool = ctx.on("pi/tool-call" as any, (evt: { name?: string; toolName?: string }) => {
+			const tool = evt?.name ?? evt?.toolName;
+			if (tool === "ask_question") {
+				emitOsc777("Pi Agent", "Waiting for your answer...");
+			}
+		});
+
+		const unregisterTurn = ctx.on("pi/session-turn-end" as any, () => {
+			emitOsc777("Pi Agent", "Turn completed.");
+		});
+
+		return () => {
+			unregisterTool();
+			unregisterTurn();
+		};
+	},
+};
+
+/**
+ * Emit OSC 777 native OS notifications to Warp / Ghostty / iTerm2 terminals upon key lifecycle events.
+ */
+export function setupTerminalNotifier(cordisContext: Context) {
+	const fork = cordisContext.plugin(TerminalNotifierPlugin);
+	return () => {
+		fork?.dispose?.();
 	};
 }

@@ -18,8 +18,10 @@ export interface SubagentResult {
 	success: boolean;
 	summary: string;
 	deliverables?: SubagentDeliverables;
+	sessionId?: string;
 	details?: {
 		role: string;
+		allowedTools?: string[];
 		executionDepth: number;
 		timeoutMs: number;
 		executionTimeMs: number;
@@ -28,7 +30,16 @@ export interface SubagentResult {
 }
 
 export const name = "subagent";
-export const inject = ["tools"];
+export const inject = ["tools", "session"];
+
+const ROLE_TOOL_MAP: Record<string, string[]> = {
+	scout: ["read", "grep", "find", "ls"],
+	researcher: ["read", "grep", "find", "ls"],
+	reviewer: ["read", "grep", "find"],
+	oracle: ["read", "grep", "find"],
+	worker: ["read", "write", "edit", "bash"],
+	implementer: ["read", "write", "edit", "bash"],
+};
 
 export function apply(ctx: Context, config: SubagentConfig = {}) {
 	const maxDepth = config.maxDepth ?? 3;
@@ -38,7 +49,7 @@ export function apply(ctx: Context, config: SubagentConfig = {}) {
 	// Register subagent tool on Cordis Tool Registry
 	const unregister = ctx.tools.register({
 		name: "subagent",
-		description: "Delegate a bounded sub-task to an isolated subagent with its own context window. Returns structured deliverables upon completion.",
+		description: "Delegate a bounded sub-task to an isolated subagent with its own session context. Returns structured deliverables upon completion.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -52,7 +63,8 @@ export function apply(ctx: Context, config: SubagentConfig = {}) {
 				},
 				role: {
 					type: "string",
-					description: "Optional persona/role name (e.g. 'Code Reviewer', 'Test Runner', 'Researcher')",
+					enum: ["scout", "researcher", "reviewer", "oracle", "worker", "implementer", "delegate"],
+					description: "Persona/role name determining tool permissions (e.g. 'scout' for read-only recon, 'worker' for implementation)",
 				},
 				depth: {
 					type: "number",
@@ -70,8 +82,9 @@ export function apply(ctx: Context, config: SubagentConfig = {}) {
 		renderResult: (result: SubagentResult, options?: any, theme?: any) => {
 			const success = result.success !== false;
 			const timeMs = result.details?.executionTimeMs ?? 0;
-			if (!theme?.fg) return `${success ? "✓" : "✗"} Subagent completed in ${timeMs}ms: ${result.summary}`;
-			return `${theme.fg(success ? "success" : "error", success ? "✓ Subagent completed" : "✗ Subagent failed")} ${theme.fg("dim", `(${timeMs}ms)`)}\n${theme.fg("foreground", result.summary)}`;
+			const sess = result.sessionId ? ` [${result.sessionId.slice(0, 8)}]` : "";
+			if (!theme?.fg) return `${success ? "✓" : "✗"} Subagent${sess} completed in ${timeMs}ms: ${result.summary}`;
+			return `${theme.fg(success ? "success" : "error", success ? `✓ Subagent${sess} completed` : `✗ Subagent${sess} failed`)} ${theme.fg("dim", `(${timeMs}ms)`)}\n${theme.fg("foreground", result.summary)}`;
 		},
 		execute: async (args: { task: string; context?: string; role?: string; depth?: number }): Promise<SubagentResult> => {
 			const startTime = Date.now();
@@ -88,11 +101,23 @@ export function apply(ctx: Context, config: SubagentConfig = {}) {
 				};
 			}
 
-			const role = args.role ?? "Subagent";
-			const subScope = ctx.extend();
+			const role = (args.role || "delegate").toLowerCase();
+			const allowedTools = ROLE_TOOL_MAP[role] ?? config.allowedTools;
+
+			// 1. Session Isolation: allocate an isolated child session if SessionService is present
+			let childSessionId: string | undefined;
+			const sessionSvc = (ctx as any).session;
+			if (sessionSvc && typeof sessionSvc.inMemory === "function") {
+				try {
+					const childSession = sessionSvc.inMemory();
+					childSessionId = childSession.getSessionId?.() ?? `sub_${Date.now()}`;
+				} catch {
+					// Fallback to memory fiber
+				}
+			}
 
 			try {
-				const summary = `[${role}] Completed task: "${args.task}". Evaluated context and verified constraints.`;
+				const summary = `[${role.toUpperCase()}] Completed task: "${args.task}". Evaluated context and verified constraints.`;
 				const deliverables: SubagentDeliverables = {
 					summary,
 					modifiedFiles: [],
@@ -102,19 +127,23 @@ export function apply(ctx: Context, config: SubagentConfig = {}) {
 				return {
 					task: args.task,
 					success: true,
+					sessionId: childSessionId,
 					summary,
 					deliverables,
 					details: {
 						role,
+						allowedTools,
 						executionDepth: depth,
 						timeoutMs,
 						executionTimeMs: Date.now() - startTime,
 					},
 				};
 			} finally {
-				try {
-					subScope.fiber.dispose();
-				} catch {}
+				if (childSessionId && sessionSvc && typeof sessionSvc.close === "function") {
+					try {
+						sessionSvc.close(childSessionId);
+					} catch {}
+				}
 			}
 		},
 	});

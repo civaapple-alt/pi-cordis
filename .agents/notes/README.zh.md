@@ -80,10 +80,7 @@ graph LR
 
 ### 待评审与演进中提案 (`proposed/`)
 
-| 提案日期 | 提案标题 | 核心关注点与价值 |
-|---|---|---|
-| `2026-08-20` | [基于极简哲学的 Pi-Cordis 原生 Subagent 插件精准增强提案](proposed/2026-08-20-pi-cordis-subagent-plugin-deep-enhancement-proposal.zh.md) | 拒绝复刻 130+ 文件重型巨石，以不到 50 行增量原地聚焦 `ctx.session.create()` 会话物理隔离与 `scout`/`worker` 工具权限切片 |
-| `2026-08-20` | [基于极简哲学的 rpiv-mono 优秀特性吸收与轻量演进提案](proposed/2026-08-20-pi-cordis-rpiv-mono-analysis-and-enhancement-proposal.zh.md) | 拒绝插件碎片化拆包，以不到 100 行增量原地吸收零污染 `/btw` 指令、问答 Markdown 预览、Todo 悬浮面板与 OSC 777 终端通知 |
+*当前暂无待评审提案。*
 
 ---
 
@@ -103,6 +100,12 @@ graph LR
 | `2026-08-20` | [Pi-Cordis 编程化工具调用（PTC / Code Mode）架构设计](implemented/architecture/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.zh.md) | DSH Code Mode 深度拆解、轮次坍缩与上下文保护、动态 SDK 生成与 `presets/ptc/` 落地 |
 | `2026-08-20` | [Pi-Cordis 极简设计哲学与 “Default is Best” 预设体系重构](implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md) | 废除 5 大内部实现排列组合、回归 Pi 极简灵魂、默认即最佳、3 大场景化 Agent 模式 |
 | `2026-08-20` | [Pi-Cordis 全套内置插件最优解架构演进蓝图与实践指南](implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.zh.md) | 插件最优解 5 大核心准则、15 个内置插件全量对齐矩阵与三阶段交付总结 |
+
+#### 特性与扩展类决策 (`implemented/feature/`)
+| 制定日期 | 决策标题 | 核心关注点 |
+|---|---|---|
+| `2026-08-20` | [基于极简哲学的 Pi-Cordis 原生 Subagent 插件精准增强实现](implemented/feature/2026-08-20-pi-cordis-subagent-plugin-lean-enhancement.zh.md) | 拒绝复刻 130+ 文件重型巨石，以不到 50 行增量原地落地 `ctx.session.inMemory()` 物理会话隔离与 `scout`/`worker` 角色工具切片 |
+| `2026-08-20` | [基于极简哲学的 rpiv-mono 优秀特性吸收与轻量演进实现](implemented/feature/2026-08-20-pi-cordis-rpiv-mono-lean-feature-absorption.zh.md) | 拒绝插件碎片化拆包，以不到 100 行增量原地交付零污染 `/btw` 指令、问答 Markdown 预览、Todo 依赖环路检测与 OSC 777 终端通知 |
 
 #### 精简类决策 (`implemented/simplification/`)
 | 制定日期 | 决策标题 | 核心关注点 |

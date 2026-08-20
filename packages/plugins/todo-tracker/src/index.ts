@@ -5,6 +5,7 @@ export interface TodoItem {
 	title: string;
 	status: "pending" | "in_progress" | "completed" | "cancelled";
 	category?: string;
+	dependsOn?: string[];
 }
 
 export interface TodoTrackerConfig {
@@ -15,6 +16,31 @@ export interface TodoTrackerConfig {
 export const name = "todo-tracker";
 export const inject = ["tools"];
 
+export function hasCycle(items: TodoItem[], targetId: string, dependencies: string[]): boolean {
+	const graph = new Map<string, string[]>();
+	for (const item of items) {
+		graph.set(item.id, item.dependsOn ?? []);
+	}
+	graph.set(targetId, dependencies);
+
+	const visited = new Set<string>();
+	const stack = new Set<string>();
+
+	function dfs(node: string): boolean {
+		if (stack.has(node)) return true;
+		if (visited.has(node)) return false;
+		visited.add(node);
+		stack.add(node);
+		for (const neighbor of graph.get(node) ?? []) {
+			if (dfs(neighbor)) return true;
+		}
+		stack.delete(node);
+		return false;
+	}
+
+	return dfs(targetId);
+}
+
 export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 	const todos: TodoItem[] = [];
 	const injectToPrompt = config.injectToPrompt ?? true;
@@ -23,7 +49,7 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 	// 1. Register todo_write tool in Cordis tool registry
 	const unregisterWrite = ctx.tools.register({
 		name: "todo_write",
-		description: "Add, update, or remove tasks in the session todo list.",
+		description: "Add, update, or remove tasks in the session todo list with dependency cycle validation.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -40,6 +66,11 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 					description: "Task status",
 				},
 				category: { type: "string", description: "Optional grouping category" },
+				dependsOn: {
+					type: "array",
+					items: { type: "string" },
+					description: "Optional task IDs this task depends on (blocked by)",
+				},
 			},
 			required: ["action"],
 		},
@@ -62,14 +93,28 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 			title?: string;
 			status?: TodoItem["status"];
 			category?: string;
+			dependsOn?: string[];
 		}) => {
 			if (args.action === "add" && args.title) {
 				const id = args.id ?? `todo_${todos.length + 1}`;
+				const deps = args.dependsOn ?? [];
+
+				// Check self-dependency
+				if (deps.includes(id)) {
+					return { error: `Task "${id}" cannot depend on itself` };
+				}
+
+				// Check cyclic dependency
+				if (deps.length > 0 && hasCycle(todos, id, deps)) {
+					return { error: `Cyclic dependency detected for task "${id}"` };
+				}
+
 				const item: TodoItem = {
 					id,
 					title: args.title,
 					status: args.status ?? "pending",
 					category: args.category,
+					dependsOn: deps.length > 0 ? deps : undefined,
 				};
 				todos.push(item);
 				return { message: `Added task "${args.title}" [${id}]`, item };
@@ -78,6 +123,15 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 			if (args.action === "update" && args.id) {
 				const item = todos.find((t) => t.id === args.id);
 				if (item) {
+					if (args.dependsOn !== undefined) {
+						if (args.dependsOn.includes(item.id)) {
+							return { error: `Task "${item.id}" cannot depend on itself` };
+						}
+						if (hasCycle(todos, item.id, args.dependsOn)) {
+							return { error: `Cyclic dependency detected for task "${item.id}"` };
+						}
+						item.dependsOn = args.dependsOn;
+					}
 					if (args.title) item.title = args.title;
 					if (args.status) item.status = args.status;
 					if (args.category) item.category = args.category;
@@ -125,7 +179,8 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 					.map((t) => {
 						const icon = t.status === "in_progress" ? "▶" : " ";
 						const cat = t.category ? `[${t.category}] ` : "";
-						return `- [${icon}] ${cat}${t.title} (${t.id})`;
+						const dep = t.dependsOn && t.dependsOn.length > 0 ? ` (blocked by: ${t.dependsOn.join(", ")})` : "";
+						return `- [${icon}] ${cat}${t.title} (${t.id})${dep}`;
 					})
 					.join("\n") + "\n";
 			}

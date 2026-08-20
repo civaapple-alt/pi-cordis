@@ -211,4 +211,59 @@ profiles:
 		// Cleanup
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
+
+	it("should detect and reject circular dependencies in todo-tracker", async () => {
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
+		const tool = ctx.tools.get("todo_write");
+
+		// Add task 1
+		await tool!.execute({ action: "add", id: "t1", title: "Task 1" });
+
+		// Add task 2 depending on task 1
+		await tool!.execute({ action: "add", id: "t2", title: "Task 2", dependsOn: ["t1"] });
+
+		// Attempt to make task 1 depend on task 2 (creates cycle t1 -> t2 -> t1)
+		const cycleRes = await tool!.execute({ action: "update", id: "t1", dependsOn: ["t2"] });
+		expect(cycleRes.error).toContain("Cyclic dependency detected");
+
+		// Attempt self-dependency
+		const selfDepRes = await tool!.execute({ action: "add", id: "t3", title: "Task 3", dependsOn: ["t3"] });
+		expect(selfDepRes.error).toContain("cannot depend on itself");
+	});
+
+	it("should register /btw command and setup OSC 777 terminal notifier", async () => {
+		const { createBtwCommandExtension, setupTerminalNotifier } = await import("../src/core/cordis/profile-command.ts");
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
+
+		let registeredCommand: any;
+		const mockPi: any = {
+			registerCommand: (name: string, def: any) => {
+				registeredCommand = { name, ...def };
+			},
+		};
+
+		const ext = createBtwCommandExtension(ctx);
+		ext(mockPi);
+
+		expect(registeredCommand).toBeDefined();
+		expect(registeredCommand.name).toBe("btw");
+
+		let notifyMsg = "";
+		const mockUI: any = {
+			hasUI: true,
+			ui: {
+				notify: (msg: string) => {
+					notifyMsg = msg;
+				},
+			},
+		};
+
+		await registeredCommand.handler("why use Cordis?", mockUI);
+		expect(notifyMsg).toContain("[btw answer]");
+
+		// Test terminal notifier disposer
+		const disposeNotifier = setupTerminalNotifier(ctx);
+		expect(typeof disposeNotifier).toBe("function");
+		disposeNotifier();
+	});
 });

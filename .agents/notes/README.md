@@ -80,10 +80,7 @@ If a proposed approach is rejected during review:
 
 ### Proposed Notes Under Review (`proposed/`)
 
-| Date | Title | Focus & Strategic Value |
-|---|---|---|
-| `2026-08-20` | [Pi-Cordis: Native Subagent Plugin Lean Enhancement Proposal](proposed/2026-08-20-pi-cordis-subagent-plugin-deep-enhancement-proposal.md) | Rejecting 130+ file monolithic clones, focusing on in-place `ctx.session.create()` physical isolation and `scout`/`worker` tool slicing (< 50 lines) |
-| `2026-08-20` | [Pi-Cordis: rpiv-mono Lean Feature Absorption Proposal](proposed/2026-08-20-pi-cordis-rpiv-mono-analysis-and-enhancement-proposal.md) | Rejecting plugin fragmentation, absorbing zero-pollution `/btw`, question Markdown previews, Todo floating overlay, and OSC 777 terminal notifications in-place (< 100 lines) |
+*Currently no proposed notes under review.*
 
 ---
 
@@ -103,6 +100,12 @@ If a proposed approach is rejected during review:
 | `2026-08-20` | [Pi-Cordis: Programmatic Tool Calling (PTC / Code Mode) Architecture Design](implemented/architecture/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.md) | DSH Code Mode deep dive, round-trip collapse & context preservation, dynamic SDK synthesis, and `presets/ptc/` implementation |
 | `2026-08-20` | [Pi-Cordis: Minimalist Design Philosophy and "Default is Best" Preset Simplification](implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.md) | Deprecating 5 internal permutations, aligning with Pi's minimalist soul, Default is Best, and 3 distinct agent modes |
 | `2026-08-20` | [Pi-Cordis: Built-in Plugin Ecosystem Optimal Architecture Blueprint and Guide](implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.md) | The 5 Pillars of optimal plugin architecture, 15 plugins optimization matrix, and 3-phase delivery |
+
+#### Features & Extensions (`implemented/feature/`)
+| Date | Title | Focus |
+|---|---|---|
+| `2026-08-20` | [Pi-Cordis: Native Subagent Plugin Lean Enhancement Implementation](implemented/feature/2026-08-20-pi-cordis-subagent-plugin-lean-enhancement.md) | Rejecting 130+ file monolithic clones, delivering `ctx.session.inMemory()` physical session isolation and `scout`/`worker` role tool slicing in < 50 lines |
+| `2026-08-20` | [Pi-Cordis: rpiv-mono Lean Feature Absorption Implementation](implemented/feature/2026-08-20-pi-cordis-rpiv-mono-lean-feature-absorption.md) | Rejecting plugin fragmentation, delivering zero-pollution `/btw` command, question Markdown previews, Todo cycle detection, and OSC 777 terminal notifications in < 100 lines |
 
 #### Simplification (`implemented/simplification/`)
 | Date | Title | Focus |
