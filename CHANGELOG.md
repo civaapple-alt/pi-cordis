@@ -28,7 +28,8 @@
     - `@pi-cordis/plugin-rules-injector`：自动扫描项目规则文件（`AGENTS.md`, `.claude/rules/*.md`, `.cursorrules`）并注入系统提示词。
   - 推出 `@pi-cordis/profiles` 组合装配中心，支持 `default`, `safe`, `strict`, `full`, `minimal` 5 大常用预设模式，支持在 CLI 与代码中一键切换；
   - **支持声明式 YAML 配置 (`cordis.yml` / `profiles.yml`)**：自动级联加载项目级与用户全局级的 YAML 文件，用户可自由添加自定义 Profile 与调整插件参数；
-  - **支持在 TUI 中通过 `/profile` 斜杠命令动态查看与切换当前 Profile 预设**，支持 Tab 键自动补全与无参数时的交互式下拉选择菜单。
+  - **支持在 TUI 中通过 `/profile` 斜杠命令动态查看与切换当前 Profile 预设**，支持 Tab 键自动补全与无参数时的交互式下拉选择菜单；
+  - **支持 Presets 预设与插件源码级 HMR（热重载）**：核心 10 大 Service 保持高速编程式加载，上层 `presets/` 与 `packages/plugins/*` 插件支持实时文件监听与免重启热重载。
 
 ### 🏗️ 架构与规范 (Architecture)
 

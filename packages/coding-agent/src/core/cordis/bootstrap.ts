@@ -10,7 +10,7 @@ import { PromptsService, type PromptsServiceConfig } from "./services/prompts-se
 import { ExtensionService, type ExtensionServiceConfig } from "./services/extension-service.ts";
 import { PackageManagerService, type PackageManagerServiceConfig } from "./services/package-manager-service.ts";
 import { AgentService } from "./services/agent-service.ts";
-import { applyProfile, type BuiltinPluginName } from "@pi-cordis/profiles";
+import { applyProfile, setupPluginHmr, type BuiltinPluginName, type HmrManager } from "@pi-cordis/profiles";
 import { getAgentDir } from "../../config.ts";
 
 export interface CreatePiContextOptions {
@@ -24,6 +24,7 @@ export interface CreatePiContextOptions {
 	signal?: AbortSignal;
 	profile?: string;
 	plugins?: Partial<Record<BuiltinPluginName, boolean | Record<string, unknown>>>;
+	enableHmr?: boolean;
 }
 
 export async function createPiContext(options: CreatePiContextOptions = {}): Promise<Context> {
@@ -32,7 +33,7 @@ export async function createPiContext(options: CreatePiContextOptions = {}): Pro
 
 	const ctx = new Context();
 
-	// 1. Mount 10 core Pi services as Cordis plugins
+	// 1. Mount 10 core Pi services as Cordis plugins (Static Programmatic Loading)
 	ctx.plugin(SettingsService, { cwd, agentDir });
 	ctx.plugin(AuthService, { agentDir });
 	ctx.plugin(AIService, { agentDir, allowModelNetwork: options.allowModelNetwork, signal: options.signal });
@@ -47,6 +48,15 @@ export async function createPiContext(options: CreatePiContextOptions = {}): Pro
 	// 2. Apply chosen profile and native Cordis plugins
 	const profileName = options.profile ?? "default";
 	applyProfile(ctx, profileName, options.plugins, { cwd, agentDir });
+
+	// 3. Optional HMR Watcher for presets and packages/plugins
+	if (options.enableHmr) {
+		const hmr = setupPluginHmr(ctx, profileName, {
+			cwd,
+			agentDir,
+		});
+		(ctx as any).hmrManager = hmr;
+	}
 
 	await Promise.resolve();
 	await ctx.ai.init();

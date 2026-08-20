@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { describe, expect, it } from "vitest";
 import { createPiContext } from "../src/core/cordis/index.ts";
-import { BUILTIN_PROFILES, applyProfile, loadProfilesFromYaml } from "@pi-cordis/profiles";
+import { BUILTIN_PROFILES, applyProfile, loadProfilesFromYaml, setupPluginHmr } from "@pi-cordis/profiles";
 
 describe("Cordis Native Plugins and Profiles System", () => {
 	it("should define standard built-in profiles", () => {
@@ -155,6 +155,59 @@ profiles:
 		expect(profiles.reviewer.plugins["safety-gate"]).toEqual({ readOnly: true });
 		expect(profiles.reviewer.plugins["rules-injector"]).toBe(true);
 
+		// Cleanup
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("should support HMR reload of presets and active plugins", async () => {
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-cordis-hmr-test-"));
+		const presetDir = path.join(tmpDir, "presets", "custom-hmr");
+		fs.mkdirSync(presetDir, { recursive: true });
+
+		fs.writeFileSync(
+			path.join(presetDir, "preset.yml"),
+			"name: HMR Test\ndescription: HMR Description\n",
+			"utf-8",
+		);
+
+		fs.writeFileSync(
+			path.join(presetDir, "cordis.yml"),
+			"- name: '@pi-cordis/plugin-todo-tracker'\n",
+			"utf-8",
+		);
+
+		const ctx = await createPiContext({
+			cwd: tmpDir,
+			allowModelNetwork: false,
+			profile: "custom-hmr",
+			enableHmr: true,
+		});
+
+		let reloadFired = false;
+		let updatedProfileName = "";
+
+		ctx.on("pi/hmr-preset-update" as any, (evt: any) => {
+			reloadFired = true;
+			updatedProfileName = evt.profileName;
+		});
+
+		// Trigger reload
+		const hmr = (ctx as any).hmrManager;
+		expect(hmr).toBeDefined();
+
+		// Update preset YAML file content
+		fs.writeFileSync(
+			path.join(presetDir, "cordis.yml"),
+			"- name: '@pi-cordis/plugin-safety-gate'\n  config:\n    readOnly: true\n",
+			"utf-8",
+		);
+
+		hmr.reloadCurrentProfile();
+
+		expect(reloadFired).toBe(true);
+		expect(updatedProfileName).toBe("custom-hmr");
+
+		hmr.stop();
 		// Cleanup
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});

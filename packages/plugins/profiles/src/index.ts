@@ -235,3 +235,5 @@ export function applyProfile(
 
 	return loadedPlugins;
 }
+
+export * from "./hmr.ts";
