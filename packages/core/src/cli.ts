@@ -41,10 +41,18 @@ async function runCli() {
 	// 2. Setup Terminal Notifier (OSC 777)
 	setupTerminalNotifier(cordisCtx);
 
-	// 3. Prepare Cordis Extension Factories (/profile, /btw)
+	// 3. Prepare Cordis Extension Factories (/profile, /btw) as hidden built-in extensions
 	const extensionFactories = [
-		createProfileCommandExtension(cordisCtx),
-		createBtwCommandExtension(cordisCtx),
+		{
+			name: "cordis-profile",
+			factory: createProfileCommandExtension(cordisCtx),
+			hidden: true,
+		},
+		{
+			name: "cordis-btw",
+			factory: createBtwCommandExtension(cordisCtx),
+			hidden: true,
+		},
 	];
 
 	// 4. Hand over to upstream main with Cordis extension factories
