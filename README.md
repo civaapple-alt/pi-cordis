@@ -264,6 +264,7 @@ Full ADR index available at [`.agents/notes/README.md`](.agents/notes/README.md)
 | `2026-08-20` | [Pi-Cordis: Minimalist Presets and "Default is Best" Philosophy](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.md) | `implemented` |
 | `2026-08-20` | [Pi-Cordis: Built-in Plugin Ecosystem Optimal Architecture Blueprint](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.md) | `implemented` |
 | `2026-08-20` | [Pi-Cordis: Core Decoupling, Layered Architecture, and Clean Upstream Ingestion](.agents/notes/implemented/simplification/2026-08-20-pi-cordis-core-decoupling-and-layered-architecture.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis: Agent Self-Inspection, Introspection Architecture, and Knowledge Grounding](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-agent-self-inspection-and-introspection-architecture.md) | `implemented` |
 | `2026-08-19` | [Pi AgentHarness: Specification & Cordis Integration](.agents/notes/archived/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.md) | `archived` |
 
 ---

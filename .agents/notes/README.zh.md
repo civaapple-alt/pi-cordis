@@ -100,6 +100,7 @@ graph LR
 | `2026-08-20` | [Pi-Cordis 编程化工具调用（PTC / Code Mode）架构设计](implemented/architecture/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.zh.md) | DSH Code Mode 深度拆解、轮次坍缩与上下文保护、动态 SDK 生成与 `presets/ptc/` 落地 |
 | `2026-08-20` | [Pi-Cordis 极简设计哲学与 “Default is Best” 预设体系重构](implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md) | 废除 5 大内部实现排列组合、回归 Pi 极简灵魂、默认即最佳、3 大场景化 Agent 模式 |
 | `2026-08-20` | [Pi-Cordis 全套内置插件最优解架构演进蓝图与实践指南](implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.zh.md) | 插件最优解 5 大核心准则、15 个内置插件全量对齐矩阵与三阶段交付总结 |
+| `2026-08-20` | [Pi-Cordis 智能体自我认知（Self-Inspection）架构演进与知识沉淀](implemented/architecture/2026-08-20-pi-cordis-agent-self-inspection-and-introspection-architecture.zh.md) | 100% 继承 Pi 原生自省传统、5 维自我认知模型、rules-injector SHA-256 KV-Cache 保护、10 大服务运行时反射与 /profile 预设自检 |
 
 #### 特性与扩展类决策 (`implemented/feature/`)
 | 制定日期 | 决策标题 | 核心关注点 |

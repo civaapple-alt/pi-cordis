@@ -100,6 +100,7 @@ If a proposed approach is rejected during review:
 | `2026-08-20` | [Pi-Cordis: Programmatic Tool Calling (PTC / Code Mode) Architecture Design](implemented/architecture/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.md) | DSH Code Mode deep dive, round-trip collapse & context preservation, dynamic SDK synthesis, and `presets/ptc/` implementation |
 | `2026-08-20` | [Pi-Cordis: Minimalist Design Philosophy and "Default is Best" Preset Simplification](implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.md) | Deprecating 5 internal permutations, aligning with Pi's minimalist soul, Default is Best, and 3 distinct agent modes |
 | `2026-08-20` | [Pi-Cordis: Built-in Plugin Ecosystem Optimal Architecture Blueprint and Guide](implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.md) | The 5 Pillars of optimal plugin architecture, 15 plugins optimization matrix, and 3-phase delivery |
+| `2026-08-20` | [Pi-Cordis: Agent Self-Inspection, Introspection Architecture, and Knowledge Grounding](implemented/architecture/2026-08-20-pi-cordis-agent-self-inspection-and-introspection-architecture.md) | Preserving 100% of native Pi introspection, 5-dimensional self-inspection model, rules-injector SHA-256 KV-cache protection, and microkernel service mesh reflection |
 
 #### Features & Extensions (`implemented/feature/`)
 | Date | Title | Focus |

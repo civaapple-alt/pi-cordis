@@ -264,6 +264,7 @@ pnpm picds
 | `2026-08-20` | [Pi-Cordis 极简设计哲学与 “Default is Best” 预设体系重构](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md) | `implemented` |
 | `2026-08-20` | [Pi-Cordis 全套内置插件最优解架构演进蓝图与实践指南](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.zh.md) | `implemented` |
 | `2026-08-20` | [Pi-Cordis: 核心控制面彻底解耦、分层架构落地与上游零负担升级方案](.agents/notes/implemented/simplification/2026-08-20-pi-cordis-core-decoupling-and-layered-architecture.zh.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis 智能体自我认知（Self-Inspection）架构演进与知识沉淀](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-agent-self-inspection-and-introspection-architecture.zh.md) | `implemented` |
 | `2026-08-19` | [Pi AgentHarness 工业级事务规格与 Cordis 微内核架构融合](.agents/notes/archived/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.zh.md) | `archived` |
 
 ---
