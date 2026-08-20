@@ -1,5 +1,12 @@
 import { Service, type Context } from "@deepseek-ai/cordis";
-import { discoverAndLoadExtensions, getAgentDir, ExtensionRunner } from "@earendil-works/pi-coding-agent";
+import { discoverAndLoadExtensions, getAgentDir } from "@earendil-works/pi-coding-agent";
+
+export interface ExtensionCommandDefinition {
+	description: string;
+	getArgumentCompletions?: (prefix: string) => Array<{ value: string; label?: string }> | null;
+	handler: (args: string, ctx: any) => Promise<void> | void;
+	[key: string]: any;
+}
 
 export interface ExtensionServiceConfig {
 	cwd?: string;
@@ -13,6 +20,8 @@ export class ExtensionService extends Service {
 	private agentDir: string;
 	private extensionPaths: string[];
 	public lastLoadedResult?: any;
+	private commands = new Map<string, ExtensionCommandDefinition>();
+	private activePi?: any;
 
 	constructor(ctx: Context, config?: ExtensionServiceConfig) {
 		super(ctx, "extensions");
@@ -37,6 +46,54 @@ export class ExtensionService extends Service {
 
 	public getLoadedTools() {
 		return this.lastLoadedResult?.runtime?.tools ?? [];
+	}
+
+	/**
+	 * Register a slash command from any Cordis plugin with reversible Disposer
+	 */
+	public registerCommand(name: string, definition: ExtensionCommandDefinition): () => void {
+		return this.ctx.effect(() => {
+			this.commands.set(name, definition);
+			if (this.activePi) {
+				try {
+					this.activePi.registerCommand(name, definition);
+				} catch {
+					// Ignore if already registered
+				}
+			}
+			this.ctx.emit("pi/command-registered", { name, definition });
+			return () => {
+				this.commands.delete(name);
+				this.ctx.emit("pi/command-unregistered", name);
+			};
+		});
+	}
+
+	/**
+	 * Get all registered slash commands
+	 */
+	public getRegisteredCommands(): ReadonlyMap<string, ExtensionCommandDefinition> {
+		return this.commands;
+	}
+
+	/**
+	 * Creates a hidden bridge extension factory for passing into upstream main()
+	 */
+	public createBridgeExtensionFactory(): { name: string; factory: (pi: any) => void; hidden: boolean } {
+		return {
+			name: "cordis-bridge",
+			hidden: true,
+			factory: (pi: any) => {
+				this.activePi = pi;
+				for (const [name, def] of this.commands.entries()) {
+					try {
+						pi.registerCommand(name, def);
+					} catch {
+						// Ignore duplicate registration
+					}
+				}
+			},
+		};
 	}
 }
 

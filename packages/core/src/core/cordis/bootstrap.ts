@@ -10,7 +10,7 @@ import { PromptsService, type PromptsServiceConfig } from "./services/prompts-se
 import { ExtensionService, type ExtensionServiceConfig } from "./services/extension-service.ts";
 import { PackageManagerService, type PackageManagerServiceConfig } from "./services/package-manager-service.ts";
 import { AgentService } from "./services/agent-service.ts";
-import { applyProfile, setupPluginHmr, type BuiltinPluginName, type HmrManager } from "@pi-cordis/profiles";
+import profilesPlugin, { applyProfile, setupPluginHmr, type BuiltinPluginName, type HmrManager } from "@pi-cordis/profiles";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 export interface CreatePiContextOptions {
@@ -45,7 +45,8 @@ export async function createPiContext(options: CreatePiContextOptions = {}): Pro
 	ctx.plugin(PackageManagerService, { cwd, agentDir });
 	ctx.plugin(AgentService);
 
-	// 2. Apply chosen profile and native Cordis plugins
+	// 2. Mount profiles management plugin & apply active profile
+	ctx.plugin(profilesPlugin);
 	const profileName = options.profile ?? "default";
 	applyProfile(ctx, profileName, options.plugins, { cwd, agentDir });
 

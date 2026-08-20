@@ -60,6 +60,12 @@ importers:
       '@earendil-works/pi-tui':
         specifier: ^0.84.2
         version: 0.84.2
+      '@pi-cordis/plugin-btw':
+        specifier: workspace:*
+        version: link:../plugins/btw
+      '@pi-cordis/plugin-terminal-notifier':
+        specifier: workspace:*
+        version: link:../plugins/terminal-notifier
       '@pi-cordis/profiles':
         specifier: workspace:*
         version: link:../plugins/profiles
@@ -85,6 +91,15 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:*
         version: link:../../../vendor/cordis
+
+  packages/plugins/btw:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+      '@earendil-works/pi-ai':
+        specifier: ^0.84.2
+        version: 0.84.2(ws@8.21.3)(zod@4.4.3)
 
   packages/plugins/code-mode:
     dependencies:
@@ -130,6 +145,9 @@ importers:
       '@pi-cordis/plugin-ask-question':
         specifier: workspace:*
         version: link:../ask-question
+      '@pi-cordis/plugin-btw':
+        specifier: workspace:*
+        version: link:../btw
       '@pi-cordis/plugin-code-mode':
         specifier: workspace:*
         version: link:../code-mode
@@ -163,6 +181,9 @@ importers:
       '@pi-cordis/plugin-subagent':
         specifier: workspace:*
         version: link:../subagent
+      '@pi-cordis/plugin-terminal-notifier':
+        specifier: workspace:*
+        version: link:../terminal-notifier
       '@pi-cordis/plugin-todo-tracker':
         specifier: workspace:*
         version: link:../todo-tracker
@@ -198,6 +219,12 @@ importers:
         version: link:../../../vendor/cordis
 
   packages/plugins/subagent:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+
+  packages/plugins/terminal-notifier:
     dependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:*

@@ -20,6 +20,8 @@
 		"@pi-cordis/plugin-session-handoff": "workspace:*",
 		"@pi-cordis/plugin-git-automation": "workspace:*",
 		"@pi-cordis/plugin-ssh-delegator": "workspace:*",
+		"@pi-cordis/plugin-btw": "workspace:*",
+		"@pi-cordis/plugin-terminal-notifier": "workspace:*",
 		"yaml": "^2.7.0"
 	},
 	"peerDependencies": {

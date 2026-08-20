@@ -20,3 +20,5 @@
 - name: '@pi-cordis/plugin-session-handoff'
 - name: '@pi-cordis/plugin-ssh-delegator'
 - name: '@pi-cordis/plugin-tools-manager'
+- name: '@pi-cordis/plugin-btw'
+- name: '@pi-cordis/plugin-terminal-notifier'

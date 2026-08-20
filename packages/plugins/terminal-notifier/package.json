@@ -1,0 +1,11 @@
+{
+	"name": "@pi-cordis/plugin-terminal-notifier",
+	"version": "0.1.0",
+	"description": "OSC 777 native desktop notifications plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}

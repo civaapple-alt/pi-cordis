@@ -60,6 +60,8 @@ declare module "@deepseek-ai/cordis" {
 		"pi/skill-unregistered"(name: string): void;
 		"pi/prompt-registered"(prompt: PromptTemplate): void;
 		"pi/extension-loaded"(result: any): void;
+		"pi/command-registered"(event: { name: string; definition: any }): void;
+		"pi/command-unregistered"(name: string): void;
 
 		// Package Manager
 		"pi/package-installed"(event: { source: string; local?: boolean }): void;

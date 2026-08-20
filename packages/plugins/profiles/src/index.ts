@@ -16,6 +16,8 @@ import toolsManagerPlugin from "@pi-cordis/plugin-tools-manager";
 import sessionHandoffPlugin from "@pi-cordis/plugin-session-handoff";
 import gitAutomationPlugin from "@pi-cordis/plugin-git-automation";
 import sshDelegatorPlugin from "@pi-cordis/plugin-ssh-delegator";
+import btwPlugin from "@pi-cordis/plugin-btw";
+import terminalNotifierPlugin from "@pi-cordis/plugin-terminal-notifier";
 
 export const builtinPlugins = {
 	"safety-gate": safetyGatePlugin,
@@ -32,6 +34,8 @@ export const builtinPlugins = {
 	"session-handoff": sessionHandoffPlugin,
 	"git-automation": gitAutomationPlugin,
 	"ssh-delegator": sshDelegatorPlugin,
+	btw: btwPlugin,
+	"terminal-notifier": terminalNotifierPlugin,
 } as const;
 
 export type BuiltinPluginName = keyof typeof builtinPlugins;
@@ -68,6 +72,8 @@ export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 			"session-handoff": true,
 			"ssh-delegator": true,
 			"tools-manager": true,
+			btw: true,
+			"terminal-notifier": true,
 		},
 	},
 	plan: {
@@ -259,3 +265,64 @@ export function applyProfile(
 }
 
 export * from "./hmr.js";
+
+export const name = "profiles";
+export const inject = ["extensions", "settings"];
+
+export interface ProfilesPluginConfig {
+	defaultProfile?: string;
+}
+
+export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
+	ctx.extensions?.registerCommand?.("profile", {
+		description: "View or switch active Cordis profile (e.g. /profile default, /profile plan, /profile ptc)",
+		getArgumentCompletions: (prefix: string) => {
+			const cwd = (ctx as any).settings?.getCwd?.() ?? process.cwd();
+			const allProfiles = loadProfilesFromYaml(cwd);
+			const profiles = Object.keys(allProfiles);
+			const filtered = profiles.filter((p) => p.startsWith(prefix));
+			return filtered.length > 0
+				? filtered.map((p) => ({
+						value: p,
+						label: `${p} - ${allProfiles[p]?.description ?? "Custom profile"}`,
+					}))
+				: null;
+		},
+		handler: async (args: string, cmdCtx: any) => {
+			const cwd = cmdCtx.cwd ?? (ctx as any).settings?.getCwd?.() ?? process.cwd();
+			const allProfiles = loadProfilesFromYaml(cwd);
+			const targetProfile = args.trim();
+			const availableProfiles = Object.keys(allProfiles);
+
+			if (targetProfile && allProfiles[targetProfile]) {
+				const loaded = applyProfile(ctx, targetProfile, undefined, { cwd });
+				if (cmdCtx.hasUI) {
+					cmdCtx.ui.notify(
+						`Switched to profile: "${targetProfile}"\nActive plugins: ${loaded.join(", ") || "none"}`,
+						"info",
+					);
+				}
+				return;
+			}
+
+			if (cmdCtx.hasUI) {
+				const items = availableProfiles.map(
+					(p) => `${p} - ${allProfiles[p]?.description ?? "Custom profile"}`,
+				);
+				const selected = await cmdCtx.ui.select("Select Cordis Profile", items);
+				if (selected) {
+					const chosenName = selected.split(" - ")[0];
+					if (allProfiles[chosenName]) {
+						const loaded = applyProfile(ctx, chosenName, undefined, { cwd });
+						cmdCtx.ui.notify(
+							`Switched to profile: "${chosenName}"\nActive plugins: ${loaded.join(", ") || "none"}`,
+							"info",
+						);
+					}
+				}
+			}
+		},
+	});
+}
+
+export default { name, inject, apply };

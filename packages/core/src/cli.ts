@@ -7,11 +7,6 @@
 import * as os from "node:os";
 import * as path from "node:path";
 import { createPiContext } from "./core/cordis/index.ts";
-import {
-	createProfileCommandExtension,
-	createBtwCommandExtension,
-	setupTerminalNotifier,
-} from "./core/cordis/profile-command.ts";
 import { main } from "@earendil-works/pi-coding-agent";
 
 async function runCli() {
@@ -38,26 +33,11 @@ async function runCli() {
 		cwd: process.cwd(),
 	});
 
-	// 2. Setup Terminal Notifier (OSC 777)
-	setupTerminalNotifier(cordisCtx);
-
-	// 3. Prepare Cordis Extension Factories (/profile, /btw) as hidden built-in extensions
-	const extensionFactories = [
-		{
-			name: "cordis-profile",
-			factory: createProfileCommandExtension(cordisCtx),
-			hidden: true,
-		},
-		{
-			name: "cordis-btw",
-			factory: createBtwCommandExtension(cordisCtx),
-			hidden: true,
-		},
-	];
-
-	// 4. Hand over to upstream main with Cordis extension factories
+	// 2. Hand over to upstream main with dynamic Cordis bridge extension factory
 	await main(rawArgs, {
-		extensionFactories,
+		extensionFactories: [
+			cordisCtx.extensions.createBridgeExtensionFactory(),
+		],
 	});
 }
 

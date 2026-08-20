@@ -27,6 +27,8 @@
 		"@deepseek-ai/cosmokit": "workspace:*",
 		"@deepseek-ai/schemastery": "workspace:*",
 		"@pi-cordis/profiles": "workspace:*",
+		"@pi-cordis/plugin-btw": "workspace:*",
+		"@pi-cordis/plugin-terminal-notifier": "workspace:*",
 		"@earendil-works/pi-coding-agent": "^0.84.2",
 		"@earendil-works/pi-agent-core": "^0.84.2",
 		"@earendil-works/pi-ai": "^0.84.2",

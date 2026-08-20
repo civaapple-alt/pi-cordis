@@ -22,7 +22,9 @@
 			"@pi-cordis/plugin-tools-manager": ["./packages/plugins/tools-manager/src/index.ts"],
 			"@pi-cordis/plugin-session-handoff": ["./packages/plugins/session-handoff/src/index.ts"],
 			"@pi-cordis/plugin-git-automation": ["./packages/plugins/git-automation/src/index.ts"],
-			"@pi-cordis/plugin-ssh-delegator": ["./packages/plugins/ssh-delegator/src/index.ts"]
+			"@pi-cordis/plugin-ssh-delegator": ["./packages/plugins/ssh-delegator/src/index.ts"],
+			"@pi-cordis/plugin-btw": ["./packages/plugins/btw/src/index.ts"],
+			"@pi-cordis/plugin-terminal-notifier": ["./packages/plugins/terminal-notifier/src/index.ts"]
 		}
 	},
 	"include": [

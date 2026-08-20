@@ -231,22 +231,30 @@ profiles:
 	});
 
 	it("should register /btw command and setup OSC 777 terminal notifier", async () => {
-		const { createBtwCommandExtension, setupTerminalNotifier } = await import("../src/core/cordis/profile-command.ts");
 		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
 
-		let registeredCommand: any;
+		// 1. Verify ExtensionService collected commands from plugins
+		const commands = ctx.extensions.getRegisteredCommands();
+		expect(commands.has("profile")).toBe(true);
+		expect(commands.has("btw")).toBe(true);
+
+		// 2. Verify createBridgeExtensionFactory bridges commands to pi
+		const bridge = ctx.extensions.createBridgeExtensionFactory();
+		expect(bridge.name).toBe("cordis-bridge");
+		expect(bridge.hidden).toBe(true);
+
+		const registeredInPi = new Map<string, any>();
 		const mockPi: any = {
 			registerCommand: (name: string, def: any) => {
-				registeredCommand = { name, ...def };
+				registeredInPi.set(name, def);
 			},
 		};
+		bridge.factory(mockPi);
 
-		const ext = createBtwCommandExtension(ctx);
-		ext(mockPi);
+		expect(registeredInPi.has("profile")).toBe(true);
+		expect(registeredInPi.has("btw")).toBe(true);
 
-		expect(registeredCommand).toBeDefined();
-		expect(registeredCommand.name).toBe("btw");
-
+		// 3. Test /btw handler without active model
 		let notifyMsg = "";
 		const mockUI: any = {
 			hasUI: true,
@@ -257,12 +265,27 @@ profiles:
 			},
 		};
 
-		await registeredCommand.handler("why use Cordis?", mockUI);
+		const btwDef = registeredInPi.get("btw");
+		await btwDef.handler("why use Cordis?", mockUI);
 		expect(notifyMsg).toContain("[btw answer]");
+		expect(notifyMsg).toContain("No active or available LLM configured");
 
-		// Test terminal notifier disposer
-		const disposeNotifier = setupTerminalNotifier(ctx);
-		expect(typeof disposeNotifier).toBe("function");
-		disposeNotifier();
+		// 4. Test /btw handler with mock AI runtime
+		const mockModel = { id: "test-model", provider: "mock", api: "mock" };
+		ctx.ai.activeModel = mockModel as any;
+		(ctx.ai.getRuntime() as any).completeSimple = async () => ({
+			content: [{ type: "text", text: "Cordis provides a modular microkernel architecture." }],
+		});
+
+		let queryEventReceived = false;
+		let responseEventReceived = false;
+		ctx.on("pi/btw-query" as any, () => { queryEventReceived = true; });
+		ctx.on("pi/btw-response" as any, () => { responseEventReceived = true; });
+
+		await btwDef.handler("what is Cordis?", mockUI);
+		expect(notifyMsg).toContain("[btw: test-model]");
+		expect(notifyMsg).toContain("Cordis provides a modular microkernel architecture.");
+		expect(queryEventReceived).toBe(true);
+		expect(responseEventReceived).toBe(true);
 	});
 });

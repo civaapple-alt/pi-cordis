@@ -413,4 +413,57 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 
 		await fork.dispose();
 	});
+
+	it("15. @pi-cordis/plugin-btw: registers /btw command and performs ephemeral side-channel LLM query", async () => {
+		const btwPlugin = (await import("@pi-cordis/plugin-btw")).default;
+		const fork = await ctx.plugin(btwPlugin);
+
+		const cmd = ctx.extensions.getRegisteredCommands().get("btw");
+		expect(cmd).toBeDefined();
+		expect(cmd.description).toContain("side question");
+
+		// Test mock completion
+		const mockModel = { id: "deepseek-chat", provider: "deepseek", api: "openai-completions" };
+		ctx.ai.activeModel = mockModel;
+		(ctx.ai.getRuntime() as any).completeSimple = async () => ({
+			content: [{ type: "text", text: "SSE stands for Server-Sent Events." }],
+		});
+
+		let queryFired = false;
+		let responseFired = false;
+		ctx.on("pi/btw-query" as any, () => { queryFired = true; });
+		ctx.on("pi/btw-response" as any, () => { responseFired = true; });
+
+		let answerNotify = "";
+		const mockCmdCtx = {
+			hasUI: true,
+			ui: {
+				notify: (msg: string) => {
+					answerNotify = msg;
+				},
+			},
+		};
+
+		await cmd.handler("what is SSE?", mockCmdCtx);
+		expect(answerNotify).toContain("[btw: deepseek-chat]");
+		expect(answerNotify).toContain("SSE stands for Server-Sent Events.");
+		expect(queryFired).toBe(true);
+		expect(responseFired).toBe(true);
+
+		await fork.dispose();
+		expect(ctx.extensions.getRegisteredCommands().has("btw")).toBe(false);
+	});
+
+	it("16. @pi-cordis/plugin-terminal-notifier: emits OSC 777 native desktop notifications", async () => {
+		const notifierPlugin = (await import("@pi-cordis/plugin-terminal-notifier")).default;
+		const fork = await ctx.plugin(notifierPlugin);
+
+		// Trigger ask_question tool call
+		await ctx.parallel("pi/tool-call", { name: "ask_question", args: {} });
+
+		// Trigger session turn end
+		await ctx.parallel("pi/session-turn-end", { session: {} });
+
+		await fork.dispose();
+	});
 });

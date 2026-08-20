@@ -1,0 +1,14 @@
+{
+	"name": "@pi-cordis/plugin-btw",
+	"version": "0.1.0",
+	"description": "Zero-context-pollution ephemeral side-channel LLM question plugin for Pi-Cordis",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"dependencies": {
+		"@earendil-works/pi-ai": "^0.84.2"
+	},
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "workspace:*"
+	}
+}
