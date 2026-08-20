@@ -28,9 +28,10 @@
   - 独立插件工作区（`packages/plugins/terminal-notifier`），监听智能体交互等待与轮次完成，向 Warp / Ghostty / iTerm2 发射 `OSC 777` 桌面弹窗通知。
 - **`@pi-cordis/plugin-ask-question` 终端真实交互式弹窗 (Interactive Terminal UI Select & Input)**：
   - 深度集成 Pi 原生终端交互上下文 `ctx.ui.select()` 与 `ctx.ui.input()`，工具调用时在终端呈现交互式多选列表与自定义输入框，阻塞等待用户键盘上下移动与回车确认，彻底告别单选伪造；非交互/CI 模式平滑自动回退。
-- **`@pi-cordis/plugin-plan-mode` 交互式审批弹窗与自动切换 Default 模式 (Interactive Approval & Auto-Switch)**：
-  - 当大模型调用 `plan_step({ action: "request_review" | "approve" })` 时，自动在终端弹出交互式选择弹窗（`ctx.ui.select`）；
-  - 用户确认批准后，自动触发 `pi/profile-switch` 将微内核无缝热切换回 `default` 模式，解除只读拦截并激活 `git-guard` 自动检查点，无需用户手动输入 `/profile default` 命令行指令。
+- **`@pi-cordis/plugin-plan-mode` 交互式审批弹窗、意见录入与自动切换模式 (Interactive Approval, Feedback & Auto-Switch)**：
+  - 当大模型调用 `plan_step({ action: "request_review" | "approve" })` 时，自动在终端弹出交互式选择弹窗（`ctx.ui.select`），提供“批准执行”、“提出修改意见”与“暂不执行/先提问”三大分支；
+  - 若用户选择“提出修改意见”，自动弹出输入框（`ctx.ui.input`）收集用户意见并回传大模型，严格强制大模型**立即停止代码编写，原地更新实施计划**；
+  - 若用户选择“批准执行”，自动触发 `pi/profile-switch` 将微内核无缝热切换回 `default` 模式，解除只读拦截并激活 `git-guard` 自动检查点，无需用户手动输入 `/profile default` 指令。
 - **“Default is Best” 3 大场景化预设**：
   - 废除 5 大内部排列组合，收敛为 3 大极简场景预设：
     1. `default`（标准开发模式，内置安全守门、Git 检查点、规则注入、待办追踪、输出防爆、多智能体协同、旁路问答与桌面通知）；

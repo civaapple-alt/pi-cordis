@@ -468,6 +468,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 				const ui = execContext?.ctx?.ui;
 				const hasUI = Boolean(execContext?.ctx?.hasUI && ui?.select);
 				let userApproved = false;
+				let userFeedback: string | undefined;
 
 				if (hasUI && ui?.select) {
 					const promptTitle = args.action === "approve"
@@ -475,13 +476,19 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 						: `📋 实施计划 [${planDoc.title}] 已就绪，是否确认批准并自动切换至 Default 模式？`;
 
 					const options = [
-						"✅ 批准计划并自动切换至 Default 模式 (Approve & Switch to default)",
-						"📝 继续修改计划 (Keep editing in plan mode)",
+						"✅ 批准计划并自动切换至 Default 模式开始执行 (Approve & Switch to default)",
+						"📝 提出修改意见并调整计划 (Provide feedback & adjust plan)",
+						"💬 暂时不执行，我要先提问 (Ask questions / keep in plan mode)",
 					];
 
 					const chosen = await ui.select(promptTitle, options, { signal: execContext?.signal });
 					if (chosen && chosen.startsWith("✅")) {
 						userApproved = true;
+					} else if (chosen && chosen.startsWith("📝") && ui.input) {
+						const inputVal = await ui.input("请输入您的修改意见或需求调整：", "例如：增加夜间模式、调整性格维度分析...", { signal: execContext?.signal });
+						if (inputVal && inputVal.trim()) {
+							userFeedback = inputVal.trim();
+						}
 					}
 				} else {
 					// In non-interactive or test mode, action === "approve" approves directly
@@ -513,10 +520,29 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 					planDoc.isApproved = false;
 					const md = syncPlanToDisk(planDoc);
 					const { bar } = calculateProgress(planDoc.steps);
+
+					if (userFeedback) {
+						return {
+							status: "feedback_provided",
+							isApproved: false,
+							userFeedback,
+							message: `🛑 PLAN NOT APPROVED: The user reviewed the plan and provided the following feedback:\n` +
+								`"${userFeedback}"\n\n` +
+								`YOU MUST NOT EXECUTE OR WRITE CODE. Update the implementation plan in \`${planDoc.planFilePath}\` to incorporate this feedback, and present the updated plan to the user.`,
+							sessionId: sId,
+							progress: bar,
+							planFilePath: planDoc.planFilePath,
+							markdown: md,
+						};
+					}
+
 					return {
-						message: `Implementation plan for session [${sId}] is presented. User chose to keep modifying in Plan Mode.`,
-						sessionId: sId,
+						status: "rejected",
 						isApproved: false,
+						message: `🛑 PLAN NOT APPROVED: The user selected to continue modifying the plan or discuss questions.\n` +
+							`YOU MUST NOT WRITE CODE OR EXECUTE. DO NOT mark steps as in_progress or completed.\n` +
+							`STOP immediately and ask the user what specific changes, adjustments, or questions they have regarding the plan.`,
+						sessionId: sId,
 						progress: bar,
 						planFilePath: planDoc.planFilePath,
 						markdown: md,
@@ -625,6 +651,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 
 			planText += `\n> ⚠️ [Plan Mode Policy]: You are in read-only Plan Mode. Formulate/update the plan in \`${planDoc.planFilePath}\`. Do NOT attempt to write or edit files in this mode.\n`;
 			planText += `> When the plan is formulated or when the user asks to execute/proceed, call \`plan_step({ action: "request_review" })\` or \`plan_step({ action: "approve" })\`. This will present an interactive approval dialog in the user's terminal to approve and automatically switch to default development mode.\n`;
+			planText += `> 🛑 CRITICAL: If the user does NOT approve (chooses to modify the plan or ask questions), you MUST STOP immediately and respond to the user with questions or plan updates. NEVER proceed to execute steps or write code without user approval!\n`;
 
 			event.prompt += planText;
 		});
