@@ -34,6 +34,14 @@
     2. `plan`（规划与审计模式，只读探索、步骤状态机与写操作强制拦截）；
     3. `ptc`（编程化调用模式，动态 TypeScript SDK 与 Worker 线程沙箱 1 轮极速批处理）。
 
+### 🛠️ 构建脚本与包配置校准 (Build Scripts & Package Config Calibration)
+
+- **根目录 `build` 脚本修复**：
+  - 将根目录 `package.json` 中的 `"build": "pnpm -r run build"` 校准为 `"build": "tsc --noEmit"`，消除 monorepo 子包无 build 脚本时抛出的 `[ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT]` 错误，确保 `pnpm build` 直接执行全量 TypeScript 严格类型检查；
+- **`@pi-cordis/core` 入口与构建脚本校准**：
+  - 在 `packages/core/package.json` 中补充 `"build": "tsc --noEmit"` 脚本；
+  - 将 `packages/core/package.json` 中的 `bin`、`main`、`types` 与 `exports` 路径从过期的 `./dist/` 指向源码 `./src/index.ts` 与 `./src/cli.ts`，与插件工作区及 JIT ESM 架构完全对齐。
+
 ---
 
 ## [0.2.0] - 2026-08-20

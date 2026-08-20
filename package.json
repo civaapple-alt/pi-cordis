@@ -5,7 +5,7 @@
   "scripts": {
     "picds": "tsx packages/core/src/cli.ts",
     "picordis": "tsx packages/core/src/cli.ts",
-    "build": "pnpm -r run build",
+    "build": "tsc --noEmit",
     "test": "vitest --run",
     "check": "tsc --noEmit"
   },
