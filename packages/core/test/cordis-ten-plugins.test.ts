@@ -84,13 +84,29 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		}
 		expect(writeBlocked).toBe(true);
 
-		// 4. Request review and approve
+		// 4. Request review (non-interactive) and interactive UI approve
 		const reviewRes = await tool!.execute({ action: "request_review" });
 		expect(reviewRes.isApproved).toBe(false);
 		expect(reviewRes.markdown).toContain("Pending User Review");
 
-		const approveRes = await tool!.execute({ action: "approve" });
+		// 4.1 Interactive UI approval
+		let profileSwitchEmitted = false;
+		ctx.on("pi/profile-switch" as any, (target: string) => {
+			if (target === "default") profileSwitchEmitted = true;
+		});
+
+		const mockApprovalUI: any = {
+			select: async () => "✅ 批准计划并自动切换至 Default 模式 (Approve & Switch to default)",
+			notify: () => {},
+		};
+
+		const approveRes = await tool!.execute(
+			{ action: "request_review" },
+			{ ctx: { hasUI: true, ui: mockApprovalUI } },
+		);
 		expect(approveRes.isApproved).toBe(true);
+		expect(approveRes.autoSwitchedProfile).toBe("default");
+		expect(profileSwitchEmitted).toBe(true);
 
 		// 5. Verify write tool is now unblocked
 		let writeAllowed = true;

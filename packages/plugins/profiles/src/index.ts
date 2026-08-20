@@ -342,6 +342,14 @@ export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 			}
 		},
 	});
+
+	// Listen for programmatic profile switch events (e.g. from plan-mode user approval)
+	ctx.on("pi/profile-switch" as any, async (targetProfile: string) => {
+		if (targetProfile) {
+			const cwd = (ctx as any).settings?.getCwd?.() ?? process.cwd();
+			await applyProfile(ctx, targetProfile, undefined, { cwd });
+		}
+	});
 }
 
 export default { name, inject, apply };

@@ -357,21 +357,24 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 			if (!theme?.fg) return `${msg} | ${bar} ${filePath}`.trim();
 			return `${theme.fg("success", msg)} ${theme.fg("dim", `| ${bar} ${filePath}`)}`.trim();
 		},
-		execute: async (args: {
-			action: string;
-			sessionId?: string;
-			id?: number;
-			title?: string;
-			overview?: string;
-			userReviewRequired?: string;
-			openQuestions?: string[];
-			proposedChanges?: ProposedChange[];
-			verificationPlan?: string;
-			status?: PlanStep["status"];
-			dependsOn?: number[];
-			notes?: string;
-			summary?: string;
-		}) => {
+		execute: async (
+			args: {
+				action: string;
+				sessionId?: string;
+				id?: number;
+				title?: string;
+				overview?: string;
+				userReviewRequired?: string;
+				openQuestions?: string[];
+				proposedChanges?: ProposedChange[];
+				verificationPlan?: string;
+				status?: PlanStep["status"];
+				dependsOn?: number[];
+				notes?: string;
+				summary?: string;
+			},
+			execContext?: any,
+		) => {
 			const sId = args.sessionId || activeSessionId || "default";
 			const planDoc = getOrCreatePlan(sId);
 
@@ -460,32 +463,65 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 				return { error: `Step #${args.id} not found in session [${sId}]` };
 			}
 
-			// E. Request User Review
-			if (args.action === "request_review") {
-				const md = syncPlanToDisk(planDoc);
-				const { bar } = calculateProgress(planDoc.steps);
-				return {
-					message: `Implementation plan for session [${sId}] created and ready for user review at ${planDoc.planFilePath}. Once approved, instruct user to switch to default mode via '/profile default' to begin implementation.`,
-					sessionId: sId,
-					planFilePath: planDoc.planFilePath,
-					isApproved: planDoc.isApproved,
-					progress: bar,
-					userReviewRequired: planDoc.userReviewRequired,
-					markdown: md,
-				};
-			}
+			// E. Request User Review / F. User Approval with Interactive UI Selection
+			if (args.action === "request_review" || args.action === "approve") {
+				const ui = execContext?.ctx?.ui;
+				const hasUI = Boolean(execContext?.ctx?.hasUI && ui?.select);
+				let userApproved = false;
 
-			// F. User Approval
-			if (args.action === "approve") {
-				planDoc.isApproved = true;
-				syncPlanToDisk(planDoc);
-				(ctx as any).emit?.("pi/plan-approved", { sessionId: sId, plan: planDoc });
-				return {
-					message: `Implementation plan for session [${sId}] approved! In read-only Plan Mode, file modifications remain blocked. Please instruct user to type '/profile default' in terminal, then send '按照 implementation_plan.md 开始实现' to begin execution.`,
-					sessionId: sId,
-					isApproved: true,
-					planFilePath: planDoc.planFilePath,
-				};
+				if (hasUI && ui?.select) {
+					const promptTitle = args.action === "approve"
+						? `📋 用户已确认实施计划 [${planDoc.title}]，是否立即批准并切换至 Default 模式开始执行？`
+						: `📋 实施计划 [${planDoc.title}] 已就绪，是否确认批准并自动切换至 Default 模式？`;
+
+					const options = [
+						"✅ 批准计划并自动切换至 Default 模式 (Approve & Switch to default)",
+						"📝 继续修改计划 (Keep editing in plan mode)",
+					];
+
+					const chosen = await ui.select(promptTitle, options, { signal: execContext?.signal });
+					if (chosen && chosen.startsWith("✅")) {
+						userApproved = true;
+					}
+				} else {
+					// In non-interactive or test mode, action === "approve" approves directly
+					userApproved = args.action === "approve";
+				}
+
+				if (userApproved) {
+					planDoc.isApproved = true;
+					const md = syncPlanToDisk(planDoc);
+					const { bar } = calculateProgress(planDoc.steps);
+
+					// Programmatically switch profile to default
+					await (ctx as any).parallel?.("pi/profile-switch", "default");
+					if (execContext?.ctx?.ui?.notify) {
+						execContext.ctx.ui.notify("已批准计划并自动切换至 Default 开发模式！", "info");
+					}
+					(ctx as any).emit?.("pi/plan-approved", { sessionId: sId, plan: planDoc });
+
+					return {
+						message: `Implementation plan for session [${sId}] APPROVED by user! Active profile has been automatically switched to 'default'. Full write/edit tools and git-guard checkpoints are now active. You may now begin implementing the plan steps.`,
+						sessionId: sId,
+						isApproved: true,
+						autoSwitchedProfile: "default",
+						progress: bar,
+						planFilePath: planDoc.planFilePath,
+						markdown: md,
+					};
+				} else {
+					planDoc.isApproved = false;
+					const md = syncPlanToDisk(planDoc);
+					const { bar } = calculateProgress(planDoc.steps);
+					return {
+						message: `Implementation plan for session [${sId}] is presented. User chose to keep modifying in Plan Mode.`,
+						sessionId: sId,
+						isApproved: false,
+						progress: bar,
+						planFilePath: planDoc.planFilePath,
+						markdown: md,
+					};
+				}
 			}
 
 			// G. View / Get Plan
@@ -588,7 +624,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 			}
 
 			planText += `\n> ⚠️ [Plan Mode Policy]: You are in read-only Plan Mode. Formulate/update the plan in \`${planDoc.planFilePath}\`. Do NOT attempt to write or edit files in this mode.\n`;
-			planText += `> When the user agrees, approves, or asks to start execution, confirm approval and explicitly instruct the user: "请在终端输入 \`/profile default\` 切换至默认开发模式，然后发送 \`按照 implementation_plan.md 开始实现\` 即可开始执行。"\n`;
+			planText += `> When the plan is formulated or when the user asks to execute/proceed, call \`plan_step({ action: "request_review" })\` or \`plan_step({ action: "approve" })\`. This will present an interactive approval dialog in the user's terminal to approve and automatically switch to default development mode.\n`;
 
 			event.prompt += planText;
 		});
