@@ -56,21 +56,35 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ctx.tools.has("plan_step")).toBe(false);
 	});
 
-	it("3. @pi-cordis/plugin-code-mode (PTC): executes JavaScript/TypeScript program in sandbox", async () => {
+	it("3. @pi-cordis/plugin-code-mode (PTC): executes JavaScript/TypeScript program in sandbox and injects .d.ts", async () => {
 		const fork = await ctx.plugin(codeModePlugin);
 		expect(ctx.tools.has("run_code")).toBe(true);
 
+		// 1. Check prompt transform with dynamic .d.ts
+		const promptEvent = { prompt: "Base prompt" };
+		await ctx.parallel("pi/prompt-transform", promptEvent);
+		expect(promptEvent.prompt).toContain("Programmatic Tool Calling (PTC / Code Mode)");
+		expect(promptEvent.prompt).toContain("declare namespace pi");
+		expect(promptEvent.prompt).toContain("export interface PiSDK");
+
+		// 2. Execute script with semantic namespaces and Promise.all
 		const tool = ctx.tools.get("run_code");
 		const result = await tool!.execute({
 			code: `
-				const a = 10;
-				const b = 20;
-				console.log("Calculated sum:", a + b);
+				const items = [1, 2, 3];
+				const doubled = items.map(n => n * 2);
+				console.log("Doubled values:", doubled);
+				
+				// Verify semantic namespace availability
+				console.log("FS namespace available:", typeof pi.fs.read === "function");
+				console.log("Bash namespace available:", typeof pi.bash.run === "function");
 			`,
 		});
 
 		expect(result.success).toBe(true);
-		expect(result.output).toContain("Calculated sum: 30");
+		expect(result.output).toContain("Doubled values: [\n  2,\n  4,\n  6\n]");
+		expect(result.output).toContain("FS namespace available: true");
+		expect(result.output).toContain("Bash namespace available: true");
 
 		await fork.dispose();
 		expect(ctx.tools.has("run_code")).toBe(false);
