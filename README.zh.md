@@ -7,337 +7,233 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](vendor/)
 [![TypeScript: Strict](https://img.shields.io/badge/TypeScript-Strict_Mode-blue.svg?style=flat-square)](tsconfig.json)
-[![Tests: 3500+ Passing](https://img.shields.io/badge/Tests-3500+_Passing-success.svg?style=flat-square)](packages/)
+[![Tests: 32 Passing](https://img.shields.io/badge/Tests-32_Passing-success.svg?style=flat-square)](packages/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/civaapple-alt/pi-cordis/pulls)
 
-[English](README.md) | 中文说明 | [架构决策记录 (ADR)](.agents/notes/README.zh.md) | [开发与贡献规范](AGENTS.md)
+[English](README.md) | [中文说明](README.zh.md) | [架构决策记录 (ADR)](.agents/notes/README.zh.md) | [开发与贡献规范](AGENTS.md)
 
 </div>
 
 ---
 
-## 📖 目录索引
+## 📖 渐进式目录索引 (Progressive Index)
 
-- [项目概述](#-项目概述)
-- [快速开始](#-快速开始)
-- [核心特性对比矩阵](#-核心特性对比矩阵)
-- [架构设计哲学与核心机制](#-架构设计哲学与核心机制)
-  - [1. 极简设计哲学与 Default is Best](#1-极简设计哲学与-default-is-best)
-  - [2. DSH Capability Seams 与显式依赖注入 (inject)](#2-dsh-capability-seams-与显式依赖注入-inject)
-  - [3. 注册即副作用，副作用必可逆 (Disposer 模式)](#3-注册即副作用副作用必可逆-disposer-模式)
-  - [4. 双轨分层 HMR 热重载机制](#4-双轨分层-hmr-热重载机制)
-  - [5. 控制面到 pi-tui 的 7 大交互槽位桥接](#5-控制面到-pi-tui-的-7-大交互槽位桥接)
-- [原生 Cordis 插件与 Presets 预设体系](#-原生-cordis-插件与-presets-预设体系)
-- [未来演进路线 (Roadmap & Proposals)](#-未来演进路线-roadmap--proposals)
-  - [编程化工具调用 (PTC / Code Mode)](#-编程化工具调用-ptc--code-mode)
-  - [插件生态 P0-P3 演进矩阵](#-插件生态-p0-p3-演进矩阵)
-- [Cordis 10 大核心服务矩阵](#-cordis-10-大核心服务矩阵)
-- [仓库目录结构](#-仓库目录结构)
-- [质量门禁与测试体系](#-质量门禁与测试体系)
-- [架构决策记录 (ADRs) 全景索引](#-架构决策记录-adrs-全景索引)
-- [开源协议](#-开源协议)
+- [第一层：快速上手与核心概览](#-第一层快速上手与核心概览)
+  - [项目定位与核心价值](#项目定位与核心价值)
+  - [1 分钟快速上手](#1-分钟快速上手)
+  - [核心特性全景对比矩阵](#核心特性全景对比矩阵)
+- [第二层：3 大场景预设 (Default is Best)](#-第二层3-大场景预设-default-is-best)
+  - [1. 标准开发模式 (`default`)](#1-标准开发模式-default)
+  - [2. 规划与审计模式 (`plan`)](#2-规划与审计模式-plan)
+  - [3. 编程化工具调用模式 (`ptc`)](#3-编程化工具调用模式-ptc)
+- [第三层：核心架构与 5 大设计准则](#-第三层核心架构与-5-大设计准则)
+  - [DSH 5 大核心架构准则 (The 5 Pillars)](#dsh-5-大核心架构准则-the-5-pillars)
+  - [10 大原生 Cordis 核心服务](#10-大原生-cordis-核心服务)
+  - [15 个内置插件工作区](#15-个内置插件工作区)
+  - [双轨 HMR 热重载与 7 大 TUI 交互槽位](#双轨-hmr-热重载与-7-大-tui-交互槽位)
+- [第四层：仓库目录、质量门禁与决策清单](#-第四层仓库目录质量门禁与决策清单)
+  - [代码库目录组织](#代码库目录组织)
+  - [自动化测试与质量门禁](#自动化测试与质量门禁)
+  - [架构决策记录 (ADRs) 索引](#架构决策记录-adrs-索引)
 
 ---
 
-## 🌟 项目概述
+## 🚀 第一层：快速上手与核心概览
 
-**Pi-Cordis** 深度融合了 [`earendil-works/pi`](https://github.com/earendil-works/pi) 极简纯粹的终端交互灵魂与 **Cordis v4.0.1** 的微内核控制面，100% 保持 Pi 的原生编码能力、交互式终端 UI（TUI）与扩展市场生态，同时引入高度解耦的服务矩阵、原生插件工作区与响应式热重载（HMR）能力。
-
-### 为什么选择 Pi-Cordis？
+### 项目定位与核心价值
+**Pi-Cordis** 深度融合了 [`earendil-works/pi`](https://github.com/earendil-works/pi) 极简纯粹的终端交互灵魂与 **Cordis v4.0.1** 的微内核控制面：
 
 1. **100% 保持 Pi 的功能与 TUI 体验**：保留全屏 Canvas、双缓冲 Diff 对比、分支树选择器、状态看板与流式 Markdown 高亮，零用户体验降级；
-2. **“一切皆插件”的服务化解耦**：将配置、鉴权、多模型驱动、工具注册、会话存储、技能、提示词、扩展系统、包管理器与智能体推理循环 10 大能力全面重构为 Cordis 一等公民服务；
+2. **“一切皆插件”的服务化解耦**：将配置、鉴权、多模型驱动、工具注册、会话存储、技能、提示词、扩展系统、包管理器与智能体推理循环 10 大能力全面重构为 Cordis 响应式服务；
 3. **“Default is Best” 极简哲学**：无需复杂配置，默认启动即具备完整安全拦截、Git 检查点、规则自动注入与待办追踪；
-4. **DSH Capability Seams 与显式依赖注入**：严格遵循三层正交 Seams 规范，通过 `export const inject = [...]` 实现访问权限沙箱与无序启动拓扑解析；
-5. **副作用必可逆与双轨 HMR**：底层注册必返回 Disposer，核心 Service 保持高效编程式装配，上层 Presets 与插件源码全面支持零重启实时热重载；
-6. **全面兼容 `pi.dev/packages` 插件市场**：支持通过 `npm:`、`git:` 或本地路径一键安装社区扩展（如 `@juicesharp/rpiv-todo`）；
-7. **严格依赖隔离**：完全独立自洽，零依赖 DSH 业务插件，底层仅依赖 `vendor/` 下的 Cordis 纯净内核套件。
+4. **PTC 编程化调用 (Code Mode)**：将 5~10 轮串行网络交互坍缩为 1 轮本地程序化执行（在独立 Node.js Worker 线程中执行强类型 TypeScript SDK），节省 90%+ 上下文；
+5. **生态完全兼容**：全面支持 [`pi.dev/packages`](https://pi.dev/packages) 社区扩展市场。
 
----
+### 1 分钟快速上手
 
-## ⚡ 快速开始
-
-### 1. 环境准备
-- **Node.js**: `>= 20.0.0`
-- **pnpm**: `>= 9.0.0`
-
-### 2. 源码克隆与安装
 ```bash
+# 1. 源码克隆与安装
 git clone https://github.com/civaapple-alt/pi-cordis.git
 cd pi-cordis
 pnpm install
-```
 
-### 3. 配置 API Key
-在项目根目录创建 `.env` 或配置系统环境变量：
-```env
-# DeepSeek (推荐)
-DEEPSEEK_API_KEY=sk-your-deepseek-api-key
+# 2. 配置 API Key (.env)
+echo "DEEPSEEK_API_KEY=sk-your-key" > .env
 
-# 或 OpenAI / Anthropic / Gemini / Ollama
-OPENAI_API_KEY=sk-your-openai-api-key
-ANTHROPIC_API_KEY=sk-your-anthropic-api-key
-```
-
-### 4. 运行体验
-```bash
-# 启动全屏交互式 TUI (Default is Best: 开箱即用全能安全模式)
+# 3. 启动交互式终端 (Default is Best: 全功能就绪且自带最高安全防线)
 pnpm pi
 
-# 在 TUI 终端中即时查看与切换 Profile 预设
-/profile safe
-/profile full
-
-# 非交互模式执行单次任务
-pnpm pi -p "检查当前项目结构并列出 10 大核心服务"
-
-# 一键安装与体验社区扩展
-pnpm pi install npm:@juicesharp/rpiv-todo
+# 4. 在终端中即时切换场景模式
+/profile plan
+/profile ptc
 ```
 
----
+### 核心特性全景对比矩阵
 
-## 🎯 核心特性对比矩阵
-
-| 能力维度 | 原生 Pi | Pi-Cordis | 亮点说明 |
+| 核心能力 | 原生 Pi | Pi-Cordis | 核心亮点 |
 | :--- | :---: | :---: | :--- |
-| **交互式终端 TUI** | ✅ | ✅ | 全屏 Canvas、双缓冲 Diff 对比、分支树选择器、状态看板 |
-| **核心编码工具集** | ✅ | ✅ | 内置 `read`, `write`, `edit`, `bash` + 可选 `grep`, `find`, `ls` |
-| **多模型运行时** | ✅ | ✅ | 内置 1307+ 个模型（DeepSeek, OpenAI, Anthropic, Gemini, Ollama 等） |
-| **微内核 IoC 控制体系** | ❌ | ✅ | 可逆副作用回收（`ctx.effect`）、服务自动注入（`static provide`） |
-| **显式依赖注入 (inject)** | ❌ | ✅ | `inject = ['tools']` 权限沙箱、依赖拓扑推导与级联安全销毁 |
-| **副作用可逆机制** | ❌ | ✅ | 所有注册均返回 `Disposer`，消除僵尸监听器与工具重复注册 |
-| **双轨分层 HMR** | ❌ | ✅ | 核心 Service 极速冷启动，插件与 Presets 零重启代码级热重载 |
-| **独立 Presets 预设体系** | ❌ | ✅ | `presets/<name>/`（`preset.yml` + `cordis.yml`）声明式组合 |
-| **TUI `/profile` 热切换** | ❌ | ✅ | 终端输入 `/profile` 支持 Tab 补全与交互式下拉选择菜单 |
-| **扩展市场生态兼容** | ✅ | ✅ | 100% 兼容 `pi.dev/packages`，透明桥接 `ExtensionAPI` 至事件总线 |
-| **零 DSH 业务依赖** | N/A | ✅ | 独立自洽，仅使用 `vendor/` 下的 Cordis 纯净内核 |
+| **交互式终端 TUI** | ✅ | ✅ | 全屏 Canvas、双缓冲 Diff、会话树分支切换、状态栏部件 |
+| **基础编码工具** | ✅ | ✅ | 内置 `read`, `write`, `edit`, `bash` + 可选 `grep`, `find`, `ls` |
+| **多模型运行时** | ✅ | ✅ | 支持 1307+ 个模型 (DeepSeek, OpenAI, Anthropic, Gemini, Ollama 等) |
+| **微内核 IoC 引擎** | ❌ | ✅ | 可逆副作用收集 (`ctx.effect`)，强类型服务注入 (`static provide`) |
+| **显式 `inject` 沙箱** | ❌ | ✅ | `inject = ['tools']` 依赖访问控制，拓扑排序无序启动 |
+| **副作用可逆销毁** | ❌ | ✅ | 所有注册必返回 `Disposer` 销毁函数，彻底消灭僵尸监听器 |
+| **双轨分层 HMR** | ❌ | ✅ | 极速编程式核心启动 + 零重启 YAML 预设与插件源码热重载 |
+| **3 大场景化预设** | ❌ | ✅ | `default` (标准开发), `plan` (只读规划), `ptc` (编程调用) |
+| **PTC / Code Mode** | ❌ | ✅ | 动态 `.d.ts` SDK + 单一 `run_code` 入口 + Worker 线程沙箱 |
 
 ---
 
-## 🏛️ 架构设计哲学与核心机制
+## 🎯 第二层：3 大场景预设 (Default is Best)
 
-### 1. 极简设计哲学与 Default is Best
-- **Default is Best**：默认模式（`default`）即是最完善、最安全的完整编码形态，开箱即用全量装配 `safety-gate`（安全拦截）、`git-guard`（Git 检查点）、`rules-injector`（规则注入）与 `todo-tracker`（待办追踪），95% 场景零配置直出；
-- **预设代表角色形态差异**：预设不是微小功能开关的排列组合，而是代表智能体认知模式与权限边界的根本转变（如 Standard 编码模式 / Plan 只读规划模式 / PTC 编程化模式）。
+践行 **“默认即最佳 (Default is Best)” 极简设计哲学**，彻底废除基于内部开关排列组合的繁杂预设，收敛为 **3 个语义鲜明、形态迥异的场景化 Agent 模式**：
 
----
-
-### 2. DSH Capability Seams 与显式依赖注入 (inject)
-严格对齐 DSH 官方三层正交角色规范：
-1. **Service Definition（契约定义层）**：在 `types.ts` 中通过 TypeScript 声明合并扩充 `Context` 与 `Events` 规范；
-2. **Service Provider（驱动实现层）**：在 `services/*.ts` 中继承 `Service` 并声明 `static provide = 'key'`；
-3. **Consumer（能力消费层）**：在 `packages/plugins/*` 中声明 `export const inject = ['tools']`，通过 Cordis Proxy 实现属性访问权限沙箱与无序启动拓扑解析。
-
-```typescript
-// 示例：@pi-cordis/plugin-todo-tracker 声明式依赖注入
-export const name = "todo-tracker";
-export const inject = ["tools"]; // 显式声明依赖，未声明访问报错
-
-export function apply(ctx: Context) {
-  ctx.tools.register({ name: "todo_write", ... });
-}
-```
-
----
-
-### 3. 注册即副作用，副作用必可逆 (Disposer 模式)
-- **底层铁律**：所有服务注册与事件监听必须返回标准 `Disposer` 销毁函数；
-- **脱离 HMR 的 4 大生产价值**：
-  1. **Profile 运行时切换**：`/profile strict` 拦截器注销并还原写入权限；
-  2. **Subagent 隔离与销毁**：`ctx.fork()` 专属沙箱，任务完成后调用 `dispose()` 原子清空；
-  3. **Plan 模式状态流转**：从只读规划平滑切换至方案执行，临时限制无残留；
-  4. **异常事务回滚**：插件中途加载失败时逆序执行 Disposer，保障系统状态一致性。
-
----
-
-### 4. 双轨分层 HMR 热重载机制
-兼顾终端极速冷启动（<50ms）与开发者极速调试体验：
-- **Kernel Base Layer（底座层）**：10 大核心 Service 采用 TypeScript 编程式装配，保留 `AbortSignal` 等内存对象传递，零启动开销；
-- **Dynamic HMR Layer（动态插件层）**：
-  - **YAML 变更监听**：自动重载 `presets/` 预设并重新装配当前 Profile；
-  - **源码级 HMR**：通过 `pathToFileURL + ?t=timestamp` 动态破坏 Node.js ESM 强缓存，实现零重启的源码级热替换；
-  - **会话持久化**：热重载过程中终端对话树、内存状态完好保留！
-
----
-
-### 5. 控制面到 pi-tui 的 7 大交互槽位桥接
-通过 `ExtensionService`（`ctx.extensions`），Cordis 插件可无缝驱动 `pi-tui` 的双缓冲终端画布：
-
-| TUI 交互槽位 | 代码调用示例 | 终端实际视觉呈现 |
-| :--- | :--- | :--- |
-| **交互式下拉选择器** | `await ctx.ui.select("选择预设", items)` | 在终端弹出高亮光标菜单，支持方向键选择与回车确认 |
-| **二次确认弹窗** | `await ctx.ui.confirm("确定执行该操作？")` | 弹出 `[Y/n]` 模态框，阻止非预期破坏性执行 |
-| **顶部/底部常驻挂件** | `ctx.ui.setHeader(...)` / `setFooter(...)` | 在终端顶部/底部渲染常驻状态条（如任务进度、Git 分支） |
-| **浮动 Toast 通知** | `ctx.ui.notify("已添加新待办", "info")` | 在终端角落弹出带颜色的浮动提示框 |
-| **工具专属自定义渲染器** | `pi.registerToolRenderer("todo_write", fn)`| 覆盖默认 JSON 卡片，渲染为带复选框 `[✓]` 的图形列表 |
-| **消息与条目自定义渲染** | `pi.registerMessageRenderer(fn)` | 完全自定义模型消息与思考链（Thinking）的折叠/展开动画 |
-| **状态栏微件 (Status)** | `ctx.ui.setStatus("tasks", "3 pending")` | 在 TUI 底部状态行实时显示当前任务统计 |
-
----
-
-## 🧩 原生 Cordis 插件与 Presets 预设体系
-
-### 1. 四大原生 Cordis 插件 (`packages/plugins/*`)
-- 🔒 **`@pi-cordis/plugin-safety-gate`**：阻断破坏性 Shell 命令（`rm -rf /`, `mkfs`）与敏感配置文件篡改（`.env`, `.git/`, `id_rsa`）；
-- 🛡️ **`@pi-cordis/plugin-git-guard`**：感知工作区脏状态，在关键操作轮次自动创建 `git stash` 检查点以供安全回滚；
-- 📋 **`@pi-cordis/plugin-todo-tracker`**：注册 `todo_write`/`todo_read` 待办工具并自动将活跃任务注入提示词；
-- 📜 **`@pi-cordis/plugin-rules-injector`**：自动扫描 `AGENTS.md`、`.claude/rules/*.md`、`.cursorrules` 并注入上下文提示词。
-
-### 2. 独立 Presets 预设目录 (`presets/`)
 ```text
-presets/
-├── default/    # 默认即最佳: 安全拦截 + Git检查点 + 规则注入 + 待办追踪 (标准开发)
-├── safe/       # 安全生产工程模式 (高危命令拦截 + 保护文件防篡改 + Git自动检查点)
-├── strict/     # 只读代码审计模式 (只读安全拦截 + 阻断写操作)
-├── full/       # 全能极客模式 (激活全部 4 大原生 Cordis 插件能力)
-└── minimal/    # 零额外插件纯净模式 (仅保留 10 大核心微内核服务)
+┌────────────────────────────────────────────────────────────────────────┐
+│                        3 大核心场景预设 (Presets)                       │
+├────────────────────────────────────────────────────────────────────────┤
+│ 🌟 1. default (标准开发模式) : 开箱即用全能安全，规则注入 + 任务追踪   │
+│ 🛡️ 2. plan (规划与审计模式) : 严格只读保护，步骤状态机 + 拦截写操作   │
+│ ⚡ 3. ptc (编程调用模式)     : 强类型 TypeScript SDK + 1 轮极速批处理  │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+### 1. 标准开发模式 (`default`)
+- **定位**：**默认即最佳**。适用于 95% 以上的日常 AI 辅助编码工作；
+- **激活能力**：`safety-gate` (高危命令与敏感路径拦截)、`git-guard` (快照检查点)、`rules-injector` (自动扫描 `AGENTS.md`/`CLAUDE.md`)、`todo-tracker` (四态任务管理)、`output-truncator` (双端保留与 Spill 溢出转存)、`ask-question` (推荐高亮问答)、`subagent` (子智能体派生)、`context-compactor`、`git-automation`、`session-handoff`、`ssh-delegator`、`tools-manager`。
+- **使用**：直接执行 `pnpm pi`，零配置启动。
 
-## 🚀 未来演进路线 (Roadmap & Proposals)
+### 2. 规划与审计模式 (`plan`)
+- **定位**：专用于大型重构、架构探索、需求拆解与安全审计的**只读沙箱模式**；
+- **激活能力**：`plan-mode` (步骤状态机与进度条)、`safety-gate` (`readOnly: true` 强制阻断一切写操作)、`rules-injector`、`todo-tracker`、`output-truncator`、`ask-question`、`context-compactor`。
+- **使用**：在 TUI 中输入 `/profile plan` 或 CLI 启动 `pnpm pi --profile plan`。
 
-### ⚡ 编程化工具调用 (PTC / Code Mode)
-> 提案详见：[PTC / Code Mode 架构设计提案](.agents/notes/proposed/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.zh.md)
-
-参考 DSH 核心设计，通过将零散的 JSON Function Calling 转换为**强类型 TypeScript SDK + 单一 `run_code` 执行器**，支持模型直接编写 TypeScript 脚本将 5~10 轮串行网络往返**坍缩为 1 轮本地程序化执行**，降低 80%+ 延迟并节省 90%+ Context Window 空间。
-
----
-
-### 🗺️ 插件生态 P0-P3 演进矩阵
-> 提案详见：[原生插件生态全景规划与优先级演进矩阵](.agents/notes/proposed/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.zh.md)
-
-```mermaid
-graph TD
-    classDef p0 fill:#4CAF50,stroke:#388E3C,stroke-width:2px,color:#fff;
-    classDef p1 fill:#2196F3,stroke:#1976D2,stroke-width:2px,color:#fff;
-    classDef p2 fill:#FF9800,stroke:#F57C00,stroke-width:2px,color:#fff;
-    classDef p3 fill:#9E9E9E,stroke:#757575,stroke-width:2px,color:#fff;
-
-    subgraph P0["P0: 核心底座 (已完成)"]
-        A1["safety-gate (命令与路径安全拦截)"]:::p0
-        A2["git-guard (Git状态与检查点)"]:::p0
-        A3["todo-tracker (待办管理与注入)"]:::p0
-        A4["rules-injector (规则自动发现与注入)"]:::p0
-        A5["profiles (Presets 声明式预设中枢)"]:::p0
-    end
-
-    subgraph P1["P1: 核心工程级扩展 (重点实施)"]
-        B1["subagent (子智能体派生与上下文隔离)"]:::p1
-        B2["plan-mode (先规划后执行的 Plan 模式)"]:::p1
-        B3["ask-question (人机澄清交互组件)"]:::p1
-        B4["context-compactor (长会话分段压缩与摘要)"]:::p1
-        B5["output-truncator (大输出保护防爆窗)"]:::p1
-        B6["code-mode (PTC 编程化工具调用)"]:::p1
-    end
-
-    subgraph P2["P2: 开发者体验与工具链 (后续演进)"]
-        C1["tools-manager (/tools 可视化面板)"]:::p2
-        C2["session-handoff (/handoff 会话交接)"]:::p2
-        C3["ssh-delegator (远程 SSH 工具代理)"]:::p2
-        C4["github-helper (Issue 自动补全)"]:::p2
-        C5["tui-status (状态看板与桌面通知)"]:::p2
-    end
-
-    P0 --> P1
-    P1 --> P2
-```
+### 3. 编程化工具调用模式 (`ptc`)
+- **定位**：专用于海量文件扫描、批量文本替换与复杂数据过滤的**程序化调用模式**；
+- **激活能力**：`code-mode` (动态 `.d.ts` 生成 + 表现层工具遮蔽 + `worker_threads.Worker` 独立线程沙箱)、`safety-gate`、`git-guard`、`rules-injector`、`todo-tracker`、`output-truncator`、`context-compactor`。
+- **使用**：在 TUI 中输入 `/profile ptc` 或 CLI 启动 `pnpm pi --profile ptc`。
 
 ---
 
-## 🎛️ Cordis 10 大核心服务矩阵
+## 🏛️ 第三层：核心架构与 5 大设计准则
 
-| 服务类 | 挂载属性 | 核心职责 |
+### DSH 5 大核心架构准则 (The 5 Pillars)
+系统内所有服务与插件严格遵循：
+1. **能力接缝 (Capability Seam)**：强类型契约 (`types.ts`)、解耦的服务提供者 (`services/*.ts`) 与显式依赖声明 (`inject = [...]`)。
+2. **可逆销毁 (Reversibility & Fiber Teardown)**：动态注册均返回 `this.ctx.effect()` 注销句柄，在 Fiber 卸载时自动回收。
+3. **响应式事件总线 (Reactive Event Bus)**：在中央 Cordis 总线上广播细粒度类型化事件 (`pi/settings-updated`、`pi/tool-call`、`pi/session-created` 等)。
+4. **瀑布与串行拦截链 (Waterfall & Interceptors)**：支持前置校验、耗时统计与后置处理拦截管道。
+5. **作用域隔离 (Context Isolation)**：支持 `ctx.extend()` 子 Fiber 派生与零环境污染。
+
+### 10 大原生 Cordis 核心服务
+
+各服务详细使用指南与接口文档见 [`packages/coding-agent/docs/cordis/services/`](packages/coding-agent/docs/cordis/services/README.zh.md)：
+
+| 核心服务 | 挂载属性 | 核心职责与事件流 |
 | :--- | :--- | :--- |
-| `SettingsService` | `ctx.settings` | 全局 (`~/.pi/agent/settings.json`) 与项目 (`.pi/settings.json`) 配置管理 |
-| `AuthService` | `ctx.auth` | API 密钥、OAuth 令牌与凭证安全存储 |
-| `AIService` | `ctx.ai` | 多模型运行时封装，内置 1307+ 个模型定义与 Token 消耗统计 |
-| `ToolRegistryService` | `ctx.tools` | 统一管理 7 大内置编码工具与动态自定义工具注册中心 |
-| `SessionService` | `ctx.session` | SQLite 与内存会话持久化存储、多分支树切换与会话导出 |
-| `SkillsService` | `ctx.skills` | 自动扫描、解析并提供提示词与目录技能 |
-| `PromptsService` | `ctx.prompts` | 提示词模板引擎与参数变量插值 |
-| `ExtensionService` | `ctx.extensions` | 加载 Pi 原生扩展并透明桥接 `ExtensionAPI` 至 Cordis 事件与 TUI 槽位 |
-| `PackageManagerService` | `ctx.packageManager` | 跨 `pi.dev`、npm、git 与本地来源的插件包安装管理 |
-| `AgentService` | `ctx.agent` | 智能体多轮会话推理循环调度 |
+| **SettingsService** | `ctx.settings` | 全局与项目级配置管理；广播 `pi/settings-updated`。 |
+| **AuthService** | `ctx.auth` | 凭证与 API Key 存取；广播 `pi/auth-updated`。 |
+| **AIService** | `ctx.ai` | 多模型运行时封装与动态 Provider 注册；广播 `pi/model-change`。 |
+| **ToolRegistryService** | `ctx.tools` | 7 大内置工具、动态工具、模型侧屏蔽过滤与 `executeTool` 拦截管道。 |
+| **SessionService** | `ctx.session` | SQLite 与内存会话工厂、活跃池追踪；广播 `pi/session-created`/`closed`。 |
+| **SkillsService** | `ctx.skills` | 本地与动态技能发现；广播 `pi/skill-registered`。 |
+| **PromptsService** | `ctx.prompts` | 提示词模板引擎与动态模板注册；广播 `pi/prompt-registered`。 |
+| **ExtensionService** | `ctx.extensions` | 加载 Pi 扩展并桥接 `ExtensionAPI` 至 Cordis 事件与 7 大 TUI 槽位。 |
+| **PackageManagerService** | `ctx.packageManager` | 扩展包安装生命周期与实时进度流 `pi/package-progress`。 |
+| **AgentService** | `ctx.agent` | 编排 `AgentSession` 完整生命周期与多轮事件映射。 |
+
+### 15 个内置插件工作区
+
+所有原生插件均位于 `packages/plugins/*`：
+
+| 插件名称 | 对应 npm 包名 | 核心特性与亮点 |
+| :--- | :--- | :--- |
+| **`code-mode`** | `@pi-cordis/plugin-code-mode` | PTC 模式：动态 `.d.ts` + `worker_threads` 沙箱 + 工具屏蔽。 |
+| **`output-truncator`** | `@pi-cordis/plugin-output-truncator` | Head (30) + Tail (20) 双端保留 + `.pi/spill/` 溢出转存。 |
+| **`safety-gate`** | `@pi-cordis/plugin-safety-gate` | 命令 AST 正则识别 + 敏感文件黑名单 + 只读模式拦截。 |
+| **`git-guard`** | `@pi-cordis/plugin-git-guard` | 脏仓库状态告警 + 轮次级 `git stash create` 轻量快照。 |
+| **`ask-question`** | `@pi-cordis/plugin-ask-question` | 交互式多问题批处理 + `(Recommended)` 推荐选项高亮。 |
+| **`plan-mode`** | `@pi-cordis/plugin-plan-mode` | 步骤状态机 + 进度仪表盘 + 规划期写工具强制拦截。 |
+| **`todo-tracker`** | `@pi-cordis/plugin-todo-tracker` | 四态任务管理 + 提示词自适应折叠压缩。 |
+| **`subagent`** | `@pi-cordis/plugin-subagent` | `ctx.extend()` 作用域隔离 + 派生深度限制 + 结构化产出。 |
+| **`context-compactor`**| `@pi-cordis/plugin-context-compactor` | 四维资产结构化压缩（文件、决策、修复、待办）。 |
+| **`session-handoff`** | `@pi-cordis/plugin-session-handoff` | 标准化交接信封 (Handoff Envelope) 与 Markdown 产物。 |
+| **`git-automation`** | `@pi-cordis/plugin-git-automation` | 暂存区语义分析与 Conventional Commit 规范生成。 |
+| **`ssh-delegator`** | `@pi-cordis/plugin-ssh-delegator` | 远程 SSH 工具代理与连接延迟探测。 |
+| **`rules-injector`** | `@pi-cordis/plugin-rules-injector` | 多目录规则发现与 SHA-256 缓存（维持 KV-Cache 稳定）。 |
+| **`tools-manager`** | `@pi-cordis/plugin-tools-manager` | 动态能力切片与工具可见性管理。 |
+| **`profiles`** | `@pi-cordis/profiles` | 预设解析加载器、YAML 解析器与双轨 HMR 引擎。 |
+
+### 双轨 HMR 热重载与 7 大 TUI 交互槽位
+- **双轨分层 HMR**：极速编程式核心启动 + 零重启 YAML 预设与插件源码热重载（通过 `pathToFileURL + ?t=timestamp` 穿透 Node.js 缓存），会话树与内存寄存器全程无损；
+- **7 大 TUI 交互槽位**：无缝驱动 Select 单选菜单、Confirm 确认弹窗、Header/Footer 状态条、Toast 提示、自定义工具图形渲染器、消息折叠渲染器与状态栏指标。
 
 ---
 
-## 📂 仓库目录结构
+## 📂 第四层：仓库目录、质量门禁与决策清单
+
+### 代码库目录组织
 
 ```text
 pi-cordis/
-├── vendor/                           # Vendored Cordis (v4.0.1) 内核套件
+├── vendor/                           # Vendored Cordis (v4.0.1) 微内核源码
 │   ├── cordis/                       # @deepseek-ai/cordis
 │   ├── cosmokit/                     # @deepseek-ai/cosmokit
 │   └── schemastery/                  # @deepseek-ai/schemastery
 │
-├── presets/                          # 🌟 声明式 Agent 能力与 Profile 预设目录
+├── presets/                          # 🌟 3 大场景化 Agent 运行预设
 │   ├── default/                      # preset.yml + cordis.yml (默认即最佳)
-│   ├── safe/                         # preset.yml + cordis.yml (安全生产工程)
-│   ├── strict/                       # preset.yml + cordis.yml (只读代码审计)
-│   ├── full/                         # preset.yml + cordis.yml (全能极客模式)
-│   └── minimal/                      # preset.yml + cordis.yml (极简微内核模式)
+│   ├── plan/                         # preset.yml + cordis.yml (规划与审计)
+│   └── ptc/                          # preset.yml + cordis.yml (编程调用)
 │
 ├── packages/
-│   ├── coding-agent/                 # CLI 入口、TUI 界面与 Cordis 引导器
+│   ├── coding-agent/                 # 智能体主包 (CLI 入口、TUI 界面与 Cordis 引导器)
+│   │   ├── docs/cordis/services/     # 10 大核心服务独立详细文档
 │   │   └── src/core/cordis/          # 10 大核心服务 + createPiContext + profile command
-│   └── plugins/                      # 🌟 原生 Cordis 插件集合
-│       ├── safety-gate/              # @pi-cordis/plugin-safety-gate
-│       ├── git-guard/                # @pi-cordis/plugin-git-guard
-│       ├── todo-tracker/             # @pi-cordis/plugin-todo-tracker
-│       ├── rules-injector/           # @pi-cordis/plugin-rules-injector
-│       └── profiles/                 # @pi-cordis/profiles (YAML & 预设装配与 HMR 中枢)
+│   └── plugins/                      # 🌟 15 个原生 Cordis 插件工作区
 │
-├── .agents/notes/                    # 架构决策记录 (ADR)
-│   ├── implemented/architecture/     # 已实施架构与生态决策
-│   ├── implemented/simplification/   # 仓库精简与解耦决策
-│   ├── proposed/                     # 未来演进与架构提案 (PTC/极简预设/生态规划)
-│   └── README.zh.md                  # 中文索引
+├── .agents/notes/                    # 架构决策记录 (ADRs)
+│   ├── implemented/architecture/     # 已实施的核心架构决策
+│   ├── implemented/simplification/   # 精简与解耦决策
+│   ├── archived/architecture/        # 历史归档快照
+│   └── README.zh.md                  # 中文决策索引与演进方法论
 │
 ├── CHANGELOG.md                      # 中文更新日志 (Keep a Changelog)
-├── pnpm-workspace.yaml               # pnpm 工作区配置
-└── tsconfig.json                     # TypeScript 统一路径映射
+├── pnpm-workspace.yaml               # pnpm 工作区关联
+└── tsconfig.json                     # 统一 TypeScript 路径映射配置
 ```
 
----
-
-## 🧪 质量门禁与测试体系
+### 自动化测试与质量门禁
 
 ```bash
-# 运行全部 Cordis 服务、原生插件、预设与 HMR 专属测试
-npx vitest run packages/coding-agent/test/cordis-plugins-and-profiles.test.ts packages/coding-agent/test/cordis-bootstrap.test.ts
+# 运行全套 Cordis 核心服务、原生插件、预设与 HMR 单元测试
+npx vitest run packages/coding-agent/test/cordis-plugins-and-profiles.test.ts packages/coding-agent/test/cordis-bootstrap.test.ts packages/coding-agent/test/cordis-ten-plugins.test.ts
 
 # TypeScript 严格类型检查
 pnpm run check
 
-# 启动交互式终端体验
+# 启动全屏终端实机体验
 pnpm pi
 ```
 
----
+### 架构决策记录 (ADRs) 索引
 
-## 📝 架构决策记录 (ADRs) 全景索引
+完整架构决策清单见 [`.agents/notes/README.zh.md`](.agents/notes/README.zh.md)：
 
-### 🟢 已实施架构决策 (Implemented ADRs)
-| 提出日期 | 决策标题 | 核心主题 |
+| 制定日期 | 决策标题 | 状态 |
 | :--- | :--- | :--- |
-| `2026-08-19` | [Pi-Cordis: 基于 Cordis v4.0.1 的微内核架构设计](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-microkernel-architecture.zh.md) | “一切皆插件”哲学、Vendored Cordis、严格依赖隔离、100% 保持 Pi 体验 |
-| `2026-08-19` | [Pi-Cordis: 服务矩阵划分与扩展生态集成](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-services-and-plugin-ecosystem.zh.md) | 10 大核心服务、`pi.dev/packages` 插件市场兼容、`ExtensionAPI` 事件桥接 |
-| `2026-08-19` | [Pi-Cordis: TUI、UI 插件体系与控制面重构权衡](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-tui-and-control-plane-tradeoffs.zh.md) | 控制面重构代价、TUI 静默装配、字符终端与 WebServer 困境、7 插槽演进 |
-| `2026-08-19` | [Pi-Cordis: 仓库精简与上游依赖解耦](.agents/notes/implemented/simplification/2026-08-19-pi-cordis-repository-simplification.zh.md) | 移除 1200+ 冗余源码文件、直接消费官方 npm 依赖、仓库体积骤降 85% |
-| `2026-08-19` | [Pi AgentHarness: 工业级事务规格与 Cordis 架构融合](.agents/notes/implemented/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.zh.md) | 三存储模型、副作用三明治（Effect Sandwich）、Lanes 多车道并发 |
-| `2026-08-19` | [Pi-Cordis: 原生 Cordis 插件与独立 Presets 目录体系](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-native-plugins-and-profiles.zh.md) | 独立子包工作区（`packages/plugins/*`）、独立 `presets/` 目录规范、`/profile` 终端热切换 |
-| `2026-08-20` | [Pi-Cordis: Loader 权衡与双轨分层 HMR（热重载）架构设计](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-loader-and-dual-track-hmr-architecture.zh.md) | 核心 Service 编程式高效装配、预设 YAML 与插件源码双轨 HMR、Node.js ESM 动态时间戳缓存破除 |
-| `2026-08-20` | [Pi-Cordis: 能力 Seams、显式依赖注入（inject）与 TUI 交互桥接架构设计](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-capability-seams-inject-and-tui-bridge.zh.md) | DSH 三层 Seam 角色对齐、Cordis v4 inject 权限沙箱与无序拓扑解析、ExtensionService 7 大终端交互槽位 |
-| `2026-08-20` | [Pi-Cordis: “注册即副作用，副作用必可逆”与 Disposer 模式架构哲学](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-reversible-side-effects-and-disposer-pattern.zh.md) | 副作用必可逆核心公理、脱离 HMR 的 4 大生产场景（Profile切换/Subagent隔离/Plan模式/事务回滚）与 Disposer 清理闭环 |
-
-### 🟡 演进中架构提案 (Proposed ADRs)
-| 提出日期 | 提案标题 | 核心主题 |
-| :--- | :--- | :--- |
-| `2026-08-19` | [Pi-Cordis: 原生插件生态全景规划与优先级演进矩阵](.agents/notes/proposed/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.zh.md) | 70+ 个扩展全景分类、P0 -> P1 -> P2 -> P3 优先级演进矩阵（Subagent、Plan模式、问答交互、输出截断与会话压缩） |
-| `2026-08-20` | [Pi-Cordis: 编程化工具调用（PTC / Code Mode）架构设计与演进提案](.agents/notes/proposed/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.zh.md) | DSH Code Mode 深度解析、轮次坍缩与上下文防爆、TypeScript SDK 动态合成与 `presets/ptc/` 落地规划 |
-| `2026-08-20` | [Pi-Cordis: 极简设计哲学与 “Default is Best” 预设体系重构提案](.agents/notes/proposed/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md) | 废除 5 大内部插件技术排列组合、回归 Pi 极简主义、Default 默认即最佳与 3 大场景级工作形态（Default/Plan/PTC） |
+| `2026-08-19` | [Pi-Cordis 基于 Cordis v4.0.1 的微内核架构演进](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-microkernel-architecture.zh.md) | `implemented` |
+| `2026-08-19` | [Pi-Cordis 服务矩阵与扩展生态融合](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-services-and-plugin-ecosystem.zh.md) | `implemented` |
+| `2026-08-19` | [Pi-Cordis TUI 与控制面重构的工程取舍分析](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-tui-and-control-plane-tradeoffs.zh.md) | `implemented` |
+| `2026-08-19` | [Pi-Cordis 代码库精简与上游解耦架构方案](.agents/notes/implemented/simplification/2026-08-19-pi-cordis-repository-simplification.zh.md) | `implemented` |
+| `2026-08-19` | [Pi-Cordis 原生插件生态全景规划与优先级演进矩阵](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.zh.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis 加载器权衡与双轨 HMR 热重载架构](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-loader-and-dual-track-hmr-architecture.zh.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis 能力接缝、显式注入与 TUI 交互桥接设计](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-capability-seams-inject-and-tui-bridge.zh.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis “注册即副作用，副作用必可逆” 与 Disposer 模式深度实践](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-reversible-side-effects-and-disposer-pattern.zh.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis 编程化工具调用（PTC / Code Mode）架构设计](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.zh.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis 极简设计哲学与 “Default is Best” 预设体系重构](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis 全套内置插件最优解架构演进蓝图与实践指南](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.zh.md) | `implemented` |
+| `2026-08-19` | [Pi AgentHarness 工业级事务规格与 Cordis 微内核架构融合](.agents/notes/archived/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.zh.md) | `archived` |
 
 ---
 

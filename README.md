@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](vendor/)
 [![TypeScript: Strict](https://img.shields.io/badge/TypeScript-Strict_Mode-blue.svg?style=flat-square)](tsconfig.json)
-[![Tests: 3500+ Passing](https://img.shields.io/badge/Tests-3500+_Passing-success.svg?style=flat-square)](packages/)
+[![Tests: 32 Passing](https://img.shields.io/badge/Tests-32_Passing-success.svg?style=flat-square)](packages/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/civaapple-alt/pi-cordis/pulls)
 
 [English](README.md) | [中文说明](README.zh.md) | [Architecture Notes](.agents/notes/README.md) | [Contributing Guide](AGENTS.md)
@@ -16,253 +16,163 @@
 
 ---
 
-## 📖 Table of Contents
+## 📖 Progressive Table of Contents
 
-- [Overview](#-overview)
-- [Quick Start](#-quick-start)
-- [Core Feature Matrix](#-core-feature-matrix)
-- [Architectural Philosophy & Core Mechanisms](#-architectural-philosophy--core-mechanisms)
-  - [1. Minimalist Philosophy & Default is Best](#1-minimalist-philosophy--default-is-best)
-  - [2. DSH Capability Seams & Explicit Dependency Injection (inject)](#2-dsh-capability-seams--explicit-dependency-injection-inject)
-  - [3. Registrations are Effects & Effects must be Reversible (Disposer Pattern)](#3-registrations-are-effects--effects-must-be-reversible-disposer-pattern)
-  - [4. Dual-Track Layered HMR (Hot Module Replacement)](#4-dual-track-layered-hmr-hot-module-replacement)
-  - [5. Control Plane to pi-tui: 7 Interactive UI Slots](#5-control-plane-to-pi-tui-7-interactive-ui-slots)
-- [Native Cordis Plugins & Presets Matrix](#-native-cordis-plugins--presets-matrix)
-- [Future Roadmap & Proposals](#-future-roadmap--proposals)
-  - [Programmatic Tool Calling (PTC / Code Mode)](#-programmatic-tool-calling-ptc--code-mode)
-  - [Plugin Ecosystem P0-P3 Evolution Matrix](#-plugin-ecosystem-p0-p3-evolution-matrix)
-- [Cordis 10 Core Services Matrix](#-cordis-10-core-services-matrix)
-- [Repository Structure](#-repository-structure)
-- [Quality Gates & Testing](#-quality-gates--testing)
-- [Architecture Decision Records (ADRs) Index](#-architecture-decision-records-adrs-index)
-- [License](#-license)
+- [Level 1: Quick Start & Essential Overview](#-level-1-quick-start--essential-overview)
+  - [Overview & Why Pi-Cordis](#overview)
+  - [Quick Start](#quick-start)
+  - [Core Feature Matrix](#core-feature-matrix)
+- [Level 2: The 3 Canonical Presets (Default is Best)](#-level-2-the-3-canonical-presets-default-is-best)
+  - [1. Standard Coding Mode (`default`)](#1-standard-coding-mode-default)
+  - [2. Planning & Audit Mode (`plan`)](#2-planning--audit-mode-plan)
+  - [3. Programmatic Tool Calling (`ptc`)](#3-programmatic-tool-calling-ptc)
+- [Level 3: Core Architecture & The 5 Pillars](#-level-3-core-architecture--the-5-pillars)
+  - [The 5 Pillars of DSH Architecture](#the-5-pillars-of-dsh-architecture)
+  - [10 Native Cordis Core Services](#10-native-cordis-core-services)
+  - [15 Built-in Plugins Workspace](#15-built-in-plugins-workspace)
+  - [Dual-Track HMR & 7-Slot TUI Bridge](#dual-track-hmr--7-slot-tui-bridge)
+- [Level 4: Repository Layout, Gates & ADR Index](#-level-4-repository-layout-gates--adr-index)
+  - [Repository Structure](#repository-structure)
+  - [Quality Gates & Testing](#quality-gates--testing)
+  - [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
 
 ---
 
-## 🌟 Overview
+## 🚀 Level 1: Quick Start & Essential Overview
 
+### Overview
 **Pi-Cordis** fuses the raw speed, distraction-free terminal user interface (TUI), and coding power of [`earendil-works/pi`](https://github.com/earendil-works/pi) with the modular **Inversion-of-Control (IoC) microkernel** of **Cordis v4.0.1**.
 
-### Why Pi-Cordis?
+1. **100% Pi Parity**: Retains the full-screen interactive TUI, diff viewer, session branching tree, and prompt templates with zero regressions;
+2. **"Everything is a Plugin"**: All 10 core capabilities are decoupled into reactive Cordis services;
+3. **"Default is Best" Philosophy**: Out of the box, standard runs activate destructive command interception, git checkpoints, prompt rules injection, and task tracking with zero manual configuration;
+4. **PTC (Programmatic Tool Calling / Code Mode)**: Collapses 5~10 multi-turn network round-trips into a single local TypeScript execution in an isolated Node.js Worker thread;
+5. **Ecosystem Compatible**: Fully supports the [`pi.dev/packages`](https://pi.dev/packages) community marketplace.
 
-1. **100% Pi Parity**: Retains the complete interactive full-screen TUI, diff view, session branching tree, and prompt templates with zero user-facing regressions;
-2. **"Everything is a Plugin"**: All 10 core capabilities (settings, auth, AI runtime, tool registry, session persistence, skills, prompt templates, extension runner, package manager, and agent inference loop) are decoupled into first-class Cordis services;
-3. **"Default is Best" Minimalist Philosophy**: Out of the box, standard runs activate destructive action blocking, git checkpoints, prompt rules injection, and task tracking with zero manual configuration;
-4. **DSH Capability Seams & Explicit `inject`**: Strict 3-layer orthogonal Seam design with access-control sandboxing and topological resolution via `export const inject = [...]`;
-5. **Reversible Side Effects & Dual-Track HMR**: All registrations return disposers. Core services stay fast and programmatic while presets and plugin TypeScript sources support zero-restart live hot-reloading;
-6. **Ecosystem Compatible**: Fully supports the [`pi.dev/packages`](https://pi.dev/packages) community marketplace via `npm:`, `git:`, or local paths;
-7. **Strict Isolation**: 100% standalone. Zero dependencies on proprietary DSH plugins.
+### Quick Start
 
----
-
-## ⚡ Quick Start
-
-### 1. Prerequisites
-- **Node.js**: `>= 20.0.0`
-- **pnpm**: `>= 9.0.0`
-
-### 2. Clone and Install
 ```bash
+# 1. Clone and install
 git clone https://github.com/civaapple-alt/pi-cordis.git
 cd pi-cordis
 pnpm install
-```
 
-### 3. Configure API Key
-Create a root `.env` or set environment variables:
-```env
-# DeepSeek (Recommended)
-DEEPSEEK_API_KEY=sk-your-deepseek-api-key
+# 2. Configure API Key in .env
+echo "DEEPSEEK_API_KEY=sk-your-key" > .env
 
-# Or OpenAI / Anthropic / Gemini / Ollama
-OPENAI_API_KEY=sk-your-openai-api-key
-ANTHROPIC_API_KEY=sk-your-anthropic-api-key
-```
-
-### 4. Launch
-```bash
-# Launch full-screen interactive TUI (Default is Best: fully armed & safe)
+# 3. Launch interactive terminal (Default is Best: full capabilities & safety)
 pnpm pi
 
-# Switch profiles live in TUI via slash commands
-/profile safe
-/profile full
-
-# Run a single task non-interactively
-pnpm pi -p "Inspect the repository and list the 10 Cordis core services"
-
-# Install a real community plugin from the ecosystem
-pnpm pi install npm:@juicesharp/rpiv-todo
+# 4. Switch presets live in terminal
+/profile plan
+/profile ptc
 ```
 
----
-
-## 🎯 Core Feature Matrix
+### Core Feature Matrix
 
 | Capability | Native Pi | Pi-Cordis | Highlights |
 | :--- | :---: | :---: | :--- |
 | **Interactive Terminal TUI** | ✅ | ✅ | Full-screen Canvas, double-buffered Diff, session tree, status widgets |
-| **Core Coding Tools** | ✅ | ✅ | Built-in `read`, `write`, `edit`, `bash` + optional `grep`, `find`, `ls` |
+| **Core Coding Tools** | ✅ | ✅ | Built-in `read`, `write`, `edit`, `bash` + `grep`, `find`, `ls` |
 | **Multi-Model Runtime** | ✅ | ✅ | 1307+ models (DeepSeek, OpenAI, Anthropic, Gemini, Ollama, etc.) |
 | **Microkernel IoC Engine** | ❌ | ✅ | Reversible effect collection (`ctx.effect`), service injection (`static provide`) |
 | **Explicit `inject` Sandboxing** | ❌ | ✅ | `inject = ['tools']` access control, dependency graph resolution |
 | **Reversible Side Effects** | ❌ | ✅ | All registrations return `Disposer`s, eliminating zombie listeners |
 | **Dual-Track Layered HMR** | ❌ | ✅ | Fast programmatic core boot + live zero-restart plugin code & preset HMR |
-| **Standalone Presets Directory** | ❌ | ✅ | `presets/<name>/` (`preset.yml` + `cordis.yml`) declarative profiles |
-| **Live TUI `/profile` Switch** | ❌ | ✅ | Interactive slash command with Tab autocompletion and select popup |
-| **Extension Marketplace** | ✅ | ✅ | 100% compatible with `pi.dev/packages`, bridging `ExtensionAPI` to EventBus |
-| **Zero DSH Dependencies** | N/A | ✅ | Self-contained, depending only on the clean `vendor/` Cordis microkernel |
+| **3 Scenario-Driven Presets** | ❌ | ✅ | `default` (Default is Best), `plan` (Read-only), `ptc` (Code Mode) |
+| **PTC / Code Mode** | ❌ | ✅ | Dynamic `.d.ts` SDK + single `run_code` execution in Worker thread |
 
 ---
 
-## 🏛️ Architectural Philosophy & Core Mechanisms
+## 🎯 Level 2: The 3 Canonical Presets (Default is Best)
 
-### 1. Minimalist Philosophy & Default is Best
-- **Default is Best**: The default mode (`default`) is the most complete, capable, and secure experience. It activates `safety-gate` (destructive command blocking), `git-guard` (checkpoints), `rules-injector` (prompt rules discovery), and `todo-tracker` (task management) out of the box with zero user configuration;
-- **Presets Represent Distinct Agent Modes**: Presets represent high-level shifts in cognitive persona and permission boundaries (e.g. Standard Coding Mode / Plan Read-Only Mode / PTC Programmatic Mode), rather than artificial permutations of internal feature flags.
+In accordance with the **"Default is Best" Minimalist Philosophy**, artificial permutations (`safe`, `full`, `strict`, `minimal`) are deprecated in favor of **3 scenario-driven Agent Modes**:
 
----
-
-### 2. DSH Capability Seams & Explicit Dependency Injection (inject)
-Strictly aligns with the tripartite Seam specification:
-1. **Service Definition**: Module augmentations in `types.ts` declare methods and event payload contracts on `Context`;
-2. **Service Provider**: Concrete driver classes in `services/*.ts` inheriting `Service` and declaring `static provide = 'key'`;
-3. **Consumer**: Autonomous plugins in `packages/plugins/*` declaring `export const inject = ['tools']` to access services safely through Cordis Proxies.
-
-```typescript
-// Example: @pi-cordis/plugin-todo-tracker declarative injection
-export const name = "todo-tracker";
-export const inject = ["tools"]; // Explicit dependency; accessing undeclared services throws
-
-export function apply(ctx: Context) {
-  ctx.tools.register({ name: "todo_write", ... });
-}
-```
-
----
-
-### 3. Registrations are Effects & Effects must be Reversible (Disposer Pattern)
-- **Core Axiom**: All service registrations and event listeners must return a standard `Disposer` cleanup function;
-- **4 Key Production Scenarios Beyond HMR**:
-  1. **Runtime Profile Switching**: `/profile strict` unregisters blockers and restores write permissions with zero leftovers;
-  2. **Subagent Sandboxing**: Temporary tools and event listeners in `ctx.fork()` are cleanly purged upon task completion;
-  3. **Plan-Mode Transitions**: Read-only constraints are smoothly lifted upon plan approval;
-  4. **Transactional Rollbacks**: Reverses partial registrations if an unexpected exception occurs during plugin `apply()`.
-
----
-
-### 4. Dual-Track Layered HMR (Hot Module Replacement)
-Combines sub-50ms CLI startup with live developer reload experience:
-- **Kernel Base Layer**: 10 core services are loaded programmatically via TypeScript, preserving in-memory runtime objects like `AbortSignal` with zero overhead;
-- **Dynamic HMR Layer**:
-  - **YAML Watcher**: Automatically re-applies updated `presets/` configurations;
-  - **Plugin Code HMR**: Dynamically busts Node.js ESM caching via `pathToFileURL + ?t=timestamp` for live zero-restart code replacement;
-  - **Session State Intact**: Interactive conversation trees and memory registers remain completely untouched during hot reloads!
-
----
-
-### 5. Control Plane to pi-tui: 7 Interactive UI Slots
-Through `ExtensionService` (`ctx.extensions`), Cordis plugins seamlessly drive `pi-tui`'s double-buffered terminal canvas:
-
-| TUI Slot | Code Example | Visual Presentation in Terminal |
-| :--- | :--- | :--- |
-| **Interactive Select Modal** | `await ctx.ui.select("Title", items)` | High-contrast cursor menu with arrow key navigation and Enter selection |
-| **Confirmation Dialog** | `await ctx.ui.confirm("Are you sure?")` | `[Y/n]` modal preventing unintended destructive operations |
-| **Header / Footer Widgets** | `ctx.ui.setHeader(...)` / `setFooter(...)` | Persistent status banners at top/bottom of canvas |
-| **Toast Notifications** | `ctx.ui.notify("Task added", "info")` | Colored transient notification badges in terminal corner |
-| **Custom Tool Renderers** | `pi.registerToolRenderer("todo_write", fn)`| Renders tool calls as custom graphical widgets (e.g. checkboxes `[✓]`) |
-| **Message & Entry Renderers**| `pi.registerMessageRenderer(fn)` | Custom reasoning fold and streaming animations |
-| **Status Bar Widgets** | `ctx.ui.setStatus("tasks", "3 pending")` | Live metric counters in footer status row |
-
----
-
-## 🧩 Native Cordis Plugins & Presets Matrix
-
-### 1. Four Native Cordis Plugins (`packages/plugins/*`)
-- 🔒 **`@pi-cordis/plugin-safety-gate`**: Blocks destructive Shell commands (`rm -rf /`, `mkfs`) and sensitive configuration tampering (`.env`, `.git/`, `id_rsa`);
-- 🛡️ **`@pi-cordis/plugin-git-guard`**: Detects dirty repository state and automatically creates `git stash` checkpoints on critical turns;
-- 📋 **`@pi-cordis/plugin-todo-tracker`**: Registers `todo_write`/`todo_read` tools and dynamically injects active tasks into system prompts;
-- 📜 **`@pi-cordis/plugin-rules-injector`**: Auto-scans `AGENTS.md`, `.claude/rules/*.md`, and `.cursorrules` to inject prompt guidelines.
-
-### 2. Standalone Presets Directory (`presets/`)
 ```text
-presets/
-├── default/    # Default is Best: Safety + Git Checkpoints + Rules + Todo (Standard Dev)
-├── safe/       # Safe Engineering Mode (High-risk command blocking + Protected paths)
-├── strict/     # Strict Read-Only Audit Mode (Read-only inspection & blocking)
-├── full/       # Power User Mode (All 4 native Cordis plugins activated)
-└── minimal/    # Raw Lightweight Mode (Only 10 core microkernel services)
+┌────────────────────────────────────────────────────────────────────────┐
+│                        3 Canonical Agent Presets                       │
+├────────────────────────────────────────────────────────────────────────┤
+│ 🌟 1. default (Standard Dev)  : Out-of-the-box safe, rich UX, complete │
+│ 🛡️ 2. plan (Planning/Review)  : Strict read-only, step state machine   │
+│ ⚡ 3. ptc (Code Mode)         : TypeScript SDK + 1-round batch execute │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+### 1. Standard Coding Mode (`default`)
+- **Philosophy**: **Default is Best**. The definitive choice for 95% of daily engineering tasks;
+- **Active Capabilities**: `safety-gate` (destructive command blocking), `git-guard` (checkpoints), `rules-injector` (auto-scans `AGENTS.md`/`CLAUDE.md`), `todo-tracker` (task state machine), `output-truncator` (spill protection), `ask-question` (disambiguation), `subagent` (delegation), `context-compactor`, `git-automation`, `session-handoff`, `ssh-delegator`, `tools-manager`.
+- **Usage**: Run `pnpm pi` directly with zero arguments.
 
-## 🚀 Future Roadmap & Proposals
+### 2. Planning & Audit Mode (`plan`)
+- **Philosophy**: Dedicated **read-only sandbox mode** for complex refactoring, architecture exploration, and proposal design;
+- **Active Capabilities**: `plan-mode` (step state machine & progress bar), `safety-gate` (`readOnly: true`), `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `context-compactor`.
+- **Usage**: `/profile plan` in TUI or `pnpm pi --profile plan`.
 
-### ⚡ Programmatic Tool Calling (PTC / Code Mode)
-> Full Proposal: [PTC / Code Mode Architecture Proposal](.agents/notes/proposed/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.md)
-
-Inspired by DSH, PTC mode transforms loose JSON function calling into a **strongly-typed TypeScript SDK + single `run_code` tool**, enabling the model to collapse 5~10 serial network round-trips into **a single local execution**, cutting latency by 80%+ and saving 90%+ of Context Window tokens.
-
----
-
-### 🗺️ Plugin Ecosystem P0-P3 Evolution Matrix
-> Full Proposal: [Plugin Ecosystem Roadmap and Priority Matrix](.agents/notes/proposed/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.md)
-
-```mermaid
-graph TD
-    classDef p0 fill:#4CAF50,stroke:#388E3C,stroke-width:2px,color:#fff;
-    classDef p1 fill:#2196F3,stroke:#1976D2,stroke-width:2px,color:#fff;
-    classDef p2 fill:#FF9800,stroke:#F57C00,stroke-width:2px,color:#fff;
-
-    subgraph P0["P0: Core Baseline (Completed)"]
-        A1["safety-gate (Command & path safety)"]:::p0
-        A2["git-guard (Git status & checkpoints)"]:::p0
-        A3["todo-tracker (Task management)"]:::p0
-        A4["rules-injector (Auto rules discovery)"]:::p0
-        A5["profiles (Presets composition hub)"]:::p0
-    end
-
-    subgraph P1["P1: Core Engineering Extensions (Next Focus)"]
-        B1["subagent (Subagent delegation & isolation)"]:::p1
-        B2["plan-mode (Plan-before-execution mode)"]:::p1
-        B3["ask-question (Requirement disambiguation UI)"]:::p1
-        B4["context-compactor (Long-session summarization)"]:::p1
-        B5["output-truncator (Output explosion protection)"]:::p1
-        B6["code-mode (PTC programmatic execution)"]:::p1
-    end
-
-    subgraph P2["P2: Developer Workflow (Medium-Term)"]
-        C1["tools-manager (/tools visual panel)"]:::p2
-        C2["session-handoff (/handoff goal transfer)"]:::p2
-        C3["ssh-delegator (Remote SSH tool proxy)"]:::p2
-        C4["github-helper (Issue autocomplete)"]:::p2
-        C5["tui-status (Status dashboard & notifications)"]:::p2
-    end
-
-    P0 --> P1
-    P1 --> P2
-```
+### 3. Programmatic Tool Calling (`ptc`)
+- **Philosophy**: Dedicated **programmatic execution mode** for batch file operations and complex data filtering;
+- **Active Capabilities**: `code-mode` (dynamic `.d.ts` generation + presentation tool masking + `worker_threads.Worker` sandbox), `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `context-compactor`.
+- **Usage**: `/profile ptc` in TUI or `pnpm pi --profile ptc`.
 
 ---
 
-## 🎛️ Cordis 10 Core Services Matrix
+## 🏛️ Level 3: Core Architecture & The 5 Pillars
 
-| Service Class | Property | Core Responsibility |
+### The 5 Pillars of DSH Architecture
+Every service and plugin in Pi-Cordis adheres to:
+1. **Capability Seam**: Strong-typed contracts (`types.ts`), decoupled providers (`services/*.ts`), and explicit consumers (`inject = [...]`).
+2. **Reversibility & Fiber Teardown**: Dynamic registrations return `this.ctx.effect()` disposers for clean rollback.
+3. **Reactive Event Bus**: Fine-grained typed events emitted on the Cordis bus (`pi/settings-updated`, `pi/tool-call`, `pi/session-created`, etc.).
+4. **Waterfall & Serial Interception Chains**: Pre/post execution pipelines for security validation and response transformation.
+5. **Context Isolation**: Scope branching via `ctx.extend()` for subagents and temporary sandboxes with zero side effects.
+
+### 10 Native Cordis Core Services
+
+Detailed guides available in [`packages/coding-agent/docs/cordis/services/`](packages/coding-agent/docs/cordis/services/README.md):
+
+| Service | Property | Core Responsibility & Event Stream |
 | :--- | :--- | :--- |
-| `SettingsService` | `ctx.settings` | Global (`~/.pi/agent/settings.json`) and project-local (`.pi/settings.json`) settings |
-| `AuthService` | `ctx.auth` | API keys, OAuth tokens, and secure credential storage |
-| `AIService` | `ctx.ai` | Multi-model runtime encapsulation (1307+ models) and token metrics |
-| `ToolRegistryService` | `ctx.tools` | Unified registry for 7 built-in coding tools and dynamic custom tools |
-| `SessionService` | `ctx.session` | SQLite and in-memory session persistence, branching tree, and export |
-| `SkillsService` | `ctx.skills` | Auto-scans, parses, and provides prompt and directory skills |
-| `PromptsService` | `ctx.prompts` | Prompt template engine and parameter variable interpolation |
-| `ExtensionService` | `ctx.extensions` | Loads Pi extensions and bridges `ExtensionAPI` to Cordis events and TUI slots |
-| `PackageManagerService` | `ctx.packageManager` | Installs extensions from `pi.dev`, npm, git, and local paths |
-| `AgentService` | `ctx.agent` | Agent multi-turn inference loop scheduler |
+| **SettingsService** | `ctx.settings` | Global and project settings management; emits `pi/settings-updated`. |
+| **AuthService** | `ctx.auth` | Credential and API key storage; emits `pi/auth-updated`. |
+| **AIService** | `ctx.ai` | Multi-model runtime (1307+ models) & dynamic provider registry; emits `pi/model-change`. |
+| **ToolRegistryService** | `ctx.tools` | 7 built-in tools, dynamic tools, presentation masking, and hooked `executeTool` pipeline. |
+| **SessionService** | `ctx.session` | SQLite and in-memory session persistence & active tracking; emits `pi/session-created`/`closed`. |
+| **SkillsService** | `ctx.skills` | File-based and dynamic skill discovery; emits `pi/skill-registered`. |
+| **PromptsService** | `ctx.prompts` | Prompt template engine and dynamic template registry; emits `pi/prompt-registered`. |
+| **ExtensionService** | `ctx.extensions` | Loads Pi extensions and bridges `ExtensionAPI` to Cordis events & 7 TUI slots. |
+| **PackageManagerService** | `ctx.packageManager` | Installs extensions from `pi.dev`, npm, git; streams `pi/package-progress`. |
+| **AgentService** | `ctx.agent` | Agent multi-turn inference loop orchestration & turn lifecycle events. |
+
+### 15 Built-in Plugins Workspace
+
+All native plugins are located in `packages/plugins/*`:
+
+| Plugin | Package Name | Key Feature |
+| :--- | :--- | :--- |
+| **`code-mode`** | `@pi-cordis/plugin-code-mode` | PTC mode: dynamic `.d.ts` + `worker_threads` sandbox + tool masking. |
+| **`output-truncator`** | `@pi-cordis/plugin-output-truncator` | Head (30) + Tail (20) preservation + `.pi/spill/` persistence. |
+| **`safety-gate`** | `@pi-cordis/plugin-safety-gate` | Command AST pattern detection + protected file blacklist + read-only mode. |
+| **`git-guard`** | `@pi-cordis/plugin-git-guard` | Dirty repository warning + atomic `git stash create` checkpoints. |
+| **`ask-question`** | `@pi-cordis/plugin-ask-question` | Interactive multi-question batching + `(Recommended)` selection UI. |
+| **`plan-mode`** | `@pi-cordis/plugin-plan-mode` | Step state machine + progress bar + mutating tool interceptor. |
+| **`todo-tracker`** | `@pi-cordis/plugin-todo-tracker` | 4-state task progression + adaptive prompt compression. |
+| **`subagent`** | `@pi-cordis/plugin-subagent` | `ctx.extend()` scope isolation + recursion depth limits + structured summaries. |
+| **`context-compactor`**| `@pi-cordis/plugin-context-compactor` | 4-dimensional structured retention (files, decisions, fixes, blockers). |
+| **`session-handoff`** | `@pi-cordis/plugin-session-handoff` | Standardized Handoff Envelope & Markdown briefings. |
+| **`git-automation`** | `@pi-cordis/plugin-git-automation` | Staged diff semantic analysis & Conventional Commits. |
+| **`ssh-delegator`** | `@pi-cordis/plugin-ssh-delegator` | Remote SSH tool execution proxy & latency measurement. |
+| **`rules-injector`** | `@pi-cordis/plugin-rules-injector` | Hierarchical rules discovery with SHA-256 caching for KV-cache stability. |
+| **`tools-manager`** | `@pi-cordis/plugin-tools-manager` | Dynamic capability slicing & tool visibility toggling. |
+| **`profiles`** | `@pi-cordis/profiles` | Preset loader, YAML parser & dual-track HMR engine. |
+
+### Dual-Track HMR & 7-Slot TUI Bridge
+- **Dual-Track HMR**: Fast programmatic core boot + live zero-restart YAML and plugin code reloading (`pathToFileURL + ?t=timestamp`), preserving conversation history and registers;
+- **7-Slot TUI Bridge**: Drives Select modals, Confirm dialogs, Header/Footer banners, Toast notifications, Tool renderers, Message renderers, and Status bar counters.
 
 ---
 
-## 📂 Repository Structure
+## 📂 Level 4: Repository Layout, Gates & ADR Index
+
+### Repository Structure
 
 ```text
 pi-cordis/
@@ -271,72 +181,59 @@ pi-cordis/
 │   ├── cosmokit/                     # @deepseek-ai/cosmokit
 │   └── schemastery/                  # @deepseek-ai/schemastery
 │
-├── presets/                          # 🌟 Declarative Agent capability and profile presets
+├── presets/                          # 🌟 3 Canonical Agent capability presets
 │   ├── default/                      # preset.yml + cordis.yml (Default is Best)
-│   ├── safe/                         # preset.yml + cordis.yml (Safe Engineering)
-│   ├── strict/                       # preset.yml + cordis.yml (Read-Only Audit)
-│   ├── full/                         # preset.yml + cordis.yml (Power User Mode)
-│   └── minimal/                      # preset.yml + cordis.yml (Raw Microkernel)
+│   ├── plan/                         # preset.yml + cordis.yml (Planning / Review)
+│   └── ptc/                          # preset.yml + cordis.yml (PTC / Code Mode)
 │
 ├── packages/
 │   ├── coding-agent/                 # CLI entrypoint, TUI, and Cordis bootstrapper
+│   │   ├── docs/cordis/services/     # 10 Core Services detailed documentation
 │   │   └── src/core/cordis/          # 10 core services + createPiContext + profile command
-│   └── plugins/                      # 🌟 Native Cordis plugins workspace
-│       ├── safety-gate/              # @pi-cordis/plugin-safety-gate
-│       ├── git-guard/                # @pi-cordis/plugin-git-guard
-│       ├── todo-tracker/             # @pi-cordis/plugin-todo-tracker
-│       ├── rules-injector/           # @pi-cordis/plugin-rules-injector
-│       └── profiles/                 # @pi-cordis/profiles (YAML & Preset HMR hub)
+│   └── plugins/                      # 🌟 15 Native Cordis plugins workspace
 │
 ├── .agents/notes/                    # Architecture Decision Records (ADRs)
 │   ├── implemented/architecture/     # Implemented architectural decisions
 │   ├── implemented/simplification/   # Simplification and decoupling decisions
-│   ├── proposed/                     # Proposals & Roadmaps (PTC, Minimalist Presets)
-│   └── README.md                     # English index
+│   ├── archived/architecture/        # Frozen historical snapshots
+│   └── README.md                     # ADR index & progressive methodology
 │
 ├── CHANGELOG.md                      # Changelog (Keep a Changelog)
 ├── pnpm-workspace.yaml               # pnpm workspace configuration
 └── tsconfig.json                     # TypeScript unified path aliases
 ```
 
----
-
-## 🧪 Quality Gates & Testing
+### Quality Gates & Testing
 
 ```bash
-# Run all Cordis services, native plugins, presets, and HMR tests
-npx vitest run packages/coding-agent/test/cordis-plugins-and-profiles.test.ts packages/coding-agent/test/cordis-bootstrap.test.ts
+# Run all Cordis core services, native plugins, presets, and HMR test suites
+npx vitest run packages/coding-agent/test/cordis-plugins-and-profiles.test.ts packages/coding-agent/test/cordis-bootstrap.test.ts packages/coding-agent/test/cordis-ten-plugins.test.ts
 
 # TypeScript strict typecheck
 pnpm run check
 
-# Launch interactive terminal experience
+# Launch interactive terminal
 pnpm pi
 ```
 
----
+### Architecture Decision Records (ADRs)
 
-## 📝 Architecture Decision Records (ADRs) Index
+Full ADR index available at [`.agents/notes/README.md`](.agents/notes/README.md):
 
-### 🟢 Implemented Architectural Decisions
-| Date | Title | Core Topic |
+| Date | Topic & Title | Status |
 | :--- | :--- | :--- |
-| `2026-08-19` | [Pi-Cordis: Microkernel Architecture Design](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-microkernel-architecture.md) | "Everything is a plugin" philosophy, Vendored Cordis, 100% Pi parity |
-| `2026-08-19` | [Pi-Cordis: Service Matrix and Plugin Ecosystem](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-services-and-plugin-ecosystem.md) | 10 core services, `pi.dev/packages` compatibility, `ExtensionAPI` bridging |
-| `2026-08-19` | [Pi-Cordis: TUI, UI Plugins, and Control Plane Trade-offs](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-tui-and-control-plane-tradeoffs.md) | Strangler Fig pattern, silent TUI boot, terminal canvas vs web servers |
-| `2026-08-19` | [Pi-Cordis: Repository Simplification & Decoupling](.agents/notes/implemented/simplification/2026-08-19-pi-cordis-repository-simplification.md) | Removing 1200+ duplicate source files, consuming official npm packages |
-| `2026-08-19` | [Pi AgentHarness: Specification & Cordis Integration](.agents/notes/implemented/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.md) | Three Stores model, Effect Sandwich crash resilience, Lanes concurrency |
-| `2026-08-19` | [Pi-Cordis: Native Cordis Plugins and Presets](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-native-plugins-and-profiles.md) | `packages/plugins/*` workspace, standalone `presets/` directories, `/profile` |
-| `2026-08-20` | [Pi-Cordis: Loader Trade-offs and Dual-Track HMR Architecture](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-loader-and-dual-track-hmr-architecture.md) | Programmatic core boot, dual-track YAML & code HMR, ESM cache-busting |
-| `2026-08-20` | [Pi-Cordis: Capability Seams, Explicit Injection (inject), and TUI Interaction Bridge](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-capability-seams-inject-and-tui-bridge.md) | DSH tripartite seam alignment, Cordis v4 inject access sandbox, 7 TUI slots |
-| `2026-08-20` | [Pi-Cordis: "Registrations are Effects, and Effects must be Reversible" and Disposer Pattern](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-reversible-side-effects-and-disposer-pattern.md) | Reversible side effect axiom, 4 key scenarios beyond HMR (profile switching, subagent sandboxing, plan mode, atomic rollback) |
-
-### 🟡 Proposed Architectural Roadmaps
-| Date | Title | Core Topic |
-| :--- | :--- | :--- |
-| `2026-08-19` | [Pi-Cordis: Native Plugin Ecosystem Roadmap and Priority Matrix](.agents/notes/proposed/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.md) | 70+ extensions taxonomy, P0 -> P1 -> P2 -> P3 priority evolution matrix |
-| `2026-08-20` | [Pi-Cordis: Programmatic Tool Calling (PTC / Code Mode) Architecture Proposal](.agents/notes/proposed/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.md) | DSH Code Mode deep dive, round-trip collapse & context preservation, dynamic SDK synthesis |
-| `2026-08-20` | [Pi-Cordis: Minimalist Design Philosophy and "Default is Best" Preset Simplification](.agents/notes/proposed/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.md) | Deprecating 5 internal permutations, aligning with Pi's minimalist soul, Default is Best |
+| `2026-08-19` | [Pi-Cordis: Microkernel Architecture Design](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-microkernel-architecture.md) | `implemented` |
+| `2026-08-19` | [Pi-Cordis: Service Matrix and Plugin Ecosystem](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-services-and-plugin-ecosystem.md) | `implemented` |
+| `2026-08-19` | [Pi-Cordis: TUI, UI Plugins, and Control Plane Trade-offs](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-tui-and-control-plane-tradeoffs.md) | `implemented` |
+| `2026-08-19` | [Pi-Cordis: Repository Simplification & Decoupling](.agents/notes/implemented/simplification/2026-08-19-pi-cordis-repository-simplification.md) | `implemented` |
+| `2026-08-19` | [Pi-Cordis: Native Plugin Ecosystem Roadmap](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis: Loader Trade-offs and Dual-Track HMR Architecture](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-loader-and-dual-track-hmr-architecture.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis: Capability Seams, Explicit Injection, and TUI Bridge](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-capability-seams-inject-and-tui-bridge.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis: Reversible Side Effects and Disposer Pattern](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-reversible-side-effects-and-disposer-pattern.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis: Programmatic Tool Calling (PTC / Code Mode) Architecture](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis: Minimalist Presets and "Default is Best" Philosophy](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.md) | `implemented` |
+| `2026-08-20` | [Pi-Cordis: Built-in Plugin Ecosystem Optimal Architecture Blueprint](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.md) | `implemented` |
+| `2026-08-19` | [Pi AgentHarness: Specification & Cordis Integration](.agents/notes/archived/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.md) | `archived` |
 
 ---
 
