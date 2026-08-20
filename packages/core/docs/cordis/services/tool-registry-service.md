@@ -2,29 +2,90 @@
 
 English | [中文](tool-registry-service.zh.md)
 
-`ToolRegistryService` manages the registry of built-in tools (`read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`) and dynamic custom tools registered by plugins. It features presentation masking filters and a hooked `executeTool` pipeline.
+`ToolRegistryService` manages tool registration, presentation filtering (masking), and pipeline interception in Pi-Cordis. It manages the 7 built-in coding tools (`read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`) and dynamic tools contributed by plugins, supports predicate-based **presentation tool masking**, and provides the hooked `executeTool` execution pipeline.
+
+---
+
+## Core Mechanisms
+
+1. **Unified Tool Registry**: Aggregates built-in tools with dynamic tools registered by plugins;
+2. **Presentation Tool Masking**:
+   - Allows plugins (such as `@pi-cordis/plugin-code-mode` or `@pi-cordis/plugin-plan-mode`) to hide specific tools dynamically via `ctx.tools.addFilter()`, ensuring the model only perceives the tools relevant to the active mode;
+3. **Hooked Execution Pipeline (`executeTool`)**:
+   - Pre-execution: Emits `pi/tool-call` for security inspection plugins (e.g. `@pi-cordis/plugin-safety-gate`) to block destructive actions;
+   - Post-execution: Emits `pi/tool-result` for output processing plugins (e.g. `@pi-cordis/plugin-output-truncator`) to perform head/tail truncation and spill persistence.
+
+---
 
 ## API Reference
 
-### `ctx.tools.registerCustomTool(tool: ToolDef): () => void`
-Registers a custom tool. Returns a disposer function that unregisters the tool upon disposal. Emits `pi/tool-registered` and `pi/tool-unregistered`.
+### 1. `ctx.tools.registerCustomTool(tool: ToolDef): () => void`
+Registers a custom tool definition. Returns a disposer function that unregisters the tool upon teardown.
+```typescript
+const unregister = ctx.tools.registerCustomTool({
+    name: "db_query",
+    description: "Executes a read-only database query",
+    parameters: {
+        type: "object",
+        properties: {
+            sql: { type: "string", description: "SQL query string" }
+        },
+        required: ["sql"]
+    },
+    execute: async (args) => {
+        return await runSql(args.sql);
+    }
+});
+```
 
-### `ctx.tools.addFilter(filterFn: (tool: ToolDef) => boolean): () => void`
-Adds a presentation masking filter (e.g. for PTC / Code Mode). Disposing the registering plugin removes the filter automatically.
+### 2. `ctx.tools.addFilter(filterFn: (tool: ToolDef) => boolean): () => void`
+Registers a tool visibility filter. Returns a disposer function.
+```typescript
+// Example: Mask write tools in read-only mode
+const removeFilter = ctx.tools.addFilter((tool) => {
+    return !["write", "edit"].includes(tool.name);
+});
+```
 
-### `ctx.tools.getExportedToolDefinitions(cwd?: string): ToolDef[]`
-Returns tool definitions visible to the LLM model after applying all active filters.
+### 3. `ctx.tools.getExportedToolDefinitions(cwd?: string): ToolDef[]`
+Returns the list of tool definitions exported to the LLM after applying all active filters.
 
-### `ctx.tools.executeTool(toolName: string, args: Record<string, unknown>, ...rest: any[]): Promise<any>`
-Executes a tool through the lifecycle pipeline:
-1. Calls pre-execution hook `pi/tool-call` via `ctx.serial`.
-2. Executes the tool implementation.
-3. Calls post-execution hook `pi/tool-result` via `ctx.parallel`.
+### 4. `ctx.tools.getTool(name: string, cwd?: string): ToolDef | undefined`
+Retrieves a specific tool definition by name.
+
+### 5. `ctx.tools.executeTool(toolName: string, args: Record<string, unknown>, ...rest: any[]): Promise<any>`
+Executes a tool through the full lifecycle pipeline:
+1. Emits `pi/tool-call` serial pre-check (execution aborts if an error is thrown);
+2. Invokes the underlying `execute(args, ...)` function;
+3. Emits `pi/tool-result` post-process event;
 4. Returns the result.
+
+---
 
 ## Events Emitted
 
-- `pi/tool-registered`: `(tool: ToolDef)`
-- `pi/tool-unregistered`: `(name: string)`
-- `pi/tool-call`: `{ toolName?: string, name?: string, args: Record<string, unknown> }`
-- `pi/tool-result`: `{ toolName?: string, name?: string, args?: Record<string, unknown>, result: unknown }`
+- **`pi/tool-registered`**: `(tool: ToolDef)`
+- **`pi/tool-unregistered`**: `(name: string)`
+- **`pi/tool-call`**: `{ toolName: string, args: Record<string, unknown> }`
+- **`pi/tool-result`**: `{ toolName: string, args: Record<string, unknown>, result: unknown }`
+
+---
+
+## Plugin Integration Example
+
+```typescript
+import type { Context } from "@deepseek-ai/cordis";
+
+export const name = "audit-logger";
+export const inject = ["tools"];
+
+export function apply(ctx: Context) {
+    ctx.on("pi/tool-call", ({ toolName, args }) => {
+        console.log(`[AUDIT] About to invoke: ${toolName}`, args);
+    });
+
+    ctx.on("pi/tool-result", ({ toolName, result }) => {
+        console.log(`[AUDIT] Tool ${toolName} finished execution`);
+    });
+}
+```
