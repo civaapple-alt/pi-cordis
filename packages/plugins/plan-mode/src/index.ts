@@ -286,7 +286,8 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 						"list_sessions",
 						"finish",
 					],
-					description: "Action to perform on the implementation plan",
+					description:
+						"Action to perform: 'set_plan' to set metadata, 'add' to add step, 'request_review' (MANDATORY when plan is ready to present the interactive User Approval modal in the terminal), 'approve' to approve, 'update' to update step status, 'finish' to generate walkthrough.",
 				},
 				sessionId: {
 					type: "string",
@@ -650,7 +651,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 			}
 
 			planText += `\n> ⚠️ [Plan Mode Policy]: You are in read-only Plan Mode. Formulate/update the plan in \`${planDoc.planFilePath}\`. Do NOT attempt to write or edit files in this mode.\n`;
-			planText += `> When the plan is formulated or when the user asks to execute/proceed, call \`plan_step({ action: "request_review" })\` or \`plan_step({ action: "approve" })\`. This will present an interactive approval dialog in the user's terminal to approve and automatically switch to default development mode.\n`;
+			planText += `> 🔴 MANDATORY: Once you have formulated the plan steps, you MUST call \`plan_step({ action: "request_review" })\` in your tool calls! Do NOT just ask in plain text. Calling \`plan_step({ action: "request_review" })\` is the ONLY way to pop up the interactive User Approval dialog in the terminal for the user to approve and switch modes.\n`;
 			planText += `> 🛑 CRITICAL: If the user does NOT approve (chooses to modify the plan or ask questions), you MUST STOP immediately and respond to the user with questions or plan updates. NEVER proceed to execute steps or write code without user approval!\n`;
 
 			event.prompt += planText;
