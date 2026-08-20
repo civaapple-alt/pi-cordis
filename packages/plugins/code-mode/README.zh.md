@@ -2,24 +2,72 @@
 
 [English](README.md) | 中文
 
-Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。注册 `run_code` 工具，在隔离的 JavaScript/TypeScript 虚拟机沙箱中批量执行工具链逻辑，将多次大模型往返调用压缩至单次往返中。
+Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。将多轮串行 JSON Function Calling 转换为面向强类型 TypeScript SDK 的单一 `run_code` 执行入口，运行在具有物理级 `worker.terminate()` 死循环强杀保护的独立 Node.js `worker_threads.Worker` 工作线程中。
 
 ## 工具
 
 ### `run_code`
 
 接受参数：
-- `code` (string, 必填)：执行的 JavaScript/TypeScript 代码。沙箱内提供 `console.log` 以及绑定到 `pi.*` 命名空间的全部当前可用工具（例如 `await pi.read({ path: "file.ts" })`）。
+- `code` (string, 必填)：执行的 JavaScript/TypeScript 代码。可在代码中使用 `console.log` 以及绑定到 `pi.*` 命名空间的全部工具（例如 `await pi.read(...)`、`await pi.fs.read(...)` 或 `await pi.bash.run(...)`）。
 
 返回值：
 - `success` (boolean)：执行状态。
-- `output` (string)：捕获的标准控制台输出。
-- `error` (string, 可选)：异常报错信息。
+- `output` (string)：捕获的控制台日志与格式化输出。
+- `error` (string, 可选)：执行失败时的错误信息或异常堆栈。
 - `executionTimeMs` (number)：执行耗时（毫秒）。
 
-## 沙箱架构
-基于 Node.js `vm.createContext` 构建执行沙箱，注入常用 JavaScript 标准全局对象（`Promise`, `Array`, `JSON`, `Math`, `Date`）并代理所有对 `ctx.tools` 的异步调用。
+## 核心架构特性
+
+### 1. 动态强类型 `.d.ts` 生成器 (`dts-generator.ts`)
+- 自动将当前所有注册工具的 JSON Schema 实时编译为结构化的 `declare namespace pi { ... }` 强类型定义；
+- 通过 `pi/prompt-transform` 钩子注入系统提示词，使代码大模型依据精准的 TypeScript 接口进行推导与调用；
+- 提供语义化模块命名空间：
+  - `pi.fs`：`read`, `write`, `edit`, `patch`, `list`, `find`, `grep`
+  - `pi.bash`：`exec`, `run`
+  - 扁平方法：`pi.<toolName>` 支持全部已挂载工具。
+
+### 2. 工具表现层遮蔽（Tool Presentation Masking）
+- 自动从大模型可见的顶层工具列表中过滤掉底层零散工具（`read`、`write`、`edit`、`bash`、`grep`、`find`、`ls`）；
+- 仅向模型暴露 `run_code`（以及白名单中的顶层交互工具如 `ask_question`、`session_handoff`），将工具 Schema 的 Token 开销减少 80%+；
+- 沙箱内部仍然保留对全部底层工具的无限制程序化调用能力。
+
+### 3. 独立工作线程执行引擎 (`worker-runner.ts`)
+- 每次执行启动一个全新的 Node.js `worker_threads.Worker`（独立的 V8 Isolate 与操作系统线程）；
+- **异步死循环强杀保护**：当脚本出现死循环（例如 `while(true) await Promise.resolve()`）时，主线程在超时到达后直接调用 `worker.terminate()` 物理销毁底层 V8 Isolate，瞬间释放所有 CPU 与内存资源，主线程 CPU 毫发无损；
+- **环境降级**：若运行环境限制创建线程，会自动无缝回退至 `node:vm` 沙箱。
+
+### 4. TUI 专属可视化卡片 (`renderer.ts`)
+- `renderCall`：显示代码行数统计标签与前 4 行语法高亮预览（`⚡ run_code (N lines)`）；
+- `renderResult`：
+  - **折叠状态**：输出紧凑单行执行摘要与耗时（`✓ Executed in 12ms → summary`）；
+  - **展开状态**：输出完整的控制台日志、结构化输出与错误排版。
+
+## 配置示例
+
+```yaml
+- name: '@pi-cordis/plugin-code-mode'
+  config:
+    timeoutMs: 30000              # 执行超时时间（毫秒，默认 30000）
+    useWorkerThreads: true        # 启用 worker_threads 独立线程隔离（默认 true）
+    maskUnderlyingTools: true     # 对模型侧隐藏底层工具 Schema（默认 true）
+    injectFullDts: true           # 将完整 .d.ts 声明注入系统提示词（默认 true）
+    allowedTopLevelTools:         # 允许保留在顶层工具列表中的工具白名单
+      - run_code
+      - ask_question
+      - session_handoff
+```
 
 ## 模型体验
-- **往返轮次压缩**：将 5-10 次模型往返对话与交互大幅缩减为 1 次代码执行。
-- **Token 效率提升**：中间循环与搜索数据的输出留在沙箱内存中，避免上下文过度膨胀。
+
+### 工具 Schema 与表现层
+- **Token 影响**：用极简的 `run_code` 单一工具定义替代几十个冗长的工具 Schema，配合提示词中的强类型定义；
+- **KV Cache 影响**：前缀稳定；SDK 类型定义在会话生命周期内保持稳定，不引起缓存抖动。
+
+### 执行与上下文防爆
+- 中间大数据（例如扫描遍历 50 个文件或数组过滤）完全在 Worker 内存中就地处理；
+- 仅将 `console.log` 提炼后的结论和最终结果返回到对话上下文，节省 90%+ 的上下文空间。
+
+## 已知限制与暂缓事项
+- Worker 内不保留跨次执行的全局变量持久状态（每次执行均为独立纯净 Isolate）；
+- 跨主机或分布式 Worker 分发暂缓至未来演进。
