@@ -18,6 +18,8 @@ This directory records architectural decision records (ADRs), technology selecti
 | `2026-08-19` | [Pi-Cordis: Native Cordis Plugins and Profile Presets](implemented/architecture/2026-08-19-pi-cordis-native-plugins-and-profiles.md) | Dedicated plugin workspace (`packages/plugins/*`), four native plugins (safety-gate, git-guard, todo-tracker, rules-injector), and 5 built-in profiles |
 | `2026-08-19` | [Pi-Cordis: Native Plugin Ecosystem Roadmap and Priority Matrix](proposed/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.md) | 70+ extensions taxonomy, P0 -> P1 -> P2 -> P3 priority evolution matrix (Subagent, Plan mode, QnA UI, Output Truncation, Context Compaction) |
 | `2026-08-20` | [Pi-Cordis: Loader Trade-offs and Dual-Track HMR Architecture](implemented/architecture/2026-08-20-pi-cordis-loader-and-dual-track-hmr-architecture.md) | Programmatic core service loading, dual-track YAML & code HMR, ESM timestamp cache-busting, and session continuity |
+| `2026-08-20` | [Pi-Cordis: Capability Seams, Explicit Injection (inject), and TUI Interaction Bridge](implemented/architecture/2026-08-20-pi-cordis-capability-seams-inject-and-tui-bridge.md) | DSH tripartite seam alignment, Cordis v4 inject access sandbox and out-of-order resolution, and ExtensionService 7 TUI interaction slots |
+
 
 
 
