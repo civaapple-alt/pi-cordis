@@ -67,7 +67,14 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(promptEvent.prompt).toContain("declare namespace pi");
 		expect(promptEvent.prompt).toContain("export interface PiSDK");
 
-		// 2. Execute script with semantic namespaces and Promise.all
+		// 2. Verify Tool Presentation Masking (masks raw read/bash, exposes run_code)
+		const exportedNames = ctx.tools.getExportedToolNames();
+		expect(exportedNames).toContain("run_code");
+		expect(exportedNames).not.toContain("read");
+		expect(exportedNames).not.toContain("bash");
+		expect(ctx.tools.getAllToolDefinitions().map((t: any) => t.name)).toContain("read");
+
+		// 3. Execute script with semantic namespaces and Promise.all
 		const tool = ctx.tools.get("run_code");
 		const result = await tool!.execute({
 			code: `
@@ -88,6 +95,7 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 
 		await fork.dispose();
 		expect(ctx.tools.has("run_code")).toBe(false);
+		expect(ctx.tools.getExportedToolNames()).toContain("read");
 	});
 
 	it("4. @pi-cordis/plugin-ask-question: registers ask_question tool and returns selected option", async () => {

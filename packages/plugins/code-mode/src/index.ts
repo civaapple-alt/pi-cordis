@@ -8,6 +8,8 @@ export interface CodeModeConfig {
 	timeoutMs?: number;
 	allowImports?: boolean;
 	injectFullDts?: boolean;
+	maskUnderlyingTools?: boolean;
+	allowedTopLevelTools?: string[];
 }
 
 export interface CodeExecutionResult {
@@ -23,8 +25,42 @@ export const inject = ["tools"];
 export function apply(ctx: Context, config: CodeModeConfig = {}) {
 	const timeoutMs = config.timeoutMs ?? 30000;
 	const injectFullDts = config.injectFullDts ?? true;
+	const maskUnderlyingTools = config.maskUnderlyingTools ?? true;
 
-	// 1. Register run_code tool in Cordis tool registry
+	// 1. Tool Presentation Masking (hide raw file/bash tools from LLM top-level tool list)
+	let removeFilter: (() => void) | undefined;
+	if (maskUnderlyingTools) {
+		const allowedTopLevel = new Set(
+			config.allowedTopLevelTools ?? [
+				"run_code",
+				"ask_question",
+				"session_handoff",
+				"todo_write",
+				"todo_read",
+				"plan_step",
+			],
+		);
+
+		const maskedBuiltins = new Set([
+			"read",
+			"write",
+			"edit",
+			"patch",
+			"apply_patch",
+			"bash",
+			"grep",
+			"find",
+			"ls",
+		]);
+
+		removeFilter = ctx.tools.addFilter((tool) => {
+			if (allowedTopLevel.has(tool.name)) return true;
+			if (maskedBuiltins.has(tool.name)) return false;
+			return true;
+		});
+	}
+
+	// 2. Register run_code tool in Cordis tool registry
 	const unregisterTool = ctx.tools.register({
 		name: "run_code",
 		description: "Execute a JavaScript/TypeScript program against the Pi Agent SDK to batch multiple tool operations into one round-trip.",
@@ -42,13 +78,14 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 			const startTime = Date.now();
 			const logs: string[] = [];
 
+			// Retrieve all tools (including underlying masked tools) for the sandbox SDK
 			const allTools = ctx.tools.getAllToolDefinitions();
 			const flatTools: Record<string, Function> = {};
 
 			for (const t of allTools) {
 				flatTools[t.name] = async (toolArgs: unknown) => {
 					const res = await (t as any).execute(toolArgs);
-					// If the result is a wrapped agent tool result, extract content
+					// If the result is a wrapped agent tool result, extract details/content
 					if (res && typeof res === "object" && "details" in res) {
 						return res.details;
 					}
@@ -144,14 +181,17 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 		},
 	});
 
-	// 2. Inject Strong-Typed SDK declaration (.d.ts) into System Prompt
+	// 3. Inject Strong-Typed SDK declaration (.d.ts) into System Prompt
 	const removePromptHook = ctx.on("pi/prompt-transform", async (event: { prompt: string }) => {
 		const allTools = ctx.tools.getAllToolDefinitions();
 		const dts = generateSdkDts(allTools);
 
 		let guide = `\n\n## ⚡ Programmatic Tool Calling (PTC / Code Mode) Available:\n`;
 		guide += `You can execute batch logic via the \`run_code\` tool using the strong-typed \`pi\` global SDK.\n`;
-		guide += `Benefits: Collapses multiple steps into 1 round-trip; filter large data in-memory before returning.\n\n`;
+		guide += `Benefits: Collapses multiple steps into 1 round-trip; filter large data in-memory before returning.\n`;
+		if (maskUnderlyingTools) {
+			guide += `Note: Standard tools (read, write, bash, etc.) are encapsulated in the \`pi\` SDK and not exposed as separate top-level tools.\n\n`;
+		}
 
 		if (injectFullDts) {
 			guide += `\`\`\`typescript\n${dts}\n\`\`\`\n`;
@@ -163,6 +203,7 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 	// Reversible disposal
 	return () => {
 		unregisterTool();
+		removeFilter?.();
 		removePromptHook();
 	};
 }

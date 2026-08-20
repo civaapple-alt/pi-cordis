@@ -15,6 +15,8 @@ export interface CordisPluginToolDef {
 	execute: (args: any, ...rest: any[]) => Promise<any>;
 }
 
+export type ToolFilterFn = (tool: ToolDef) => boolean;
+
 export interface ToolRegistryServiceConfig {
 	cwd?: string;
 	toolsOptions?: ToolsOptions;
@@ -23,6 +25,7 @@ export interface ToolRegistryServiceConfig {
 export class ToolRegistryService extends Service {
 	static provide = "tools";
 	private customTools: Map<string, ToolDef> = new Map();
+	private filters: Set<ToolFilterFn> = new Set();
 	private cwd: string;
 	private toolsOptions?: ToolsOptions;
 
@@ -45,6 +48,19 @@ export class ToolRegistryService extends Service {
 		});
 	}
 
+	/**
+	 * Register a tool filter (e.g. for Code Mode or safe masking)
+	 * Filter is automatically removed when the registering plugin fiber is disposed.
+	 */
+	public addFilter(filter: ToolFilterFn): () => void {
+		return this.ctx.effect(() => {
+			this.filters.add(filter);
+			return () => {
+				this.filters.delete(filter);
+			};
+		});
+	}
+
 	public getBuiltinToolDefinition(toolName: ToolName, cwd: string = this.cwd): ToolDef {
 		return createToolDefinition(toolName, cwd, this.toolsOptions);
 	}
@@ -60,6 +76,35 @@ export class ToolRegistryService extends Service {
 
 	public getToolNames(cwd: string = this.cwd): string[] {
 		return this.getAllToolDefinitions(cwd).map((t) => t.name);
+	}
+
+	/**
+	 * Get exported tool definitions visible to the LLM model (applying active filters)
+	 */
+	public getExportedToolDefinitions(cwd: string = this.cwd): ToolDef[] {
+		const all = this.getAllToolDefinitions(cwd);
+		if (this.filters.size === 0) return all;
+
+		return all.filter((tool) => {
+			for (const filter of this.filters) {
+				if (!filter(tool)) return false;
+			}
+			return true;
+		});
+	}
+
+	/**
+	 * Get list of tool names exported to the LLM model
+	 */
+	public getExportedToolNames(cwd: string = this.cwd): string[] {
+		return this.getExportedToolDefinitions(cwd).map((t) => t.name);
+	}
+
+	/**
+	 * Check if a tool is exported to the LLM model
+	 */
+	public isExported(toolName: string, cwd: string = this.cwd): boolean {
+		return this.getExportedToolNames(cwd).includes(toolName);
 	}
 
 	public get(toolName: string, cwd: string = this.cwd): ToolDef | undefined {
