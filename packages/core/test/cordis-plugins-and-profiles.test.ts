@@ -244,15 +244,26 @@ profiles:
 		expect(bridge.hidden).toBe(true);
 
 		const registeredInPi = new Map<string, any>();
+		const toolsRegisteredInPi = new Map<string, any>();
 		const mockPi: any = {
 			registerCommand: (name: string, def: any) => {
 				registeredInPi.set(name, def);
+			},
+			registerTool: (toolDef: any) => {
+				toolsRegisteredInPi.set(toolDef.name, toolDef);
 			},
 		};
 		bridge.factory(mockPi);
 
 		expect(registeredInPi.has("profile")).toBe(true);
 		expect(registeredInPi.has("btw")).toBe(true);
+
+		// Verify custom tools and search tools bridged to Pi
+		expect(toolsRegisteredInPi.has("grep")).toBe(true);
+		expect(toolsRegisteredInPi.has("find")).toBe(true);
+		expect(toolsRegisteredInPi.has("ls")).toBe(true);
+		expect(toolsRegisteredInPi.has("ask_question")).toBe(true);
+		expect(toolsRegisteredInPi.has("todo_write")).toBe(true);
 
 		// 3. Test /btw handler without active model
 		let notifyMsg = "";

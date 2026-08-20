@@ -26,19 +26,6 @@ async function runCli() {
 		profileName = rawArgs[profileIdx + 1];
 		rawArgs.splice(profileIdx, 2);
 	}
-	// If no explicit --tools or --no-tools flags, default to enabling all 7 built-in tools
-	const hasToolsFlag = rawArgs.some(
-		(arg) =>
-			arg === "--tools" ||
-			arg === "-t" ||
-			arg === "--no-tools" ||
-			arg === "-nt" ||
-			arg === "--no-builtin-tools" ||
-			arg === "-nbt",
-	);
-	if (!hasToolsFlag) {
-		rawArgs.unshift("--tools", "read,bash,edit,write,grep,find,ls");
-	}
 
 	// 1. Boot Cordis Microkernel & Core Services + Active Profile
 	const cordisCtx = await createPiContext({

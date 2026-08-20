@@ -10,11 +10,10 @@
 
 - **`ExtensionService` 双向命令与工具桥接中枢**：
   - **声明式命令注册**：实现 `ctx.extensions.registerCommand(name, definition)`，支持任意 Cordis 原生插件通过 TypeScript 声明终端斜杠命令，返回 Fiber 级可逆销毁句柄（Disposer），并自动广播 `pi/command-registered` 与 `pi/command-unregistered`；
-  - **动态插件工具自动桥接**：`createBridgeExtensionFactory()` 自动将 `ctx.tools.getCustomTools()` 转换为标准 `ToolDefinition` 并调用 `pi.registerTool()`，监听 `pi/tool-registered` 支持运行时动态热注册工具，确保大模型从 LLM API 视角完整感知所有激活插件的工具 Schema；
+  - **动态插件工具与搜索工具自动桥接**：`createBridgeExtensionFactory()` 自动将 `ctx.tools.getCustomTools()` 以及 `grep, find, ls` 搜索工具转换为标准 `ToolDefinition` 并调用 `pi.registerTool()`，监听 `pi/tool-registered` 支持运行时动态热注册工具，确保大模型从 LLM API 视角完整感知 7 大内置工具 + 当前 Profile 所有激活插件的工具 Schema；
+  - **避免 CLI `--tools` 过滤副作用**：CLI 启动器保持 `tools` 白名单为 `undefined`，避免因 CLI 显式指定 `--tools` 而导致上游 `AgentSession` 严格过滤并屏蔽掉插件自定义扩展工具；
   - **双向事件反射与拦截**：自动将上游 `tool_call` 与 `tool_result` 反射回 Cordis 中央事件总线与拦截管道；
   - **消除终端噪音**：内联扩展工厂标记 `hidden: true`，彻底消除 TUI 启动横幅中冗余的 `<inline:N>` 视觉噪音。
-- **全量内置工具默认就绪**：
-  - 在 CLI 启动器（`picds`）中，当未显式指定 `--tools` 时，默认全量开启 `read, bash, edit, write, grep, find, ls` 全部 7 大内置工具。
 
 ### 🧩 纯正 Cordis 插件化与极简预设体系重构
 

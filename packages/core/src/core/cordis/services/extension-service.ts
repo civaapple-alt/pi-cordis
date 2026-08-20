@@ -138,7 +138,21 @@ export class ExtensionService extends Service {
 					}
 				}
 
-				// 2. Register all custom tools from ctx.tools to Pi
+				// 2. Register built-in search tools (grep, find, ls) so they are available without CLI --tools restriction
+				if (this.ctx.tools) {
+					for (const builtinName of ["grep", "find", "ls"] as const) {
+						try {
+							const toolDef = this.ctx.tools.getBuiltinToolDefinition(builtinName);
+							if (toolDef) {
+								pi.registerTool?.(this.adaptToolForPi(toolDef));
+							}
+						} catch {
+							// Ignore if already registered
+						}
+					}
+				}
+
+				// 3. Register all custom tools from ctx.tools to Pi
 				if (this.ctx.tools) {
 					for (const tool of this.ctx.tools.getCustomTools()) {
 						try {
