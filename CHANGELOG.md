@@ -4,6 +4,36 @@
 
 ---
 
+## [0.3.0] - 2026-08-20
+
+### 🌟 终端斜杠命令与插件工具原生桥接 (Native Slash Commands & Plugin Tool Bridge)
+
+- **`ExtensionService` 双向命令与工具桥接中枢**：
+  - **声明式命令注册**：实现 `ctx.extensions.registerCommand(name, definition)`，支持任意 Cordis 原生插件通过 TypeScript 声明终端斜杠命令，返回 Fiber 级可逆销毁句柄（Disposer），并自动广播 `pi/command-registered` 与 `pi/command-unregistered`；
+  - **动态插件工具自动桥接**：`createBridgeExtensionFactory()` 自动将 `ctx.tools.getCustomTools()` 转换为标准 `ToolDefinition` 并调用 `pi.registerTool()`，监听 `pi/tool-registered` 支持运行时动态热注册工具，确保大模型从 LLM API 视角完整感知所有激活插件的工具 Schema；
+  - **双向事件反射与拦截**：自动将上游 `tool_call` 与 `tool_result` 反射回 Cordis 中央事件总线与拦截管道；
+  - **消除终端噪音**：内联扩展工厂标记 `hidden: true`，彻底消除 TUI 启动横幅中冗余的 `<inline:N>` 视觉噪音。
+- **全量内置工具默认就绪**：
+  - 在 CLI 启动器（`picds`）中，当未显式指定 `--tools` 时，默认全量开启 `read, bash, edit, write, grep, find, ls` 全部 7 大内置工具。
+
+### 🧩 纯正 Cordis 插件化与极简预设体系重构
+
+- **`@pi-cordis/profiles` 纯正插件化**：
+  - 显式声明 `inject = ["extensions", "settings"]`，通过 `ctx.extensions.registerCommand("profile", ...)` 注册交互式预设查询与即时热重载命令。
+- **新建 `@pi-cordis/plugin-btw`（真实 LLM 旁路问答）**：
+  - 独立插件工作区（`packages/plugins/btw`），显式声明 `inject = ["extensions", "ai"]`；
+  - 注册 `/btw` 指令，调用 `ctx.ai.getRuntime().completeSimple(...)` 进行真实单轮 LLM 流式推理并在终端展示，**100% 物理隔离不污染 SQLite / JSONL 会话日志，零上下文 Token 浪费**；
+  - 触发 `pi/btw-query` 与 `pi/btw-response` 响应式事件。
+- **新建 `@pi-cordis/plugin-terminal-notifier`（原生桌面通知）**：
+  - 独立插件工作区（`packages/plugins/terminal-notifier`），监听智能体交互等待与轮次完成，向 Warp / Ghostty / iTerm2 发射 `OSC 777` 桌面弹窗通知。
+- **“Default is Best” 3 大场景化预设**：
+  - 废除 5 大内部排列组合，收敛为 3 大极简场景预设：
+    1. `default`（标准开发模式，内置安全守门、Git 检查点、规则注入、待办追踪、输出防爆、多智能体协同、旁路问答与桌面通知）；
+    2. `plan`（规划与审计模式，只读探索、步骤状态机与写操作强制拦截）；
+    3. `ptc`（编程化调用模式，动态 TypeScript SDK 与 Worker 线程沙箱 1 轮极速批处理）。
+
+---
+
 ## [0.2.0] - 2026-08-20
 
 ### 🌟 核心架构与上游解耦 (Decoupling & 4-Layer Architecture)
