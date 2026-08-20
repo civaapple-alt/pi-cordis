@@ -190,7 +190,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 	const cwd = config.cwd ?? process.cwd();
 	const basePlansDir = path.join(cwd, ".pi", "plans");
 
-	const plans = new Map<string, PlanDocument>();
+	const plans: Map<string, PlanDocument> = ((ctx as any)._planModePlans ??= new Map<string, PlanDocument>());
 	let activeSessionId = "default";
 
 	let isPlanModeActive = true;
@@ -664,7 +664,6 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 		removeToolInterceptor();
 		removePromptHook?.();
 		removeSessionStartHook();
-		plans.clear();
 	});
 
 	return () => {
@@ -672,7 +671,6 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 		removeToolInterceptor();
 		removePromptHook?.();
 		removeSessionStartHook();
-		plans.clear();
 	};
 }
 

@@ -60,6 +60,7 @@ export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 		name: "default",
 		description: "标准日常开发模式 (Default is Best: 开箱即用全量安全防护、规则注入、待办追踪与防爆转存)",
 		plugins: {
+			"plan-mode": { autoBlockWrites: false, injectGuidelines: true },
 			"safety-gate": true,
 			"git-guard": true,
 			"rules-injector": true,
@@ -247,6 +248,12 @@ export async function applyProfile(
 		(ctx as any)._activeProfilePluginKeys = [];
 		// Allow Cordis fiber disposal to settle
 		await new Promise((r) => setTimeout(r, 0));
+	}
+
+	if (profileName === "minimal") {
+		(ctx as any)._activeProfilePluginKeys = [];
+		(ctx as any).extensions?.syncActiveTools?.();
+		return [];
 	}
 
 	const allProfiles = loadProfilesFromYaml(options.cwd, options.agentDir);
