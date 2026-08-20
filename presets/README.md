@@ -1,41 +1,48 @@
-# presets/ — Agent 能力预设与 Profile 配置目录
+# presets/ — Agent Capability Presets & Profile Configurations
 
-[English](README.md) | 中文
+English | [中文](README.zh.md)
 
-`presets/` 目录下存放系统中所有的 Agent 角色与能力预设。每个预设为一个独立子目录，包含两份声明式 YAML 配置文件：
-1. **`preset.yml`**：预设的展示名称与描述元数据；
-2. **`cordis.yml`**：该预设在激活时挂载到 Cordis 上下文中的原生插件列表及配置参数。
+The `presets/` directory contains all scenario-driven Agent Mode configurations for **Pi-Cordis**. In accordance with the **"Default is Best" Minimalist Philosophy**, the system consolidates internal plugin permutations into **3 canonical, high-leverage scenario presets**.
+
+Each preset is a dedicated directory containing two declarative YAML configuration files:
+1. **`preset.yml`**: Display name, description, and UI ordering metadata;
+2. **`cordis.yml`**: The list of native Cordis plugins and validated configs mounted upon activation.
 
 ---
 
-## 现有 Presets 概览
+## The 3 Canonical Presets
 
-| 预设标识 | 预设名称 | 目录路径 | 挂载插件列表 | 适用场景 |
+| Preset Key | Display Name | Directory | Active Plugins & Capabilities | Best For |
 |---|---|---|---|---|
-| **`default`** | 标准日常开发模式 | [`presets/default/`](default/) | `@pi-cordis/plugin-rules-injector`, `@pi-cordis/plugin-todo-tracker` | 标准日常开发，规则自动注入与待办任务管理。 |
-| **`safe`** | 安全生产工程模式 | [`presets/safe/`](safe/) | `@pi-cordis/plugin-safety-gate`, `@pi-cordis/plugin-git-guard`, `@pi-cordis/plugin-rules-injector`, `@pi-cordis/plugin-todo-tracker` | 生产环境开发，拦截高危破坏性命令、防止敏感配置泄漏、自动 Git 检查点。 |
-| **`strict`** | 严格审计只读模式 | [`presets/strict/`](strict/) | `@pi-cordis/plugin-safety-gate` (只读), `@pi-cordis/plugin-git-guard`, `@pi-cordis/plugin-rules-injector` | 代码安全审查与诊断，禁用全部文件写入与高危指令。 |
-| **`full`** | 全能极客模式 | [`presets/full/`](full/) | 激活全部 4 大原生 Cordis 插件 | 全能开发模式，兼具最完备的安全、任务、Git 与规则能力。 |
-| **`minimal`** | 极简微内核模式 | [`presets/minimal/`](minimal/) | 无额外插件 | 纯净极简运行，仅保留 10 大核心服务。 |
+| **`default`** | Standard Coding Mode (Default is Best) | [`presets/default/`](default/) | `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `context-compactor`, `subagent`, `git-automation`, `session-handoff`, `ssh-delegator`, `tools-manager` | **Default is Best**. Out-of-the-box standard engineering mode with full safety, task tracking, rules injection, and multi-agent delegation. |
+| **`plan`** | Planning & Audit Mode (Plan / Review) | [`presets/plan/`](plan/) | `plan-mode`, `safety-gate` (`readOnly: true`), `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `context-compactor` | Complex refactoring, architecture exploration, and proposal design. Mutating tools are strictly intercepted until plans are approved. |
+| **`ptc`** | Programmatic Tool Calling (PTC / Code Mode) | [`presets/ptc/`](ptc/) | `code-mode` (`worker_threads`), `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `context-compactor` | Batch operations and complex data filtering. Exposes tools via a strong-typed TypeScript SDK, collapsing multi-turn workflows into 1 local execution. |
 
 ---
 
-## 如何添加自定义 Preset？
+## How to Switch Presets
 
-添加一个新的预设只需新建一个子目录（如 `presets/reviewer/`、`.pi/presets/reviewer/` 或 `~/.pi/presets/reviewer/`）：
+- **CLI Flag**: `pnpm pi --profile plan` or `pnpm pi --profile ptc`
+- **Interactive TUI**: Type `/profile plan` or `/profile ptc` in the terminal prompt.
+- **Default Startup**: `pnpm pi` (automatically loads `default` with full capabilities and zero configuration).
 
-1. 创建 `preset.yml`：
+---
+
+## Adding Custom Presets
+
+To add a custom preset, create a new subfolder in `presets/<name>/` (or `.pi/presets/<name>/` / `~/.pi/presets/<name>/`):
+
+1. **`preset.yml`**:
    ```yaml
-   name: 代码审查专家 (Reviewer)
-   description: 针对代码质量与架构规范的专项审查预设
+   name: Reviewer Mode
+   description: Specialized preset for code quality and architectural review
+   order: 4
    ```
 
-2. 创建 `cordis.yml`：
+2. **`cordis.yml`**:
    ```yaml
    - name: '@pi-cordis/plugin-safety-gate'
      config:
        readOnly: true
    - name: '@pi-cordis/plugin-rules-injector'
    ```
-
-保存后，启动 `pnpm pi` 或在 TUI 中输入 `/profile`，系统会自动发现并展示新预设！

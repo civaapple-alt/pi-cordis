@@ -1,7 +1,15 @@
+# ==========================================
+# Plan Profile Cordis Plugins Composition (Read-Only Review & Planning)
+# ==========================================
 - name: '@pi-cordis/plugin-plan-mode'
   config:
     autoBlockWrites: true
     injectGuidelines: true
+- name: '@pi-cordis/plugin-safety-gate'
+  config:
+    readOnly: true
 - name: '@pi-cordis/plugin-rules-injector'
 - name: '@pi-cordis/plugin-todo-tracker'
 - name: '@pi-cordis/plugin-output-truncator'
+- name: '@pi-cordis/plugin-ask-question'
+- name: '@pi-cordis/plugin-context-compactor'

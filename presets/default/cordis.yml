@@ -10,3 +10,13 @@
   config:
     injectToPrompt: true
 - name: '@pi-cordis/plugin-output-truncator'
+  config:
+    maxBytes: 51200
+    enableSpill: true
+- name: '@pi-cordis/plugin-ask-question'
+- name: '@pi-cordis/plugin-context-compactor'
+- name: '@pi-cordis/plugin-subagent'
+- name: '@pi-cordis/plugin-git-automation'
+- name: '@pi-cordis/plugin-session-handoff'
+- name: '@pi-cordis/plugin-ssh-delegator'
+- name: '@pi-cordis/plugin-tools-manager'
