@@ -111,6 +111,7 @@ If a proposed approach is rejected during review:
 | Date | Title | Focus |
 |---|---|---|
 | `2026-08-19` | [Pi-Cordis: Repository Simplification and Upstream Decoupling](implemented/simplification/2026-08-19-pi-cordis-repository-simplification.md) | Removing 1200+ duplicate source files, consuming official `@earendil-works/pi-*` dependencies from npm, 85%+ repository size reduction, and effortless upstream tracking |
+| `2026-08-20` | [Pi-Cordis: Core Layer (@pi-cordis/core) Upstream Decoupling & 4-Layer Architecture Implementation](implemented/simplification/2026-08-20-pi-cordis-core-decoupling-and-layered-architecture.md) | Eliminating last-mile cloned code, establishing 4-layer architecture pyramid, refactoring to `@pi-cordis/core` importing official `@earendil-works/pi-coding-agent` from npm, delivering `picds` binary and `~/.picds` user isolation |
 
 ---
 

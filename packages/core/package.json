@@ -1,0 +1,47 @@
+{
+	"name": "@pi-cordis/core",
+	"version": "0.2.0",
+	"description": "Cordis microkernel control plane and native plugin harness for Pi Coding Agent",
+	"type": "module",
+	"piConfig": {
+		"name": "picds",
+		"configDir": ".picds"
+	},
+	"bin": {
+		"picds": "dist/cli.js",
+		"picordis": "dist/cli.js"
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"test": "vitest --run"
+	},
+	"dependencies": {
+		"@deepseek-ai/cordis": "workspace:*",
+		"@deepseek-ai/cosmokit": "workspace:*",
+		"@deepseek-ai/schemastery": "workspace:*",
+		"@pi-cordis/profiles": "workspace:*",
+		"@earendil-works/pi-coding-agent": "^0.84.2",
+		"@earendil-works/pi-agent-core": "^0.84.2",
+		"@earendil-works/pi-ai": "^0.84.2",
+		"@earendil-works/pi-client": "^0.84.2",
+		"@earendil-works/pi-protocol": "^0.84.2",
+		"@earendil-works/pi-tui": "^0.84.2",
+		"chalk": "^5.4.1",
+		"yaml": "^2.7.0"
+	},
+	"devDependencies": {
+		"@types/node": "22.19.19",
+		"typescript": "5.9.3",
+		"vitest": "4.1.9"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	}
+}

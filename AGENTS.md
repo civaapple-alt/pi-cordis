@@ -80,7 +80,7 @@ pi-cordis/
 │   └── ptc/                          # preset.yml + cordis.yml (编程调用模式)
 │
 ├── packages/                         # Monorepo 子包工作区
-│   ├── coding-agent/                 # 编码智能体主包 (CLI 入口、TUI 界面与 Cordis 引导器)
+│   ├── core/                         # @pi-cordis/core (CLI 入口、10 大 Cordis 服务与微内核引导器)
 │   │   ├── docs/cordis/services/     # 10 大核心服务详细文档与 API 契约
 │   │   └── src/core/cordis/          # 10 大核心服务源码 + createPiContext
 │   └── plugins/                      # 🌟 15 个原生 Cordis 插件工作区
@@ -183,13 +183,13 @@ pi-cordis/
 
 ```bash
 # 1. 运行 Cordis 微内核引导与全套原生插件/预设专属测试
-npx vitest run packages/coding-agent/test/cordis-plugins-and-profiles.test.ts packages/coding-agent/test/cordis-bootstrap.test.ts packages/coding-agent/test/cordis-ten-plugins.test.ts
+pnpm test
 
 # 2. TypeScript 严格类型检查
 pnpm run check
 
 # 3. 启动交互式 TUI 实机体验
-pnpm pi
+pnpm picds
 
 # 4. 在 TUI 中切换预设
 /profile plan

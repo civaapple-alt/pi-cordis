@@ -2,6 +2,40 @@
 
 本项目的全部重大架构变更与版本演进均记录于此。
 
+---
+
+## [0.2.0] - 2026-08-20
+
+### 🌟 核心架构与上游解耦 (Decoupling & 4-Layer Architecture)
+
+- **核心层 `@pi-cordis/core` 终极上游解耦与 4 层架构重构**：
+  - 将主包更名为 **`@pi-cordis/core`**（目录 `packages/core`），直接通过 npm 消费官方 `@earendil-works/pi-coding-agent: ^0.84.2`、`@earendil-works/pi-ai`、`@earendil-works/pi-agent-core`、`@earendil-works/pi-tui`；
+  - 彻底清空数百个本地克隆的冗余上游源码文件与测试用例，实现一条 `pnpm update` 即可无感升级上游能力；
+  - 确立清晰严谨的 **4 层架构金字塔**：Level 1（通用 Agent 底座）➔ Level 2（Coding 场景特化）➔ Level 3（Cordis 微内核控制面）➔ Level 4（场景预设与原生插件）。
+- **两阶段 CLI 启动装配器 (`picds` / `picordis`)**：
+  - **阶段 1（Cordis 微内核预热）**：解析 `--profile`，启动 Cordis IOC 容器并装载 10 大核心服务、终端通知器（OSC 777）与 `/profile`、`/btw` 扩展工厂；
+  - **阶段 2（上游主循环驱动）**：将 Cordis 扩展工厂通过 `extensionFactories` 传递给 `@earendil-works/pi-coding-agent` 的 `main(args, options)`，无缝驱动原生终端 TUI。
+- **命令行与用户数据物理隔离**：
+  - 注册 `picds`（首选 5 字符极简命令）与 `picordis`（全称），废除 `pi` 命令以防止与本地全局安装的原生 Pi 发生 PATH 抢占冲突；
+  - 全局用户目录使用 `~/.picds/agent/`（`settings.json`, `auth.json`, `sessions/`, `presets/`），与原生 `~/.pi/` 物理隔离，杜绝数据破坏；
+  - 项目配置优先读取 `<cwd>/.picds/`，不存在时自动向下兼容 `<cwd>/.pi/`。
+- **10 大原生 Cordis 核心服务全面升级**：
+  - `ctx.settings` (`SettingsService`)：响应式配置管理与 `pi/settings-updated` 事件；
+  - `ctx.auth` (`AuthService`)：基于 `readStoredCredential` 的凭据读写与 `pi/auth-updated` 事件；
+  - `ctx.ai` (`AIService`)：多模型运行时、动态 Provider 注册与 Disposer 销毁，`pi/model-change` 事件；
+  - `ctx.tools` (`ToolRegistryService`)：工具注册、Code Mode 过滤器与 `executeTool` 拦截管道（`pi/tool-call`, `pi/tool-result`）；
+  - `ctx.session` (`SessionService`)：会话树持久化与快速不落盘的内存会话（`inMemory`）；
+  - `ctx.skills` (`SkillsService`)：Markdown 技能动态发现与注入；
+  - `ctx.prompts` (`PromptsService`)：提示词模板动态加载与注册；
+  - `ctx.extensions` (`ExtensionService`)：TypeScript 扩展扫描与运行时桥接；
+  - `ctx.packageManager` (`PackageManagerService`)：扩展包安装/卸载与 `pi/package-progress` 进度广播；
+  - `ctx.agent` (`AgentService`)：智能体推理循环调度与多轮事件映射。
+- **轻量特性与原生终端能力吸收**：
+  - **OSC 777 原生终端通知**：在智能体等待提问或轮次完成时，向 Warp / Ghostty / iTerm2 发送系统级原生通知；
+  - **`/btw` 侧信道问答**：支持轻量级旁支提问，不污染主会话上下文与历史日志。
+
+---
+
 ## [0.1.0] - 2026-08-19
 
 ### 🌟 新增特性 (Added)
@@ -10,35 +44,18 @@
   - 完整集成 `vendor/` 下 vendored 的 Cordis 元框架内核（`@deepseek-ai/cordis`、`@deepseek-ai/cosmokit`、`@deepseek-ai/schemastery` 等）；
   - 实现强类型 `Context` 声明合并与生命周期事件映射（`pi/session-start`、`pi/session-before`、`pi/session-after`、`pi/tool-call`、`pi/tool-result`、`pi/model-change`、`pi/prompt-transform`）。
 - **“Everything is a plugin” 服务解耦与重构**：
-  - `SettingsService` (`ctx.settings`)：统一管理用户全局配置与项目本地配置，提供 Schema 校验与文件监听；
-  - `AuthService` (`ctx.auth`)：统一管理 API 密钥、OAuth 令牌与凭证安全存储；
-  - `AIService` (`ctx.ai`)：统一封装多模型运行时，内置 1307+ 个主流模型定义与流式推理；
-  - `ToolRegistryService` (`ctx.tools`)：统一注册 7 大核心内置工具（`read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`）与动态扩展工具；
-  - `SessionService` (`ctx.session`)：统一管理 SQLite 与内存会话存储、多分支树切换与会话导出；
-  - `SkillsService` (`ctx.skills`)：自动发现与解析技能目录与提示词技能；
-  - `PromptsService` (`ctx.prompts`)：管理提示词模板与参数变量插值；
-  - `ExtensionService` (`ctx.extensions`)：加载 Pi 原生扩展，无缝桥接 `ExtensionAPI` 至 Cordis 事件总线；
-  - `PackageManagerService` (`ctx.packageManager`)：支持从 `pi.dev/packages` 插件市场、npm、git 与本地目录安装与管理插件包；
-  - `AgentService` (`ctx.agent`)：协调多轮智能体推理循环与上下文装配。
+  - 将 Settings, Auth, AI, Tools, Session, Skills, Prompts, Extensions, PackageManager, Agent 封装为 Cordis 服务。
 - **原生 Cordis 插件体系与 Profile 预设机制**：
-  - 建立独立的 `packages/plugins/*` 工作区，收录 4 大开箱即用的原生 Cordis 插件：
-    - `@pi-cordis/plugin-safety-gate`：高危破坏性命令与受保护敏感文件拦截器；
-    - `@pi-cordis/plugin-git-guard`：Git 工作区脏状态提示与关键会话轮次自动 Checkpoint 保护；
-    - `@pi-cordis/plugin-todo-tracker`：注册 `todo_write`/`todo_read` 待办工具并自动将活跃任务注入提示词；
-    - `@pi-cordis/plugin-rules-injector`：自动扫描项目规则文件（`AGENTS.md`, `.claude/rules/*.md`, `.cursorrules`）并注入系统提示词。
-  - 推出 `@pi-cordis/profiles` 组合装配中心，支持 `default`, `safe`, `strict`, `full`, `minimal` 5 大常用预设模式，支持在 CLI 与代码中一键切换；
-  - **支持声明式 YAML 配置 (`cordis.yml` / `profiles.yml`)**：自动级联加载项目级与用户全局级的 YAML 文件，用户可自由添加自定义 Profile 与调整插件参数；
-  - **支持在 TUI 中通过 `/profile` 斜杠命令动态查看与切换当前 Profile 预设**，支持 Tab 键自动补全与无参数时的交互式下拉选择菜单；
-  - **支持 Presets 预设与插件源码级 HMR（热重载）**：核心 10 大 Service 保持高速编程式加载，上层 `presets/` 与 `packages/plugins/*` 插件支持实时文件监听与免重启热重载。
+  - 建立独立的 `packages/plugins/*` 工作区，收录 4 大开箱即用的原生 Cordis 插件（`safety-gate`, `git-guard`, `todo-tracker`, `rules-injector`）；
+  - 推出 `@pi-cordis/profiles` 组合装配中心，支持 `default`, `safe`, `strict`, `full`, `minimal` 常用预设模式；
+  - 支持声明式 YAML 配置 (`cordis.yml` / `profiles.yml`) 与在 TUI 中通过 `/profile` 动态查看与切换；
+  - 支持 Presets 预设与插件源码级 HMR（热重载）。
 
 ### 🏗️ 架构与规范 (Architecture)
 
-- **100% 保持 Pi 的功能与 TUI 体验**：终端渲染、分支树选择器、Diff 对比、Markdown 流式高亮、快捷键与 Slash Commands 纯正体验；
+- **100% 保持 Pi 的功能与 TUI 体验**：保留终端渲染、分支树选择器、Diff 对比、Markdown 流式高亮、快捷键与 Slash Commands 纯正体验；
 - **严格依赖隔离**：零依赖 `deepseek-harness` 专属插件，底层仅依赖 `vendor/` 内核；
-- **完整生态支持**：全面支持 `https://pi.dev/packages` 原生插件生态；实机验证通过 `pnpm pi install npm:@juicesharp/rpiv-todo` 社区插件安装与交互式 TUI 完整运行（包括模型创建 Todo、`/todos` 快捷斜杠命令查看交互）；
-- **架构决策记录 (Agent Notes)**：建立 `.agents/notes/` 目录规范，收录微内核架构设计、服务矩阵与插件生态集成、TUI 权衡与控制面重构深度分析、仓库精简与依赖解耦、Pi AgentHarness 工业级事务规格融合、双轨分层 HMR 架构设计、能力 Seams 与显式依赖注入（inject）、注册即副作用与副作用必可逆（Disposer 模式）、原生插件生态全景规划（P0-P3 演进矩阵）、编程化工具调用（PTC / Code Mode）提案，以及极简设计哲学与 “Default is Best” 预设体系重构提案等中英文架构决策记录（ADR）；
-- **仓库架构重大精简**：移除 1200+ 未修改的克隆源码文件，转为直接消费官方 `@earendil-works/pi-*` 依赖，仓库体积缩减 85%+，开发安装仅需 1.8 秒，自动跟进上游升级；
-- **TUI 微内核状态呈现**：在全屏交互式 TUI 欢迎界面优雅呈现 `[Cordis Microkernel]` 10 大核心服务与插件状态，兼顾终端纯净度与系统可观测性；
+- **完整生态支持**：全面支持 `https://pi.dev/packages` 原生插件生态；
+- **架构决策记录 (Agent Notes)**：建立 `.agents/notes/` 目录规范，收录架构与演进中英文 ADR 决策；
+- **TUI 微内核状态呈现**：在全屏交互式 TUI 欢迎界面呈现 `[Cordis Microkernel]` 10 大核心服务与插件状态；
 - **开发与架构规范 (AGENTS.md)**：创建根目录 `AGENTS.md`，定义微内核设计哲学、服务矩阵、代码与 Git 提交规范。
-
-

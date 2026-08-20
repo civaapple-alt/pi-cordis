@@ -187,7 +187,7 @@ pi-cordis/
 │   └── ptc/                          # preset.yml + cordis.yml (PTC / Code Mode)
 │
 ├── packages/
-│   ├── coding-agent/                 # CLI entrypoint, TUI, and Cordis bootstrapper
+│   ├── core/                         # @pi-cordis/core (CLI entrypoint, 10 Cordis services & microkernel bootstrapper)
 │   │   ├── docs/cordis/services/     # 10 Core Services detailed documentation
 │   │   └── src/core/cordis/          # 10 core services + createPiContext + profile command
 │   └── plugins/                      # 🌟 15 Native Cordis plugins workspace
@@ -207,13 +207,13 @@ pi-cordis/
 
 ```bash
 # Run all Cordis core services, native plugins, presets, and HMR test suites
-npx vitest run packages/coding-agent/test/cordis-plugins-and-profiles.test.ts packages/coding-agent/test/cordis-bootstrap.test.ts packages/coding-agent/test/cordis-ten-plugins.test.ts
+pnpm test
 
 # TypeScript strict typecheck
 pnpm run check
 
 # Launch interactive terminal
-pnpm pi
+pnpm picds
 ```
 
 ### Architecture Decision Records (ADRs)

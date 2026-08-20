@@ -187,7 +187,7 @@ pi-cordis/
 │   └── ptc/                          # preset.yml + cordis.yml (编程调用)
 │
 ├── packages/
-│   ├── coding-agent/                 # 智能体主包 (CLI 入口、TUI 界面与 Cordis 引导器)
+│   ├── core/                         # @pi-cordis/core (CLI 入口、10 大 Cordis 服务与微内核引导器)
 │   │   ├── docs/cordis/services/     # 10 大核心服务独立详细文档
 │   │   └── src/core/cordis/          # 10 大核心服务 + createPiContext + profile command
 │   └── plugins/                      # 🌟 15 个原生 Cordis 插件工作区
@@ -207,13 +207,13 @@ pi-cordis/
 
 ```bash
 # 运行全套 Cordis 核心服务、原生插件、预设与 HMR 单元测试
-npx vitest run packages/coding-agent/test/cordis-plugins-and-profiles.test.ts packages/coding-agent/test/cordis-bootstrap.test.ts packages/coding-agent/test/cordis-ten-plugins.test.ts
+pnpm test
 
 # TypeScript 严格类型检查
 pnpm run check
 
 # 启动全屏终端实机体验
-pnpm pi
+pnpm picds
 ```
 
 ### 架构决策记录 (ADRs) 索引

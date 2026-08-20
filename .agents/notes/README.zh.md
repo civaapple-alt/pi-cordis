@@ -111,6 +111,7 @@ graph LR
 | 制定日期 | 决策标题 | 核心关注点 |
 |---|---|---|
 | `2026-08-19` | [Pi-Cordis 代码库精简与上游解耦架构方案](implemented/simplification/2026-08-19-pi-cordis-repository-simplification.zh.md) | 移除 1200+ 重复源码文件，全面接入 `@earendil-works/pi-*` 官方 npm 包，代码库体积缩减 85%+，实现零成本跟踪上游演进 |
+| `2026-08-20` | [Pi-Cordis 核心层 (@pi-cordis/core) 上游彻底解耦与 4 层架构重构落地](implemented/simplification/2026-08-20-pi-cordis-core-decoupling-and-layered-architecture.zh.md) | 终结最后一公里代码克隆，确立 4 层架构金字塔，重构为 `@pi-cordis/core` 并直接消费 npm 官方 `@earendil-works/pi-coding-agent`，交付 `picds` 独立命令与 `~/.picds` 用户隔离 |
 
 ---
 

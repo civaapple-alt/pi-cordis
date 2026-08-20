@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export const workspaceSourcePaths = {
-	codingAgentIndex: fileURLToPath(new URL("./packages/coding-agent/src/index.ts", import.meta.url)),
+	coreIndex: fileURLToPath(new URL("./packages/core/src/index.ts", import.meta.url)),
 	cordisIndex: fileURLToPath(new URL("./vendor/cordis/src/index.ts", import.meta.url)),
 	cosmokitIndex: fileURLToPath(new URL("./vendor/cosmokit/src/index.ts", import.meta.url)),
 	schemasteryIndex: fileURLToPath(new URL("./vendor/schemastery/src/index.ts", import.meta.url)),
@@ -29,6 +29,7 @@ export default defineConfig({
 			{ find: /^@deepseek-ai\/cordis$/, replacement: workspaceSourcePaths.cordisIndex },
 			{ find: /^@deepseek-ai\/cosmokit$/, replacement: workspaceSourcePaths.cosmokitIndex },
 			{ find: /^@deepseek-ai\/schemastery$/, replacement: workspaceSourcePaths.schemasteryIndex },
+			{ find: /^@pi-cordis\/core$/, replacement: workspaceSourcePaths.coreIndex },
 			{ find: /^@pi-cordis\/profiles$/, replacement: workspaceSourcePaths.profilesIndex },
 			{ find: /^@pi-cordis\/plugin-safety-gate$/, replacement: workspaceSourcePaths.safetyGateIndex },
 			{ find: /^@pi-cordis\/plugin-git-guard$/, replacement: workspaceSourcePaths.gitGuardIndex },
