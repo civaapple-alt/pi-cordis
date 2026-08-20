@@ -104,6 +104,21 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		const resultTextExpanded = (tool as any).renderResult(result, { expanded: true });
 		expect(resultTextExpanded).toContain("Doubled values:");
 
+		// 5. Verify Worker Thread can terminate async infinite loop (while(true) await ...) safely
+		const shortTimeoutFork = await ctx.plugin(codeModePlugin, { timeoutMs: 150, useWorkerThreads: true });
+		const shortTool = ctx.tools.get("run_code");
+		const loopResult = await shortTool!.execute({
+			code: `
+				console.log("Starting infinite async loop...");
+				while (true) {
+					await new Promise(r => setTimeout(r, 10));
+				}
+			`,
+		});
+		expect(loopResult.success).toBe(false);
+		expect(loopResult.error).toContain("timed out");
+		await shortTimeoutFork.dispose();
+
 		await fork.dispose();
 		expect(ctx.tools.has("run_code")).toBe(false);
 		expect(ctx.tools.getExportedToolNames()).toContain("read");

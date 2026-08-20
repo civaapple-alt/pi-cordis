@@ -2,9 +2,11 @@ import type { Context } from "@deepseek-ai/cordis";
 import * as vm from "node:vm";
 import { generateSdkDts, jsonSchemaToInterface, jsonSchemaTypeToTs } from "./dts-generator.js";
 import { renderCodeModeCall, renderCodeModeResult, type RenderOptions } from "./renderer.js";
+import { executeInWorkerThread, createWorkerScript } from "./worker-runner.js";
 
 export * from "./dts-generator.js";
 export * from "./renderer.js";
+export * from "./worker-runner.js";
 
 export interface CodeModeConfig {
 	timeoutMs?: number;
@@ -12,6 +14,7 @@ export interface CodeModeConfig {
 	injectFullDts?: boolean;
 	maskUnderlyingTools?: boolean;
 	allowedTopLevelTools?: string[];
+	useWorkerThreads?: boolean;
 }
 
 export interface CodeExecutionResult {
@@ -28,6 +31,7 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 	const timeoutMs = config.timeoutMs ?? 30000;
 	const injectFullDts = config.injectFullDts ?? true;
 	const maskUnderlyingTools = config.maskUnderlyingTools ?? true;
+	const useWorkerThreads = config.useWorkerThreads ?? true;
 
 	// 1. Tool Presentation Masking (hide raw file/bash tools from LLM top-level tool list)
 	let removeFilter: (() => void) | undefined;
@@ -79,17 +83,39 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 		renderCall: (args: { code?: string }, theme?: any) => renderCodeModeCall(args, theme),
 		renderResult: (result: any, options?: any, theme?: any) => renderCodeModeResult(result, options, theme),
 		execute: async (args: { code: string }): Promise<CodeExecutionResult> => {
+			const allTools = ctx.tools.getAllToolDefinitions();
+
+			// 2.1 Prefer Worker Thread for 100% async infinite-loop isolation & terminate() safety
+			if (useWorkerThreads) {
+				try {
+					const toolNames = allTools.map((t) => t.name);
+					return await executeInWorkerThread({
+						code: args.code,
+						timeoutMs,
+						toolNames,
+						callTool: async (toolName, toolArgs) => {
+							const t = ctx.tools.get(toolName);
+							if (!t) throw new Error(`Tool "${toolName}" not found`);
+							const res = await (t as any).execute(toolArgs);
+							if (res && typeof res === "object" && "details" in res) {
+								return res.details;
+							}
+							return res;
+						},
+					});
+				} catch (err: any) {
+					// If Worker spawning fails, fall back to node:vm
+				}
+			}
+
+			// 2.2 Fallback: node:vm sandbox
 			const startTime = Date.now();
 			const logs: string[] = [];
-
-			// Retrieve all tools (including underlying masked tools) for the sandbox SDK
-			const allTools = ctx.tools.getAllToolDefinitions();
 			const flatTools: Record<string, Function> = {};
 
 			for (const t of allTools) {
 				flatTools[t.name] = async (toolArgs: unknown) => {
 					const res = await (t as any).execute(toolArgs);
-					// If the result is a wrapped agent tool result, extract details/content
 					if (res && typeof res === "object" && "details" in res) {
 						return res.details;
 					}
@@ -97,7 +123,6 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 				};
 			}
 
-			// Semantic namespace bridges
 			const fsNamespace = {
 				read: flatTools.read ?? (async (a: any) => ({})),
 				write: flatTools.write ?? (async (a: any) => ({})),
