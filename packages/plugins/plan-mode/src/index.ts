@@ -471,13 +471,15 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 				let userApproved = false;
 				let userFeedback: string | undefined;
 
+				let targetProfile: "default" | "ptc" = "default";
 				if (hasUI && ui?.select) {
 					const promptTitle = args.action === "approve"
-						? `📋 用户已确认实施计划 [${planDoc.title}]，是否立即批准并切换至 Default 模式开始执行？`
-						: `📋 实施计划 [${planDoc.title}] 已就绪，是否确认批准并自动切换至 Default 模式？`;
+						? `📋 用户已确认实施计划 [${planDoc.title}]，请选择执行模式：`
+						: `📋 实施计划 [${planDoc.title}] 已就绪，请选择执行模式：`;
 
 					const options = [
 						"✅ 批准计划并自动切换至 Default 模式开始执行 (Approve & Switch to default)",
+						"⚡ 批准计划并自动切换至 PTC 编程模式执行 (Approve & Switch to ptc / run_code)",
 						"📝 提出修改意见并调整计划 (Provide feedback & adjust plan)",
 						"💬 暂时不执行，我要先提问 (Ask questions / keep in plan mode)",
 					];
@@ -485,6 +487,10 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 					const chosen = await ui.select(promptTitle, options, { signal: execContext?.signal });
 					if (chosen && chosen.startsWith("✅")) {
 						userApproved = true;
+						targetProfile = "default";
+					} else if (chosen && chosen.startsWith("⚡")) {
+						userApproved = true;
+						targetProfile = "ptc";
 					} else if (chosen && chosen.startsWith("📝") && ui.input) {
 						const inputVal = await ui.input("请输入您的修改意见或需求调整：", "例如：增加夜间模式、调整性格维度分析...", { signal: execContext?.signal });
 						if (inputVal && inputVal.trim()) {
@@ -494,6 +500,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 				} else {
 					// In non-interactive or test mode, action === "approve" approves directly
 					userApproved = args.action === "approve";
+					targetProfile = "default";
 				}
 
 				if (userApproved) {
@@ -501,18 +508,22 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 					const md = syncPlanToDisk(planDoc);
 					const { bar } = calculateProgress(planDoc.steps);
 
-					// Programmatically switch profile to default
-					await (ctx as any).parallel?.("pi/profile-switch", "default");
+					// Programmatically switch profile to targetProfile (default or ptc)
+					await (ctx as any).parallel?.("pi/profile-switch", targetProfile);
 					if (execContext?.ctx?.ui?.notify) {
-						execContext.ctx.ui.notify("已批准计划并自动切换至 Default 开发模式！", "info");
+						execContext.ctx.ui.notify(`已批准计划并自动切换至 ${targetProfile.toUpperCase()} 模式！`, "info");
 					}
-					(ctx as any).emit?.("pi/plan-approved", { sessionId: sId, plan: planDoc });
+					(ctx as any).emit?.("pi/plan-approved", { sessionId: sId, plan: planDoc, targetProfile });
+
+					const modeDesc = targetProfile === "ptc"
+						? "Active profile has been automatically switched to 'ptc' (Programmatic Tool Calling with run_code dynamic TypeScript SDK). You may now execute the plan steps using run_code batch execution or file tools."
+						: "Active profile has been automatically switched to 'default'. Full write/edit tools and git-guard checkpoints are now active. You may now begin implementing the plan steps.";
 
 					return {
-						message: `Implementation plan for session [${sId}] APPROVED by user! Active profile has been automatically switched to 'default'. Full write/edit tools and git-guard checkpoints are now active. You may now begin implementing the plan steps.`,
+						message: `Implementation plan for session [${sId}] APPROVED by user! ${modeDesc}`,
 						sessionId: sId,
 						isApproved: true,
-						autoSwitchedProfile: "default",
+						autoSwitchedProfile: targetProfile,
 						progress: bar,
 						planFilePath: planDoc.planFilePath,
 						markdown: md,

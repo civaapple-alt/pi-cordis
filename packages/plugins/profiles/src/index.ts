@@ -95,6 +95,7 @@ export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 		description: "编程化工具调用模式 (PTC / Code Mode: 动态 TypeScript SDK + run_code 批量执行)",
 		plugins: {
 			"code-mode": true,
+			"plan-mode": { autoBlockWrites: false, injectGuidelines: true },
 			"safety-gate": true,
 			"git-guard": true,
 			"rules-injector": true,

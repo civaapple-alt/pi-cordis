@@ -5,6 +5,10 @@
   config:
     timeoutMs: 30000
     allowImports: true
+- name: '@pi-cordis/plugin-plan-mode'
+  config:
+    autoBlockWrites: false
+    injectGuidelines: true
 - name: '@pi-cordis/plugin-safety-gate'
 - name: '@pi-cordis/plugin-git-guard'
 - name: '@pi-cordis/plugin-rules-injector'
