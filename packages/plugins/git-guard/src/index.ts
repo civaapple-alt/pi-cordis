@@ -32,14 +32,14 @@ export function apply(ctx: Context, config: GitGuardConfig = {}) {
 
 	// Create stash checkpoint before risky operations
 	if (autoCheckpoint) {
-		ctx.on("pi/session-before", async (event: { action: string; targetId?: string }) => {
+		ctx.on("pi/session-before", async (event) => {
 			try {
 				const { stdout } = await execFileAsync("git", ["stash", "create"], {
 					cwd: ctx.settings?.getCwd?.() ?? process.cwd(),
 				});
 				const ref = stdout.trim();
-				if (ref && event.targetId) {
-					checkpoints.set(event.targetId, ref);
+				if (ref && (event as any).targetId) {
+					checkpoints.set((event as any).targetId, ref);
 				}
 			} catch {
 				// Git stash failed or non-git directory

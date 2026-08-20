@@ -2,16 +2,17 @@
 	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
 		"noEmit": true,
+		"allowImportingTsExtensions": true,
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
 		"paths": {
 			"*": ["./*"],
-			"@deepseek-ai/cordis": ["./vendor/cordis/src/index.ts"],
-			"@deepseek-ai/cordis/*": ["./vendor/cordis/src/*"],
-			"@deepseek-ai/cosmokit": ["./vendor/cosmokit/src/index.ts"],
-			"@deepseek-ai/cosmokit/*": ["./vendor/cosmokit/src/*"],
-			"@deepseek-ai/schemastery": ["./vendor/schemastery/src/index.ts"],
-			"@deepseek-ai/schemastery/*": ["./vendor/schemastery/src/*"],
+			"@deepseek-ai/cordis": ["./vendor/cordis/lib/types/index.d.ts"],
+			"@deepseek-ai/cordis/*": ["./vendor/cordis/lib/types/*"],
+			"@deepseek-ai/cosmokit": ["./vendor/cosmokit/lib/types/index.d.ts"],
+			"@deepseek-ai/cosmokit/*": ["./vendor/cosmokit/lib/types/*"],
+			"@deepseek-ai/schemastery": ["./vendor/schemastery/lib/types/index.d.ts"],
+			"@deepseek-ai/schemastery/*": ["./vendor/schemastery/lib/types/*"],
 			"@earendil-works/pi-coding-agent": ["./packages/coding-agent/src/index.ts"],
 			"@earendil-works/pi-coding-agent/hooks": ["./packages/coding-agent/src/core/hooks/index.ts"],
 			"@earendil-works/pi-coding-agent/*": ["./packages/coding-agent/src/*"],
@@ -35,11 +36,11 @@
 	"include": [
 		"packages/coding-agent/src/**/*",
 		"packages/coding-agent/test/**/*",
-		"packages/plugins/*/src/**/*",
-		"vendor/*/src/**/*"
+		"packages/plugins/*/src/**/*"
 	],
 	"exclude": [
 		"**/dist/**",
-		"**/lib/**"
+		"**/lib/**",
+		"vendor/**"
 	]
 }

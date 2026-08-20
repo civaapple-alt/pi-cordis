@@ -141,6 +141,7 @@ export async function createAgentSessionServices(
 ): Promise<AgentSessionServices> {
 	const cwd = resolvePath(options.cwd);
 	const agentDir = options.agentDir ? resolvePath(options.agentDir) : getAgentDir();
+	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);
 	const modelRuntime =
 		options.modelRuntime ??
 		(await ModelRuntime.create({

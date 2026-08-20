@@ -11,16 +11,26 @@ export interface SettingsServiceConfig {
 export class SettingsService extends Service {
 	static provide = "settings";
 	public manager: SettingsManager;
+	public cwd: string;
+	public agentDir: string;
 
 	constructor(ctx: Context, config?: SettingsServiceConfig) {
 		super(ctx, "settings");
-		const cwd = config?.cwd ?? process.cwd();
-		const agentDir = config?.agentDir ?? getAgentDir();
-		this.manager = config?.manager ?? SettingsManager.create(cwd, agentDir);
+		this.cwd = config?.cwd ?? process.cwd();
+		this.agentDir = config?.agentDir ?? getAgentDir();
+		this.manager = config?.manager ?? SettingsManager.create(this.cwd, this.agentDir);
 	}
 
 	public get(): Settings {
-		return this.manager.get();
+		return this.manager.getGlobalSettings();
+	}
+
+	public getCwd(): string {
+		return this.cwd;
+	}
+
+	public getAgentDir(): string {
+		return this.agentDir;
 	}
 
 	public getSettingsManager(): SettingsManager {

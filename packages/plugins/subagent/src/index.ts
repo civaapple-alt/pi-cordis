@@ -44,7 +44,7 @@ export function apply(ctx: Context, config: SubagentConfig = {}) {
 		},
 		execute: async (args: { task: string; context?: string; role?: string }): Promise<SubagentResult> => {
 			const role = args.role ?? "Subagent";
-			const subScope = ctx.isolate([]);
+			const subScope = ctx.extend();
 			
 			try {
 				const summary = `[${role}] Completed task: "${args.task}". Evaluated context and verified constraints.`;
@@ -56,7 +56,7 @@ export function apply(ctx: Context, config: SubagentConfig = {}) {
 				};
 			} finally {
 				try {
-					subScope.dispose();
+					subScope.fiber.dispose();
 				} catch {}
 			}
 		},

@@ -1,5 +1,5 @@
 import { Service, type Context } from "@deepseek-ai/cordis";
-import { loadSkills, type Skill, type SkillLoadResult } from "../../skills.ts";
+import { loadSkills, type Skill } from "../../skills.ts";
 import { getAgentDir } from "../../../config.ts";
 
 export interface SkillsServiceConfig {
@@ -21,10 +21,10 @@ export class SkillsService extends Service {
 		this.skillPaths = config?.skillPaths ?? [];
 	}
 
-	public load(options?: { cwd?: string; agentDir?: string; skillPaths?: string[] }): SkillLoadResult {
+	public load(options?: { cwd?: string; agentDir?: string; skillPaths?: string[] }): { skills: Skill[] } {
 		const cwd = options?.cwd ?? this.cwd;
 		const agentDir = options?.agentDir ?? this.agentDir;
 		const paths = options?.skillPaths ?? this.skillPaths;
-		return loadSkills({ cwd, agentDir, skillPaths: paths });
+		return loadSkills({ cwd, agentDir, skillPaths: paths, includeDefaults: true });
 	}
 }

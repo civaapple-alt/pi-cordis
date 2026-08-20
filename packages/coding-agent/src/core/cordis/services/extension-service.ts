@@ -1,6 +1,6 @@
 import { Service, type Context } from "@deepseek-ai/cordis";
-import { loadExtensions, type LoadExtensionsOptions, type LoadExtensionsResult } from "../../extensions/loader.ts";
-import { ExtensionRunner } from "../../extensions/runner.ts";
+import { loadExtensions } from "../../extensions/loader.ts";
+import type { LoadExtensionsResult } from "../../extensions/types.ts";
 import { getAgentDir } from "../../../config.ts";
 
 export interface ExtensionServiceConfig {
@@ -23,19 +23,11 @@ export class ExtensionService extends Service {
 		this.extensionPaths = config?.extensionPaths ?? [];
 	}
 
-	public async load(options?: LoadExtensionsOptions): Promise<LoadExtensionsResult> {
-		const opts: LoadExtensionsOptions = {
-			cwd: options?.cwd ?? this.cwd,
-			agentDir: options?.agentDir ?? this.agentDir,
-			extensionPaths: options?.extensionPaths ?? this.extensionPaths,
-			...options,
-		};
-		const result = await loadExtensions(opts);
+	public async load(options?: { cwd?: string; agentDir?: string; extensionPaths?: string[] }): Promise<LoadExtensionsResult> {
+		const cwd = options?.cwd ?? this.cwd;
+		const paths = options?.extensionPaths ?? this.extensionPaths;
+		const result = await loadExtensions(paths, cwd);
 		this.lastLoadedResult = result;
 		return result;
-	}
-
-	public createRunner(): ExtensionRunner {
-		return new ExtensionRunner();
 	}
 }

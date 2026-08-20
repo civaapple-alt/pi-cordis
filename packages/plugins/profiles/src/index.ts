@@ -239,7 +239,7 @@ export function loadProfilesFromYaml(
 							merged[key] = {
 								name: def.name ?? key,
 								description: def.description ?? `Custom profile "${key}"`,
-								plugins: def.plugins ?? (val as Record<string, unknown>),
+								plugins: (def.plugins ?? (val as Record<string, unknown>)) as any,
 							};
 						}
 					}
@@ -291,4 +291,4 @@ export function applyProfile(
 	return loadedPlugins;
 }
 
-export * from "./hmr.ts";
+export * from "./hmr.js";

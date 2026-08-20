@@ -8,6 +8,13 @@ import {
 	type ToolsOptions,
 } from "../../tools/index.ts";
 
+export interface CordisPluginToolDef {
+	name: string;
+	description: string;
+	parameters?: any;
+	execute: (args: any, ...rest: any[]) => Promise<any>;
+}
+
 export interface ToolRegistryServiceConfig {
 	cwd?: string;
 	toolsOptions?: ToolsOptions;
@@ -25,13 +32,13 @@ export class ToolRegistryService extends Service {
 		this.toolsOptions = config?.toolsOptions;
 	}
 
-	public register(tool: ToolDef): () => void {
+	public register(tool: ToolDef | CordisPluginToolDef | any): () => void {
 		return this.registerCustomTool(tool);
 	}
 
-	public registerCustomTool(tool: ToolDef): () => void {
+	public registerCustomTool(tool: ToolDef | CordisPluginToolDef | any): () => void {
 		return this.ctx.effect(() => {
-			this.customTools.set(tool.name, tool);
+			this.customTools.set(tool.name, tool as ToolDef);
 			return () => {
 				this.customTools.delete(tool.name);
 			};

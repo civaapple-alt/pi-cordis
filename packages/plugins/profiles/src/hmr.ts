@@ -1,13 +1,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
-import type { Context, Fork } from "@deepseek-ai/cordis";
+import type { Context } from "@deepseek-ai/cordis";
 import {
 	applyProfile,
 	loadProfilesFromYaml,
 	type BuiltinPluginName,
 	type ProfileDefinition,
-} from "./index.ts";
+} from "./index.js";
 
 export interface HmrOptions {
 	cwd?: string;
@@ -21,7 +21,7 @@ export interface HmrOptions {
 
 export interface HmrManager {
 	currentProfileName: string;
-	activeForks: Map<string, Fork>;
+	activeForks: Map<string, any>;
 	stop: () => void;
 	reloadCurrentProfile: () => void;
 	hotReloadPluginCode: (pluginName: string, filePath: string) => Promise<boolean>;
@@ -37,7 +37,7 @@ export function setupPluginHmr(
 ): HmrManager {
 	const cwd = options.cwd ?? process.cwd();
 	const debounceMs = options.debounceMs ?? 150;
-	const activeForks = new Map<string, Fork>();
+	const activeForks = new Map<string, any>();
 	let currentProfileName = initialProfile;
 	const watchers: fs.FSWatcher[] = [];
 

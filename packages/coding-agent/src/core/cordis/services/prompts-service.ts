@@ -25,6 +25,6 @@ export class PromptsService extends Service {
 		const cwd = options?.cwd ?? this.cwd;
 		const agentDir = options?.agentDir ?? this.agentDir;
 		const paths = options?.promptPaths ?? this.promptPaths;
-		return loadPromptTemplates({ cwd, agentDir, promptPaths: paths });
+		return loadPromptTemplates({ cwd, agentDir, promptPaths: paths, includeDefaults: true });
 	}
 }

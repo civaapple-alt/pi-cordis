@@ -18,7 +18,7 @@ export class AgentService extends Service {
 		this.ctx.emit("pi/session-start", result.session);
 
 		// Hook into session event emitter to propagate to Cordis events
-		result.session.on("model_change" as any, (event: any) => {
+		(result.session as any).on?.("model_change", (event: any) => {
 			if (event?.model) {
 				this.ctx.emit("pi/model-change", event.model);
 			}

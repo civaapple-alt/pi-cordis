@@ -45,7 +45,7 @@ export class AIService extends Service {
 	}
 
 	public getAvailableModels(): readonly Model<Api>[] {
-		return this.runtime.getAvailableModels();
+		return (this.runtime as any).getAvailableModels?.() ?? (this.runtime as any).getAvailable?.() ?? this.runtime.getModels();
 	}
 
 	public getModel(provider: string, modelId: string): Model<Api> | undefined {

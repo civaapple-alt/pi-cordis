@@ -29,9 +29,11 @@ declare module "@deepseek-ai/cordis" {
 		"pi/session-start"(session: AgentSession): void;
 		"pi/session-before"(event: { session: AgentSession; prompt: string }): void;
 		"pi/session-after"(event: { session: AgentSession }): void;
-		"pi/tool-call"(event: { toolName: string; args: Record<string, unknown> }): void;
-		"pi/tool-result"(event: { toolName: string; args: Record<string, unknown>; result: unknown }): void;
+		"pi/tool-call"(event: { toolName?: string; name?: string; args: Record<string, unknown> }): void;
+		"pi/tool-result"(event: { toolName?: string; name?: string; args?: Record<string, unknown>; result: unknown }): void;
 		"pi/model-change"(model: Model<any>): void;
 		"pi/prompt-transform"(event: { prompt: string }): void;
+		"pi/compact"(event: { reason: string; timestamp: number }): void;
+		"pi/handoff"(event: Record<string, unknown>): void;
 	}
 }
