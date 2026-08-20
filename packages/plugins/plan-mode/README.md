@@ -2,29 +2,45 @@
 
 English | [中文](README.zh.md)
 
-Native Cordis structured planning mode plugin. It registers the `plan_step` tool with dependency tracking, blocks mutating file tools during the planning phase, calculates visual progress bars, and injects the live implementation plan into the system prompt.
+Native Cordis structured planning mode and plan document orchestration plugin. Through the `plan_step` tool, it provides **automatic generation and real-time synchronization of `implementation_plan.md`**, **User Review & Approval Gates**, **continuous in-flight plan inspection**, and **post-execution Walkthrough summaries (`walkthrough.md`)**.
 
-## Tool
+---
 
-### `plan_step`
+## 🌟 Key Capabilities
 
-Accepts:
-- `action` (`"add"` | `"update"` | `"list"` | `"finish"`, required): Plan manipulation action.
-- `id` (number, optional): Target step ID for updates.
-- `title` (string, optional): Step title or description.
-- `status` (`"pending"` | `"in_progress"` | `"completed"` | `"failed"`, optional): Current step status.
-- `dependsOn` (number[], optional): List of prerequisite step IDs.
-- `notes` (string, optional): Additional rationale or design notes.
+1. **Automatic `implementation_plan.md` Generation & Sync**:
+   - Structured sections: Overview & Background, User Review Required & Open Questions, Proposed Changes table (`[NEW]`, `[MODIFY]`, `[DELETE]`), Step Dependency Graph, and Verification Plan;
+   - Persisted to `.pi/plans/implementation_plan.md` and continuously kept in sync as steps progress.
+2. **User Review & Approval Gate**:
+   - Mutating tools (`write`, `edit`, `patch`, `apply_patch`) are strictly blocked until the user reviews and approves the plan;
+   - Supports `action: "request_review"` to request user approval, and `action: "approve"` to unblock modification tools.
+3. **Continuous In-flight Plan Inspection (Live Inspection)**:
+   - Users and models can run `action: "view"` or `action: "get_plan"` at any time to inspect the full plan Markdown, progress bar, and step statuses.
+4. **Post-Execution Walkthrough (`walkthrough.md`)**:
+   - Calling `action: "finish"` generates a comprehensive walkthrough summarizing completed deliverables, changes breakdown, and verification proofs.
 
-Returns:
-- `totalSteps` (number): Total step count.
-- `progress` (string): Formatted ASCII progress bar (e.g. `[████░░░░░░] 40%`).
-- `percentage` (number): Numeric progress percentage.
-- `steps` (array): Full step items with statuses and dependencies.
+---
 
-## Mutating Interceptor
-While plan mode is active (`isPlanModeActive === true`), any mutating tool calls (`write`, `edit`, `patch`, `apply_patch`) are intercepted and blocked with a clear instruction to finalize the plan before making changes. Calling `plan_step({ action: "finish" })` exits plan mode and emits the `pi/plan-completed` event.
+## 🛠️ Tool: `plan_step`
 
-## Model Experience
-- **Prompt Token Effect**: Retains dynamic plan markdown with visual status badges (`✓`, `▶`, `⏳`, `✗`) in the system prompt.
-- **Safety**: Guarantees read-only planning before code modification begins.
+### Parameters
+- `action` (required):
+  - `"set_plan"`: Sets or updates plan metadata (title, overview, userReviewRequired, openQuestions, proposedChanges, verificationPlan);
+  - `"add"`: Adds a new step;
+  - `"update"`: Updates step status (`pending` | `in_progress` | `completed` | `failed`);
+  - `"request_review"`: Requests user review of the plan;
+  - `"approve"`: Approves the plan, unblocking write/edit tools;
+  - `"view"` / `"get_plan"`: Retrieves the current plan Markdown, path, and progress;
+  - `"finish"`: Finalizes the plan, optionally generating `walkthrough.md`;
+  - `"list"`: Lists all steps.
+- `id` (number, optional): Step ID.
+- `title` (string, optional): Plan title or step description.
+- `overview` (string, optional): Background and objective overview.
+- `userReviewRequired` (string, optional): Critical design decisions or breaking changes for user review.
+- `openQuestions` (string[], optional): Open questions requiring user clarification.
+- `proposedChanges` (array, optional): List of files/components to be changed.
+- `verificationPlan` (string, optional): Automated and manual testing strategy.
+- `status` (string, optional): `"pending"` | `"in_progress"` | `"completed"` | `"failed"`.
+- `dependsOn` (number[], optional): IDs of dependent prior steps.
+- `notes` (string, optional): Notes or rationale for a step.
+- `summary` (string, optional): Executive summary of completed work for walkthrough.

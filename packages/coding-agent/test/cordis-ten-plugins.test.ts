@@ -42,33 +42,106 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ctx.tools.has("subagent")).toBe(false);
 	});
 
-	it("2. @pi-cordis/plugin-plan-mode: manages plan steps with dependency tracking and progress bar", async () => {
+	it("2. @pi-cordis/plugin-plan-mode: manages plan steps, generates implementation_plan.md, gates approval, and emits walkthrough", async () => {
 		const fork = await ctx.plugin(planModePlugin);
 		expect(ctx.tools.has("plan_step")).toBe(true);
 
 		const tool = ctx.tools.get("plan_step");
-		// Add step 1
+
+		// 1. Set comprehensive plan metadata
+		const setRes = await tool!.execute({
+			action: "set_plan",
+			title: "Database Migration & Service Upgrade",
+			overview: "Refactor core services to implement The 5 Pillars",
+			userReviewRequired: "Confirm if backward compatibility shims are needed",
+			openQuestions: ["Should SQLite retain WAL mode?"],
+			proposedChanges: [
+				{ action: "MODIFY", path: "src/db.ts", description: "Update schema version" },
+			],
+			verificationPlan: "Run all vitest suites",
+		});
+		expect(setRes.planFilePath).toBeDefined();
+		expect(setRes.markdown).toContain("# Database Migration & Service Upgrade");
+		expect(setRes.markdown).toContain("Confirm if backward compatibility shims");
+
+		// 2. Add step 1 and step 2
 		const addRes1 = await tool!.execute({ action: "add", title: "Analyze database schema" });
 		expect(addRes1.step.title).toBe("Analyze database schema");
 		expect(addRes1.step.status).toBe("pending");
 
-		// Add step 2 with dependency
 		const addRes2 = await tool!.execute({ action: "add", title: "Run migration", dependsOn: [1] });
 		expect(addRes2.step.dependsOn).toEqual([1]);
 
-		// Update step 1 to completed
-		await tool!.execute({ action: "update", id: 1, status: "completed" });
+		// 3. Verify write tool blocking before user approval
+		let writeBlocked = false;
+		try {
+			await ctx.parallel("pi/tool-call", { name: "write", args: { path: "test.txt", content: "data" } });
+		} catch (err: any) {
+			writeBlocked = true;
+			const msg = String(err) + (err.errors ? err.errors.map(String).join(" ") : "");
+			expect(msg).toContain("blocked in session [default]");
+		}
+		expect(writeBlocked).toBe(true);
 
-		// Prompt transform check
+		// 4. Request review and approve
+		const reviewRes = await tool!.execute({ action: "request_review" });
+		expect(reviewRes.isApproved).toBe(false);
+		expect(reviewRes.markdown).toContain("Pending User Review");
+
+		const approveRes = await tool!.execute({ action: "approve" });
+		expect(approveRes.isApproved).toBe(true);
+
+		// 5. Verify write tool is now unblocked
+		let writeAllowed = true;
+		try {
+			await ctx.parallel("pi/tool-call", { name: "write", args: { path: "test.txt", content: "data" } });
+		} catch {
+			writeAllowed = false;
+		}
+		expect(writeAllowed).toBe(true);
+
+		// 6. Update step 1 to completed and view plan
+		await tool!.execute({ action: "update", id: 1, status: "completed" });
+		const viewRes = await tool!.execute({ action: "view" });
+		expect(viewRes.percentage).toBe(50);
+		expect(viewRes.markdown).toContain("[✓] **#1**: Analyze database schema");
+
+		// 7. Prompt transform check
 		const promptEvent = { prompt: "Base prompt" };
 		await ctx.parallel("pi/prompt-transform", promptEvent);
 		expect(promptEvent.prompt).toContain("Current Implementation Plan");
 		expect(promptEvent.prompt).toContain("50%");
 		expect(promptEvent.prompt).toContain("Analyze database schema");
 
-		// Finish plan mode
-		const finishRes = await tool!.execute({ action: "finish" });
+		// 8. Multi-session concurrency test
+		// Session B has an unapproved plan
+		await tool!.execute({
+			action: "set_plan",
+			sessionId: "session_b",
+			title: "Session B Plan",
+			overview: "Isolated concurrent plan for session B",
+		});
+		await tool!.execute({ action: "add", sessionId: "session_b", title: "Session B Step 1" });
+
+		const listSessionsRes = await tool!.execute({ action: "list_sessions" });
+		expect(listSessionsRes.totalSessions).toBeGreaterThanOrEqual(2);
+		expect(listSessionsRes.sessions.some((s: any) => s.sessionId === "session_b")).toBe(true);
+
+		// Verify Session B blocks write while default session is approved
+		let sessionBBlocked = false;
+		try {
+			await ctx.parallel("pi/tool-call", { name: "write", sessionId: "session_b", args: { path: "b.txt", content: "data" } });
+		} catch (err: any) {
+			sessionBBlocked = true;
+			const msg = String(err) + (err.errors ? err.errors.map(String).join(" ") : "");
+			expect(msg).toContain("blocked in session [session_b]");
+		}
+		expect(sessionBBlocked).toBe(true);
+
+		// 9. Finish plan mode and generate walkthrough
+		const finishRes = await tool!.execute({ action: "finish", summary: "Database migration successfully completed." });
 		expect(finishRes.message).toContain("Plan finalized");
+		expect(finishRes.walkthroughFilePath).toBeDefined();
 
 		await fork.dispose();
 		expect(ctx.tools.has("plan_step")).toBe(false);
