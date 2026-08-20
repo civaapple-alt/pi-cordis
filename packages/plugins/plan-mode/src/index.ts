@@ -332,24 +332,28 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 			required: ["action"],
 		},
 		renderCall: (args: any, theme?: any) => {
-			const actionTag = (args.action || "").toUpperCase();
-			const sess = args.sessionId ? `[${args.sessionId}] ` : "";
+			const actionTag = (args?.action || "").toUpperCase();
+			const sess = args?.sessionId ? `[${args.sessionId}] ` : "";
 			let desc = "";
-			if (args.action === "add" && args.title) desc = `"${args.title}"`;
-			else if (args.action === "update" && args.id) desc = `#${args.id} -> ${args.status || "update"}`;
-			else if (args.action === "set_plan" && args.title) desc = `"${args.title}"`;
-			else if (args.action === "approve") desc = "Plan Approved (Unblocking Writes)";
-			else if (args.action === "request_review") desc = "Requesting User Review";
-			else if (args.action === "finish") desc = "Plan Finalized";
+			if (args?.action === "add") desc = args?.title ? `"${args.title}"` : "Add Step";
+			else if (args?.action === "update") desc = args?.id ? `#${args.id} -> ${args.status || "update"}` : "Update Step";
+			else if (args?.action === "set_plan") desc = args?.title ? `"${args.title}"` : "Set Plan Metadata";
+			else if (args?.action === "approve") desc = "Plan Approved (Unblocking Writes)";
+			else if (args?.action === "request_review") desc = "Requesting User Review";
+			else if (args?.action === "finish") desc = "Plan Finalized";
+			else if (args?.action === "list" || args?.action === "get_plan") desc = "Inspect Plan";
+			else if (args?.action === "list_sessions") desc = "List Sessions";
 
-			if (!theme?.fg) return `🗺️ plan_step [${actionTag}] ${sess}${desc}`.trim();
-			return `${theme.fg("accent", theme.bold("🗺️ plan_step "))}${theme.fg("dim", `[${actionTag}]`)} ${theme.fg("foreground", `${sess}${desc}`)}`.trim();
+			const label = desc ? `${sess}${desc}` : `${sess}${actionTag}`;
+			if (!theme?.fg) return `🗺️ plan_step [${actionTag}] ${label}`.trim();
+			return `${theme.fg("accent", theme.bold("🗺️ plan_step "))}${theme.fg("dim", `[${actionTag}]`)} ${theme.fg("foreground", label)}`.trim();
 		},
 		renderResult: (result: any, options?: any, theme?: any) => {
 			const targetPlan = getOrCreatePlan(result?.sessionId || activeSessionId);
-			const { bar } = calculateProgress(targetPlan.steps);
-			const msg = result?.message ?? `Steps: ${targetPlan.steps.length}`;
-			const filePath = targetPlan.planFilePath ? `| 📄 ${path.basename(targetPlan.planFilePath)}` : "";
+			const steps = targetPlan?.steps || [];
+			const { bar } = calculateProgress(steps);
+			const msg = result?.message ?? `Steps: ${steps.length}`;
+			const filePath = targetPlan?.planFilePath ? `| 📄 ${path.basename(targetPlan.planFilePath)}` : "";
 			if (!theme?.fg) return `${msg} | ${bar} ${filePath}`.trim();
 			return `${theme.fg("success", msg)} ${theme.fg("dim", `| ${bar} ${filePath}`)}`.trim();
 		},

@@ -109,13 +109,13 @@ export class ExtensionService extends Service {
 				? (args: any, theme: any, context: any) => {
 					try {
 						const res = tool.renderCall(args, theme, context);
-						if (!res) return undefined;
-						if (typeof res === "object" && typeof res.render === "function") {
+						if (res && typeof res === "object" && typeof res.render === "function") {
 							return res;
 						}
-						return new Text(typeof res === "string" ? res : String(res), 0, 0);
+						const str = res !== undefined && res !== null ? String(res) : "";
+						return new Text(str, 0, 0);
 					} catch {
-						return undefined;
+						return new Text("", 0, 0);
 					}
 				}
 				: undefined,
@@ -124,13 +124,13 @@ export class ExtensionService extends Service {
 					try {
 						const pluginResult = result?.details !== undefined ? result.details : result?.content ?? result;
 						const res = tool.renderResult(pluginResult, options, theme, context);
-						if (!res) return undefined;
-						if (typeof res === "object" && typeof res.render === "function") {
+						if (res && typeof res === "object" && typeof res.render === "function") {
 							return res;
 						}
-						return new Text(typeof res === "string" ? res : String(res), 0, 0);
+						const str = res !== undefined && res !== null ? String(res) : "";
+						return new Text(str, 0, 0);
 					} catch {
-						return undefined;
+						return new Text("", 0, 0);
 					}
 				}
 				: undefined,

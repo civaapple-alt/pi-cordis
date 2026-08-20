@@ -38,8 +38,8 @@
 
 - **`ExtensionService` 自定义工具渲染器适配**：
   - 在 `ExtensionService.adaptToolForPi()` 中将插件返回的 `renderCall` 与 `renderResult` 字符串或格式化输出安全包装为 `@earendil-works/pi-tui` 的 `Text` Component 组件；
-  - 彻底修复当大模型调用插件自定义工具（如 Plan 模式下的 `plan_step` 或 `ask_question` / `todo_write`）时，上游 `Box.render` 遍历子组件执行 `child.render` 抛出 `TypeError: child.render is not a function` 导致进程退出的致命缺陷；
-  - 自动解包 `result.details` 并防御性捕获异常，确保非交互环境或异常情况下平滑回退至上游默认渲染。
+  - 彻底修复当插件工具渲染器返回 falsy/空值/undefined 或内部抛错时向上游 `Box.addChild` 传递 `undefined`，导致 `Box.render` 遍历子组件时触发 `TypeError: Cannot read properties of undefined (reading 'render')` 崩溃退出的致命缺陷；
+  - 自动解包 `result.details` 并进行全生命周期防御性封装，确保在 Plan 模式（`plan_step`）或任意插件自定义工具执行时 100% 稳定运行。
 
 ### 🛠️ 构建脚本与包配置校准 (Build Scripts & Package Config Calibration)
 
