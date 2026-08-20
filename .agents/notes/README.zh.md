@@ -17,6 +17,8 @@
 | `2026-08-19` | [Pi AgentHarness: 工业级事务规格与 Cordis 微内核架构融合](implemented/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.zh.md) | 三存储模型（entries/registers/ledger）、副作用三明治（Effect Sandwich）、Lanes 多车道并发与 Cordis 控制面融合 |
 | `2026-08-19` | [Pi-Cordis: 原生 Cordis 插件体系与 Profile 预设机制](implemented/architecture/2026-08-19-pi-cordis-native-plugins-and-profiles.zh.md) | 独立子包工作区（`packages/plugins/*`）、4 大核心插件（safety-gate/git-guard/todo-tracker/rules-injector）与 5 大 Profile 预设矩阵（default/safe/strict/full/minimal） |
 | `2026-08-19` | [Pi-Cordis: 原生插件生态全景规划与优先级演进矩阵](proposed/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.zh.md) | 70+ 个扩展全景分类、P0 -> P1 -> P2 -> P3 优先级演进矩阵（Subagent、Plan模式、问答交互、输出截断与会话压缩） |
+| `2026-08-20` | [Pi-Cordis: Loader 权衡与双轨分层 HMR（热重载）架构设计](implemented/architecture/2026-08-20-pi-cordis-loader-and-dual-track-hmr-architecture.zh.md) | 核心 Service 编程式高效装配、预设 YAML 与插件源码双轨 HMR、Node.js ESM 动态时间戳缓存破除与会话状态保持 |
+
 
 
 

@@ -17,6 +17,8 @@ This directory records architectural decision records (ADRs), technology selecti
 | `2026-08-19` | [Pi AgentHarness: Industrial Specification and Cordis Microkernel Integration](implemented/architecture/2026-08-19-pi-agent-harness-specification-and-cordis-integration.md) | Three Stores model (entries/registers/ledger), Effect Sandwich crash resilience, Lanes concurrency, and Cordis control-plane mapping |
 | `2026-08-19` | [Pi-Cordis: Native Cordis Plugins and Profile Presets](implemented/architecture/2026-08-19-pi-cordis-native-plugins-and-profiles.md) | Dedicated plugin workspace (`packages/plugins/*`), four native plugins (safety-gate, git-guard, todo-tracker, rules-injector), and 5 built-in profiles |
 | `2026-08-19` | [Pi-Cordis: Native Plugin Ecosystem Roadmap and Priority Matrix](proposed/2026-08-19-pi-cordis-plugin-ecosystem-roadmap-and-priority.md) | 70+ extensions taxonomy, P0 -> P1 -> P2 -> P3 priority evolution matrix (Subagent, Plan mode, QnA UI, Output Truncation, Context Compaction) |
+| `2026-08-20` | [Pi-Cordis: Loader Trade-offs and Dual-Track HMR Architecture](implemented/architecture/2026-08-20-pi-cordis-loader-and-dual-track-hmr-architecture.md) | Programmatic core service loading, dual-track YAML & code HMR, ESM timestamp cache-busting, and session continuity |
+
 
 
 
