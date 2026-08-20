@@ -21,7 +21,7 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
 	});
 
-	it("1. @pi-cordis/plugin-subagent: registers subagent tool and executes sub-task", async () => {
+	it("1. @pi-cordis/plugin-subagent: registers subagent tool, executes sub-task, and enforces depth limits", async () => {
 		const fork = await ctx.plugin(subagentPlugin, { maxDepth: 2 });
 		expect(ctx.tools.has("subagent")).toBe(true);
 
@@ -30,29 +30,44 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(result.success).toBe(true);
 		expect(result.summary).toContain("[Tester]");
 		expect(result.summary).toContain("Run unit tests");
+		expect(result.deliverables).toBeDefined();
+
+		// Depth limit guard test
+		const deepResult = await tool!.execute({ task: "Run deeply nested task", depth: 3 });
+		expect(deepResult.success).toBe(false);
+		expect(deepResult.error).toBe("DELEGATED_DEPTH_EXCEEDED");
 
 		await fork.dispose();
 		expect(ctx.tools.has("subagent")).toBe(false);
 	});
 
-	it("2. @pi-cordis/plugin-plan-mode: manages plan steps and blocks mutating tools during planning", async () => {
+	it("2. @pi-cordis/plugin-plan-mode: manages plan steps with dependency tracking and progress bar", async () => {
 		const fork = await ctx.plugin(planModePlugin);
 		expect(ctx.tools.has("plan_step")).toBe(true);
 
 		const tool = ctx.tools.get("plan_step");
-		// Add step
-		const addRes = await tool!.execute({ action: "add", title: "Analyze database schema" });
-		expect(addRes.step.title).toBe("Analyze database schema");
-		expect(addRes.step.status).toBe("pending");
+		// Add step 1
+		const addRes1 = await tool!.execute({ action: "add", title: "Analyze database schema" });
+		expect(addRes1.step.title).toBe("Analyze database schema");
+		expect(addRes1.step.status).toBe("pending");
+
+		// Add step 2 with dependency
+		const addRes2 = await tool!.execute({ action: "add", title: "Run migration", dependsOn: [1] });
+		expect(addRes2.step.dependsOn).toEqual([1]);
+
+		// Update step 1 to completed
+		await tool!.execute({ action: "update", id: 1, status: "completed" });
 
 		// Prompt transform check
 		const promptEvent = { prompt: "Base prompt" };
 		await ctx.parallel("pi/prompt-transform", promptEvent);
 		expect(promptEvent.prompt).toContain("Current Implementation Plan");
+		expect(promptEvent.prompt).toContain("50%");
 		expect(promptEvent.prompt).toContain("Analyze database schema");
 
 		// Finish plan mode
-		await tool!.execute({ action: "finish" });
+		const finishRes = await tool!.execute({ action: "finish" });
+		expect(finishRes.message).toContain("Plan finalized");
 
 		await fork.dispose();
 		expect(ctx.tools.has("plan_step")).toBe(false);
@@ -132,13 +147,18 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 
 		const tool = ctx.tools.get("ask_question");
 		const result = await tool!.execute({
-			question: "Which database do you prefer?",
-			options: [{ label: "PostgreSQL", description: "Relational" }, { label: "Redis", description: "In-memory" }],
+			questions: [
+				{
+					id: "db_choice",
+					question: "Which database do you prefer?",
+					options: [{ label: "PostgreSQL (Recommended)", description: "Relational" }, { label: "Redis", description: "In-memory" }],
+				},
+			],
 		});
 
-		expect(result.question).toBe("Which database do you prefer?");
-		expect(result.options).toEqual(["PostgreSQL", "Redis"]);
-		expect(result.selected).toBe("PostgreSQL");
+		expect(result.answers).toBeDefined();
+		expect(result.answers[0].id).toBe("db_choice");
+		expect(result.answers[0].selected[0]).toContain("PostgreSQL");
 
 		await fork.dispose();
 		expect(ctx.tools.has("ask_question")).toBe(false);
