@@ -78,6 +78,15 @@ If a proposed approach is rejected during review:
 
 ## 3. Working Inventory of Agent Notes
 
+### Proposed Notes Under Review (`proposed/`)
+
+| Date | Title | Focus & Strategic Value |
+|---|---|---|
+| `2026-08-20` | [Pi-Cordis: Native Subagent Plugin Lean Enhancement Proposal](proposed/2026-08-20-pi-cordis-subagent-plugin-deep-enhancement-proposal.md) | Rejecting 130+ file monolithic clones, focusing on in-place `ctx.session.create()` physical isolation and `scout`/`worker` tool slicing (< 50 lines) |
+| `2026-08-20` | [Pi-Cordis: rpiv-mono Lean Feature Absorption Proposal](proposed/2026-08-20-pi-cordis-rpiv-mono-analysis-and-enhancement-proposal.md) | Rejecting plugin fragmentation, absorbing zero-pollution `/btw`, question Markdown previews, Todo floating overlay, and OSC 777 terminal notifications in-place (< 100 lines) |
+
+---
+
 ### Active Implemented Notes (`implemented/`)
 
 #### Architecture (`implemented/architecture/`)

@@ -78,6 +78,15 @@ graph LR
 
 ## 三、当前决策记录清单 (Working Inventory)
 
+### 待评审与演进中提案 (`proposed/`)
+
+| 提案日期 | 提案标题 | 核心关注点与价值 |
+|---|---|---|
+| `2026-08-20` | [基于极简哲学的 Pi-Cordis 原生 Subagent 插件精准增强提案](proposed/2026-08-20-pi-cordis-subagent-plugin-deep-enhancement-proposal.zh.md) | 拒绝复刻 130+ 文件重型巨石，以不到 50 行增量原地聚焦 `ctx.session.create()` 会话物理隔离与 `scout`/`worker` 工具权限切片 |
+| `2026-08-20` | [基于极简哲学的 rpiv-mono 优秀特性吸收与轻量演进提案](proposed/2026-08-20-pi-cordis-rpiv-mono-analysis-and-enhancement-proposal.zh.md) | 拒绝插件碎片化拆包，以不到 100 行增量原地吸收零污染 `/btw` 指令、问答 Markdown 预览、Todo 悬浮面板与 OSC 777 终端通知 |
+
+---
+
 ### 已落地的决策记录 (`implemented/`)
 
 #### 架构类决策 (`implemented/architecture/`)
