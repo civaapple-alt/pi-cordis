@@ -108,6 +108,46 @@ Real-API runs read `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`, and root `.
 
 ---
 
+## Progressive Disclosure & Troubleshooting Navigation (渐进式信息披露与排查突破口)
+
+When developing, verifying features, or debugging issues, follow this index to navigate to the exact Service API Specs (`packages/core/docs/cordis/services/`) and Architectural Decision Records (`.agents/notes/implemented/`):
+
+### 1. Capability Domains & Documentation Map (领域与文档映射)
+
+| 功能领域 (Domain) | 核心服务文档 (Service Docs) | 核心架构决策记录 (ADR / Agent Notes) |
+| :--- | :--- | :--- |
+| **工具桥接与 LLM 可见性**<br>(Tool Bridge & LLM Visibility) | [ToolRegistryService](packages/core/docs/cordis/services/tool-registry-service.zh.md)<br>[ExtensionService](packages/core/docs/cordis/services/extension-service.zh.md) | [双向工具桥接中枢与动态工具遮罩](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-bidirectional-tool-bridge-and-interactive-ui.zh.md) |
+| **终端 UI 交互与弹窗**<br>(Terminal UI Modals & Inputs) | [ExtensionService](packages/core/docs/cordis/services/extension-service.zh.md) | [终端双向 UI 交互与上下文规范](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-bidirectional-tool-bridge-and-interactive-ui.zh.md)<br>[TUI 交互与控制面工程取舍](.agents/notes/implemented/architecture/2026-08-19-pi-cordis-tui-and-control-plane-tradeoffs.zh.md) |
+| **预设切换与工具遮罩**<br>(Profile Switching & Tool Masking) | [ExtensionService](packages/core/docs/cordis/services/extension-service.zh.md) | [编程化调用 PTC 架构](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-ptc-code-mode-architecture-proposal.zh.md)<br>[“Default is Best” 极简预设重构](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md) |
+| **依赖注入与权限沙箱**<br>(IoC & Inject Sandboxing) | [微内核服务概览](packages/core/docs/cordis/services/README.zh.md) | [能力接缝、显式注入 (inject) 与 TUI 桥接](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-capability-seams-inject-and-tui-bridge.zh.md) |
+| **可逆副作用与插件生命周期**<br>(Reversible Effects & Disposers) | [微内核服务概览](packages/core/docs/cordis/services/README.zh.md) | [可逆副作用与 Disposer 模式深度实践](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-reversible-side-effects-and-disposer-pattern.zh.md)<br>[双轨 HMR 热重载架构](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-loader-and-dual-track-hmr-architecture.zh.md) |
+| **零污染旁路问答**<br>(Side-channel Ephemeral Query) | [AIService](packages/core/docs/cordis/services/ai-service.zh.md)<br>[ExtensionService](packages/core/docs/cordis/services/extension-service.zh.md) | [斜杠命令原生插件化与零污染 /btw 问答](.agents/notes/implemented/feature/2026-08-20-pi-cordis-native-slash-commands-and-ephemeral-btw-architecture.zh.md) |
+| **多智能体与会话物理隔离**<br>(Subagent & Session Isolation) | [SessionService](packages/core/docs/cordis/services/session-service.zh.md)<br>[AgentService](packages/core/docs/cordis/services/agent-service.zh.md) | [原生 Subagent 插件轻量增强实现](.agents/notes/implemented/feature/2026-08-20-pi-cordis-subagent-plugin-lean-enhancement.zh.md) |
+| **智能体自我认知与自省**<br>(Self-Inspection & Reflection) | [SettingsService](packages/core/docs/cordis/services/settings-service.zh.md)<br>[PromptsService](packages/core/docs/cordis/services/prompts-service.zh.md) | [智能体自我认知架构演进与知识沉淀](.agents/notes/implemented/architecture/2026-08-20-pi-cordis-agent-self-inspection-and-introspection-architecture.zh.md) |
+| **代码库精简与上游解耦**<br>(Decoupling & 4-Layer Pyramid) | [核心层概览](packages/core/docs/cordis/services/README.zh.md) | [核心层 (@pi-cordis/core) 上游解耦与 4 层架构落地](.agents/notes/implemented/simplification/2026-08-20-pi-cordis-core-decoupling-and-layered-architecture.zh.md) |
+
+---
+
+### 2. Common Symptoms & Diagnostic Breakthroughs (常见故障诊断与排查突破口)
+
+1. **LLM 无法感知插件自定义工具（LLM 只能看到部分内置工具）**：
+   - **根因**：CLI 传入了 `--tools` 参数，触发上游 `AgentSession` 的 `allowedToolNames` 严格白名单过滤；
+   - **突破口**：检查 `packages/core/src/cli.ts` 确保不向上游传递硬编码 `--tools`，并确保 `ExtensionService.createBridgeExtensionFactory()` 注册了 `grep, find, ls` 与 `ctx.tools.getCustomTools()`。
+2. **工具调用时未弹出终端选择框，直接返回假定默认值（如 `ask_question` 未弹窗）**：
+   - **根因**：工具 `execute()` 内部使用了模拟静态返回值，未从 `execContext.ctx.ui` 获取真实终端 UI 句柄；
+   - **突破口**：在 `tool.execute(args, execContext)` 中解构 `execContext?.ctx?.ui`，调用 `ui.select()` / `ui.input()` / `ui.confirm()`，并用 `execContext?.ctx?.hasUI` 提供非交互环境回退。
+3. **切换 Profile（如 `/profile ptc`）后工具未遮罩或旧工具残留**：
+   - **根因**：切换预设时旧插件 Fiber 未调用 `ctx.registry.delete` 销毁，或未调用 `pi.setActiveTools()` 同步生效列表；
+   - **突破口**：检查 `packages/plugins/profiles/src/index.ts` 中的 `applyProfile` 异步生命周期管理，以及 `ExtensionService.syncActiveTools()`。
+4. **运行时抛出 `Error: cannot get property "xxx" without inject`**：
+   - **根因**：Cordis Proxy 属性访问权限拦截，插件在未声明 `inject = ["xxx"]` 的情况下试图访问 `ctx.xxx`；
+   - **突破口**：在插件顶部补充 `export const inject = ["xxx"]`；对于终端 UI 句柄，切勿访问 `ctx.ui`，应从 `cmdCtx.ui`（命令）或 `execContext.ctx.ui`（工具）中获取。
+5. **代码修改后测试报错 `cannot get property "tools" without inject`**：
+   - **根因**：服务类（`Service`）或插件未声明静态或导出的 `inject`；
+   - **突破口**：在服务类中添加 `static inject = ["tools"]` 或 `export const inject = ["tools"]`。
+
+---
+
 ## Defensive patterns
 
 1. **Fiber Scope Disposers**: Always clean up listeners, timers, and tool registrations inside returned disposer callbacks.
