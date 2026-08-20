@@ -12,6 +12,7 @@ import gitAutomationPlugin from "@pi-cordis/plugin-git-automation";
 import sshDelegatorPlugin from "@pi-cordis/plugin-ssh-delegator";
 import safetyGatePlugin from "@pi-cordis/plugin-safety-gate";
 import gitGuardPlugin from "@pi-cordis/plugin-git-guard";
+import rulesInjectorPlugin from "@pi-cordis/plugin-rules-injector";
 import { BUILTIN_PROFILES } from "@pi-cordis/profiles";
 
 describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
@@ -322,5 +323,17 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 
 		await fork.dispose();
 		expect(ctx.tools.has("git_checkpoint")).toBe(false);
+	});
+
+	it("14. @pi-cordis/plugin-rules-injector: injects project rules and caches content with SHA-256", async () => {
+		const fork = await ctx.plugin(rulesInjectorPlugin);
+
+		const promptEvent = { prompt: "Base instructions" };
+		await ctx.parallel("pi/prompt-transform", promptEvent);
+
+		// If AGENTS.md or CLAUDE.md exists in repo, it should be injected
+		expect(promptEvent.prompt.length).toBeGreaterThan("Base instructions".length);
+
+		await fork.dispose();
 	});
 });

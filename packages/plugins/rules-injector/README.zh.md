@@ -2,16 +2,19 @@
 
 [English](README.md) | 中文
 
-原生 Cordis 项目规则扫描与提示词自动注入插件。自动扫描项目工作区中的规范约定文件（`AGENTS.md`、`CLAUDE.md`、`.clauderules`、`.cursorrules`、`.agents/rules/` 等），并自动注入到系统提示词中。
+原生 Cordis 项目规则与指令自动注入插件。自动扫描并聚合根目录及子目录下的 `AGENTS.md`、`CLAUDE.md`、`.clauderules`、`.cursorrules`、`.claude/rules/` 与 `.agents/rules/`，利用 SHA-256 哈希缓存保持提示词前缀绝对稳定，最大化大模型 KV-Cache 复用率。
 
 ## 配置选项
 
-- `ruleFiles` (string[], 可选)：扫描的目标规则文件名列表（默认：`["AGENTS.md", "CLAUDE.md", ".clauderules", ".cursorrules"]`）。
-- `scanClaudeRules` (boolean, 默认 `true`)：是否递归扫描 `.agents/rules/` 与 `.claude/rules/` 规则目录。
+- `ruleFiles` (string[], 可选)：扫描的根目录规则文件清单（默认：`["AGENTS.md", "CLAUDE.md", ".clauderules", ".cursorrules"]`）。
+- `scanClaudeRules` (boolean, 默认 `true`)：是否扫描 `.claude/rules/*.md`。
+- `scanAgentRules` (boolean, 默认 `true`)：是否扫描 `.agents/rules/*.md`。
 
-## 行为表现
-在每轮对话的 `pi/prompt-transform` 事件中读取当前工作区中的规范文件，并将内容附加在 `## 📋 Project Instructions & Guidelines:` 区域。
+## KV-Cache 友好型哈希缓存
+
+1. **层级化规则聚合**：递归汇总根目录与子目录中的所有项目规范与准则。
+2. **SHA-256 增量哈希**：对合并后的规则内容计算哈希；在文件未发生变更的多轮对话中直接复用内存缓存块，确保提示词前缀完全一致，最大化模型推理端的 KV-Cache 命中率。
 
 ## 模型体验
-- **即时对齐工程规范**：无需用户手动复制黏贴，自动使模型掌握当前仓库的架构原则、编码准则与测试要求。
-- **KV Cache 友好**：规则内容在同一次开发中保持稳定，利于维持大模型的前缀缓存复用。
+- **严格遵循规范**：在每轮会话开始前将当前项目的架构规范与工程约束准确注入上下文；
+- **零额外开销**：通过内存缓存极大降低磁盘 I/O 开销与推理时延。

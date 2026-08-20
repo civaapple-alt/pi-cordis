@@ -5,6 +5,15 @@ export interface ContextCompactorConfig {
 	summaryLength?: "compact" | "detailed";
 }
 
+export interface CompactionData {
+	reason: string;
+	timestamp: number;
+	modifiedFiles?: string[];
+	keyDecisions?: string[];
+	resolvedIssues?: string[];
+	pendingBlockers?: string[];
+}
+
 export const name = "context-compactor";
 export const inject = ["tools"];
 
@@ -15,27 +24,69 @@ export function apply(ctx: Context, config: ContextCompactorConfig = {}) {
 	// 1. Register trigger_compact tool
 	const unregisterTool = ctx.tools.register({
 		name: "trigger_compact",
-		description: "Manually trigger conversation compaction to summarize past context and reclaim token window space.",
+		description: "Trigger structured conversation compaction to summarize past context across 4 core dimensions and reclaim token budget.",
 		parameters: {
 			type: "object",
 			properties: {
 				reason: {
 					type: "string",
-					description: "Optional reason for triggering compaction",
+					description: "Contextual reason or milestone for triggering compaction",
+				},
+				modifiedFiles: {
+					type: "array",
+					items: { type: "string" },
+					description: "List of modified files to preserve in memory",
+				},
+				keyDecisions: {
+					type: "array",
+					items: { type: "string" },
+					description: "Architectural and design decisions to retain",
+				},
+				resolvedIssues: {
+					type: "array",
+					items: { type: "string" },
+					description: "List of resolved problems or bugs",
+				},
+				pendingBlockers: {
+					type: "array",
+					items: { type: "string" },
+					description: "Unresolved issues or immediate blockers",
 				},
 			},
 		},
-		execute: async (args: { reason?: string }) => {
+		renderCall: (args: { reason?: string }, theme?: any) => {
+			const r = args?.reason ? `"${args.reason}"` : "Manual trigger";
+			if (!theme?.fg) return `🗜️ trigger_compact: ${r}`;
+			return `${theme.fg("accent", theme.bold("🗜️ trigger_compact "))}${theme.fg("dim", `(${r})`)}`;
+		},
+		renderResult: (result: any, options?: any, theme?: any) => {
+			if (!theme?.fg) return `✓ Context compaction completed (Threshold: ${tokenThreshold})`;
+			return `${theme.fg("success", "✓ Context compaction completed")} ${theme.fg("dim", `(Token threshold: ${tokenThreshold})`)}`;
+		},
+		execute: async (args: {
+			reason?: string;
+			modifiedFiles?: string[];
+			keyDecisions?: string[];
+			resolvedIssues?: string[];
+			pendingBlockers?: string[];
+		}) => {
 			lastCompactionTime = Date.now();
-			ctx.emit("pi/compact" as any, {
+			const data: CompactionData = {
 				reason: args.reason ?? "Manual compaction triggered",
 				timestamp: lastCompactionTime,
-			});
+				modifiedFiles: args.modifiedFiles ?? [],
+				keyDecisions: args.keyDecisions ?? [],
+				resolvedIssues: args.resolvedIssues ?? [],
+				pendingBlockers: args.pendingBlockers ?? [],
+			};
+
+			ctx.emit("pi/compact" as any, data);
 
 			return {
 				success: true,
-				message: "Context compaction completed. Key decisions and modified files preserved in summary.",
+				message: "Context compaction completed. Structured 4-dimensional summary preserved.",
 				tokenThreshold,
+				compaction: data,
 			};
 		},
 	});

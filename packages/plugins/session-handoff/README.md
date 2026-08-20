@@ -2,26 +2,25 @@
 
 English | [中文](README.zh.md)
 
-Native Cordis session transition and handoff plugin. It registers the `session_handoff` tool to package goals, accomplishments, and next steps, facilitating smooth handoffs into a fresh, clean session context.
+Native Cordis session transition and Handoff Envelope plugin. It registers `session_handoff` to package the current goal, accomplishments, next steps, critical files, and blockers into a standardized briefing document and emits `pi/handoff` for a clean transition to a fresh session.
 
 ## Tool
 
 ### `session_handoff`
 
 Accepts:
-- `newGoal` (string, required): Primary objective of the upcoming session.
-- `accomplishments` (string[], optional): Milestones completed in the current session.
-- `nextSteps` (string[], required): Immediate next action items for the new session.
-- `criticalFiles` (string[], optional): Essential file paths relevant to the new goal.
+- `newGoal` (string, required): The target goal for the new session.
+- `nextSteps` (string[], required): Actionable next steps.
+- `sessionTitle` (string, optional): Current session title.
+- `accomplishments` (string[], optional): Completed milestones.
+- `criticalFiles` (string[], optional): File paths relevant to the handoff.
+- `blockers` (string[], optional): Active blockers or open questions.
 
 Returns:
-- `success` (boolean): Handoff packaging status.
-- `message` (string): Confirmation message.
-- `handoff` (object): Structured handoff payload including timestamps and next steps.
-
-## Event Broadcasting
-Emits `pi/handoff` with the packaged structured payload to allow session storage, UI notification, or automated session spawns.
+- `success` (boolean): Package creation status.
+- `message` (string): Informational message.
+- `handoff` (HandoffEnvelope): Standardized envelope containing `formattedMarkdown`.
 
 ## Model Experience
-- **Smooth Workflow Continuity**: Summarizes complex multi-turn sessions before starting a new topic.
-- **Noise Elimination**: Leaves behind stale exploratory context while preserving critical findings.
+- **Zero Hallucination Transfer**: Creates a clean, structured bridge between sessions.
+- **Fast Startup**: New session immediately starts with clear priorities and verified context.

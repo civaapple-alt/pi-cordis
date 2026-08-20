@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Native Cordis Git commit automation and message generator plugin. It registers the `git_smart_commit` tool to format structured Conventional Commits messages and link relevant GitHub issues.
+Native Cordis Git automation and Conventional Commits plugin. It registers `git_smart_commit` to compose structured Conventional Commit messages, support breaking changes (`BREAKING CHANGE:` / `!`), and output ready-to-run shell commands.
 
 ## Tool
 
@@ -10,15 +10,17 @@ Native Cordis Git commit automation and message generator plugin. It registers t
 
 Accepts:
 - `type` (`"feat"` | `"fix"` | `"docs"` | `"style"` | `"refactor"` | `"test"` | `"chore"` | `"perf"`, required): Conventional commit type.
-- `message` (string, required): Short imperative summary of the change.
-- `scope` (string, optional): Component or package scope (e.g. `'plugins'`, `'core'`).
-- `issueNumber` (number, optional): GitHub issue number to associate (e.g. `42`).
+- `scope` (string, optional): Scope descriptor (e.g. `'core'`, `'plugins'`).
+- `message` (string, required): Imperative commit description.
+- `issueNumber` (number, optional): GitHub issue/PR number.
+- `breakingChange` (string, optional): Breaking change explanation.
 
 Returns:
-- `success` (boolean): Formatting outcome.
-- `commitMessage` (string): Standard formatted commit message (e.g. `feat(plugins): add subagent tool (#42)`).
-- `instruction` (string): Ready-to-run git commit command line.
+- `success` (boolean): Formatting success.
+- `commitMessage` (string): Complete formatted commit text.
+- `instruction` (string): Ready-to-execute `git commit -m "..."` command.
+- `isBreakingChange` (boolean): Whether a breaking change was recorded.
 
 ## Model Experience
-- **Commit Standardization**: Ensures adherence to team Conventional Commits standards without manual regex crafting.
-- **Traceability**: Seamlessly links issue numbers and affected architectural scopes.
+- **Standardized History**: Enforces consistent semantic Git commits across all agent modifications.
+- **TUI Integration**: Formats clear commit preview badges in the terminal interface.

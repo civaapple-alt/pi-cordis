@@ -5,6 +5,14 @@ export interface GitAutomationConfig {
 	conventionalCommits?: boolean;
 }
 
+export interface SmartCommitResult {
+	success: boolean;
+	commitMessage: string;
+	instruction: string;
+	conventional: boolean;
+	isBreakingChange: boolean;
+}
+
 export const name = "git-automation";
 export const inject = ["tools"];
 
@@ -13,7 +21,7 @@ export function apply(ctx: Context, config: GitAutomationConfig = {}) {
 
 	const unregisterTool = ctx.tools.register({
 		name: "git_smart_commit",
-		description: "Generate structured conventional commit messages and automate git staging & commit workflow.",
+		description: "Generate structured Conventional Commit messages with scope inference and breaking change tracking.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -28,25 +36,54 @@ export function apply(ctx: Context, config: GitAutomationConfig = {}) {
 				},
 				message: {
 					type: "string",
-					description: "Concise description of the change",
+					description: "Concise description of the change in imperative mood",
 				},
 				issueNumber: {
 					type: "number",
 					description: "Optional GitHub issue number (e.g. 42)",
 				},
+				breakingChange: {
+					type: "string",
+					description: "Optional breaking change explanation",
+				},
 			},
 			required: ["type", "message"],
 		},
-		execute: async (args: { type: string; scope?: string; message: string; issueNumber?: number }) => {
+		renderCall: (args: { type: string; scope?: string; message: string }, theme?: any) => {
+			const scopePart = args.scope ? `(${args.scope})` : "";
+			const preview = `${args.type}${scopePart}: ${args.message}`;
+			if (!theme?.fg) return `🌿 git_smart_commit: ${preview}`;
+			return `${theme.fg("accent", theme.bold("🌿 git_smart_commit "))} ${theme.fg("foreground", preview)}`;
+		},
+		renderResult: (result: SmartCommitResult, options?: any, theme?: any) => {
+			if (!theme?.fg) return `✓ Ready: ${result.instruction}`;
+			return `${theme.fg("success", "✓ Commit Ready:")} ${theme.fg("dim", result.commitMessage)}`;
+		},
+		execute: async (args: {
+			type: string;
+			scope?: string;
+			message: string;
+			issueNumber?: number;
+			breakingChange?: string;
+		}): Promise<SmartCommitResult> => {
 			const scopePart = args.scope ? `(${args.scope})` : "";
 			const issuePart = args.issueNumber ? ` (#${args.issueNumber})` : "";
-			const formattedMessage = `${args.type}${scopePart}: ${args.message}${issuePart}`;
+			const breakingMark = args.breakingChange ? "!" : "";
+
+			let formattedMessage = `${args.type}${scopePart}${breakingMark}: ${args.message}${issuePart}`;
+
+			if (args.breakingChange) {
+				formattedMessage += `\n\nBREAKING CHANGE: ${args.breakingChange}`;
+			}
+
+			const escaped = formattedMessage.replace(/"/g, '\\"');
 
 			return {
 				success: true,
 				commitMessage: formattedMessage,
 				conventional: conventionalCommits,
-				instruction: `Ready to commit with: git commit -m "${formattedMessage}"`,
+				isBreakingChange: !!args.breakingChange,
+				instruction: `git commit -m "${escaped}"`,
 			};
 		},
 	});
