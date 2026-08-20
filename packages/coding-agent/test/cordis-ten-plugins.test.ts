@@ -93,6 +93,17 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(result.output).toContain("FS namespace available: true");
 		expect(result.output).toContain("Bash namespace available: true");
 
+		// 4. Verify TUI Renderers
+		const callText = (tool as any).renderCall({ code: "console.log('hello world');" });
+		expect(callText).toContain("run_code");
+		expect(callText).toContain("console.log('hello world')");
+
+		const resultTextCollapsed = (tool as any).renderResult(result, { expanded: false });
+		expect(resultTextCollapsed).toContain("✓ Executed in");
+
+		const resultTextExpanded = (tool as any).renderResult(result, { expanded: true });
+		expect(resultTextExpanded).toContain("Doubled values:");
+
 		await fork.dispose();
 		expect(ctx.tools.has("run_code")).toBe(false);
 		expect(ctx.tools.getExportedToolNames()).toContain("read");

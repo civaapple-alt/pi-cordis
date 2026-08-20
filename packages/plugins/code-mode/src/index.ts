@@ -1,8 +1,10 @@
 import type { Context } from "@deepseek-ai/cordis";
 import * as vm from "node:vm";
 import { generateSdkDts, jsonSchemaToInterface, jsonSchemaTypeToTs } from "./dts-generator.js";
+import { renderCodeModeCall, renderCodeModeResult, type RenderOptions } from "./renderer.js";
 
 export * from "./dts-generator.js";
+export * from "./renderer.js";
 
 export interface CodeModeConfig {
 	timeoutMs?: number;
@@ -74,6 +76,8 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 			},
 			required: ["code"],
 		},
+		renderCall: (args: { code?: string }, theme?: any) => renderCodeModeCall(args, theme),
+		renderResult: (result: any, options?: any, theme?: any) => renderCodeModeResult(result, options, theme),
 		execute: async (args: { code: string }): Promise<CodeExecutionResult> => {
 			const startTime = Date.now();
 			const logs: string[] = [];
