@@ -79,7 +79,16 @@ export function apply(ctx: Context, config: BtwPluginConfig = {}) {
 				ctx.emit("pi/btw-response" as any, { question, answer: answerText });
 
 				if (cmdCtx.hasUI) {
-					cmdCtx.ui.notify(`[btw: ${model.id}]\n${answerText}`, "info");
+					if (typeof cmdCtx.ui.editor === "function") {
+						await cmdCtx.ui.editor(
+							`BTW answer from ${model.id}. This is a read-only review copy; edits are discarded.`,
+							answerText,
+						);
+					} else if (typeof cmdCtx.ui.select === "function") {
+						await cmdCtx.ui.select(`[btw: ${model.id}]\n\n${answerText}`, ["Close"]);
+					} else {
+						cmdCtx.ui.notify(`[btw: ${model.id}]\n${answerText}`, "info");
+					}
 				}
 			} catch (err: any) {
 				const errorMsg = err instanceof Error ? err.message : String(err);

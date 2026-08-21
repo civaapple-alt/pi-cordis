@@ -11,8 +11,8 @@ Pi-Cordis 的 Profile 解析器、YAML 加载器、运行时切换器与开发�
 
 Plan 是由 `@pi-cordis/core` 在 Profile Fiber 外稳定挂载的每 Session 控制状态。使用 `/plan` 或 `picds --plan` 进入；通过 `exit_plan_mode` 获批后退出，但不会改变当前 Profile。
 
-`applyProfile()` 精确持有其挂载的 Cordis Fiber。切换时先校验并挂载替代项，再销毁旧 Profile 的精确 Fiber；若替代项失败则回滚且保持当前 Profile。以 Cordis Effect 注册的工具、命令、监听器、定时器和过滤器因此保持可逆。未知 Profile 与插件名称会明确失败。
+`applyProfile()` 精确持有其挂载的 Cordis Fiber。切换时先校验并挂载替代项，再销毁旧 Profile 的精确 Fiber；若替代项失败则回滚且保持当前 Profile。销毁失败会聚合抛出而不是被吞掉，因为残留 Effect 可能需要重启。以 Cordis Effect 注册的工具、命令、监听器、定时器和过滤器因此保持可观察且可逆。未知 Profile 与插件名称会明确失败。
 
-Profile 发现优先读取项目 `.picds` 配置，仅把 `.pi` 作为兼容回退。开发期 HMR 串行执行重载，并随所属 Fiber 清理 Watcher 与 Timer。
+Profile 发现优先读取项目 `.picds` 配置，仅把 `.pi` 作为兼容回退。开发期 HMR 串行执行重载，在斜杠命令切换后跟随当前 Profile，报告 Fork 销毁失败，并随所属 Fiber 清理 Watcher 与 Timer。
 
-`/profile` 命令用于列出或切换能力 Profile；精确组成见仓库 `presets/` 目录。
+`/profile` 选择器会标记当前 Profile；切换成功后展示 `原 Profile → 新 Profile`、新增插件、移除插件与完整活跃插件集。精确组成见仓库 `presets/` 目录。

@@ -26,6 +26,7 @@ This boundary is deliberate: Pi-Cordis is useful when a Pi user needs runtime po
 3. **Profiles alter capability surfaces, not product identity.** Switching a profile disposes its exact fibers and synchronizes the tools visible to Pi.
 4. **Security interception is serial.** Tool calls, including calls made inside PTC, pass through the same Cordis safety pipeline.
 5. **Do not report simulated work as success.** Unimplemented Subagent, SSH, and Compaction prototypes are private and absent from publishable profiles.
+6. **Design from the review moment.** Complete artifacts stay readable before approval, cancellation stops the workflow, dangerous mutations require visible confirmation, and failures or degraded execution remain explicit.
 
 ## Profiles and Plan state
 

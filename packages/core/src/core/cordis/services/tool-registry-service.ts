@@ -10,6 +10,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 export type ToolName = "read" | "edit" | "write" | "bash" | "grep" | "find" | "ls";
+export type ToolSideEffect = "none" | "workspace" | "external";
 
 export const allToolNames: ReadonlySet<ToolName> = new Set([
 	"read",
@@ -25,6 +26,7 @@ export interface ToolDef {
 	name: string;
 	description: string;
 	parameters?: any;
+	sideEffect?: ToolSideEffect | ((args: Record<string, unknown>) => ToolSideEffect);
 	execute: (args: any, ...rest: any[]) => Promise<any>;
 	renderCall?: (args: any, theme?: any) => any;
 	renderResult?: (result: any, options?: any, theme?: any) => any;
@@ -35,6 +37,7 @@ export interface CordisPluginToolDef {
 	name: string;
 	description: string;
 	parameters?: any;
+	sideEffect?: ToolSideEffect | ((args: Record<string, unknown>) => ToolSideEffect);
 	execute: (args: any, ...rest: any[]) => Promise<any>;
 	renderCall?: (args: any, theme?: any) => any;
 	renderResult?: (result: any, options?: any, theme?: any) => any;
@@ -194,7 +197,13 @@ export class ToolRegistryService extends Service {
 		// 1. Pre-execution hook
 		const executionContext = rest[0]?.ctx;
 		const sessionId = executionContext?.sessionManager?.getSessionId?.();
-		await this.ctx.serial("pi/tool-call", { toolName, name: toolName, args, sessionId });
+		await this.ctx.serial("pi/tool-call", {
+			toolName,
+			name: toolName,
+			args,
+			sessionId,
+			hasUI: executionContext?.hasUI,
+		});
 
 		// 2. Execution
 		const resultEvent = {

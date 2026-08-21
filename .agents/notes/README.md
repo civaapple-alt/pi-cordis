@@ -80,9 +80,7 @@ If a proposed approach is rejected during review:
 
 ### Proposed Notes Under Review (`proposed/`)
 
-| Date | Title | Focus |
-|---|---|---|
-| `2026-08-21` | [Experience-First Built-in Plugin Contracts](proposed/2026-08-21-pi-cordis-experience-first-built-in-plugin-contracts.md) | User journeys, artifact visibility, atomic failure, session ownership, side-effect policy, and release evidence |
+None.
 
 ---
 
@@ -106,6 +104,7 @@ If a proposed approach is rejected during review:
 | `2026-08-20` | [Pi-Cordis: Bidirectional Tool Bridge Hub, Dynamic Tool Masking, and Interactive Terminal UI Specification](implemented/architecture/2026-08-20-pi-cordis-bidirectional-tool-bridge-and-interactive-ui.md) | Eliminating CLI `--tools` allowlist filtering issues, ExtensionService unified bridge hub, Profile hot-switching lifecycle unloading & `pi.setActiveTools` dynamic masking sync, `ask_question` blocking terminal select modal and custom input guidelines |
 | `2026-08-21` | [Pi-Cordis: Product Boundary and Production Gates](implemented/architecture/2026-08-21-pi-cordis-product-boundary-and-production-gates.md) | Thin Cordis control-plane positioning, capability honesty, exact Fiber disposal, package artifacts, and cross-platform release gates |
 | `2026-08-21` | [Pi-Cordis: Plan State and Profile Boundary](implemented/architecture/2026-08-21-pi-cordis-plan-state-and-profile-boundary.md) | Plan as stable per-session collaboration state, `exit_plan_mode`, and `default`/`ptc` Profile separation |
+| `2026-08-21` | [Pi-Cordis: Experience-First Built-in Plugin Contracts](implemented/architecture/2026-08-21-pi-cordis-experience-first-built-in-plugin-contracts.md) | Complete artifact review, explicit cancellation/failure/degradation, session ownership, semantic side-effect policy, and journey-level release evidence |
 
 #### Features & Extensions (`implemented/feature/`)
 | Date | Title | Focus |

@@ -9,10 +9,11 @@
 ## 核心机制
 
 1. **统一工具注册池**：聚合原生内置工具与第三方插件贡献的动态工具；同名注册采用栈语义，销毁最新注册后会恢复仍然存活的前一项；
+   - 工具可声明 `sideEffect: "none" | "workspace" | "external"`，也可根据参数动态推导。策略插件优先使用该语义元数据，再回退到名称启发式；
 2. **表现层工具遮蔽 (Tool Masking)**：
    - 允许插件（如 `@pi-cordis/plugin-code-mode` 或 `@pi-cordis/plugin-plan-mode`）通过 `ctx.tools.addFilter()` 动态隐藏特定工具，使大模型仅能感知并调用符合当前场景的受控工具集；
 3. **带拦截钩子的执行管道 (Execution Pipeline)**：
-   - 工具执行前：触发 `pi/tool-call` 串行前置事件，支持 Safety Gate、Plan 等策略插件阻断不允许的操作；Pi 提供执行上下文时会携带 session ID，使策略按会话隔离，并覆盖 PTC 嵌套调用；
+   - 工具执行前：触发 `pi/tool-call` 串行前置事件，支持 Safety Gate、Plan 等策略插件阻断不允许的操作；Pi 提供执行上下文时会携带 session ID 与 `hasUI`，使策略按会话隔离、感知交互能力，并覆盖 PTC 嵌套调用；
    - 工具执行后：执行可变的 `pi/tool-result` 串行变换链；最终 `event.result` 会真实返回给 Pi。
 
 ---
@@ -25,6 +26,7 @@
 const unregister = ctx.tools.registerCustomTool({
     name: "db_query",
     description: "执行只读数据库查询",
+    sideEffect: "none",
     parameters: {
         type: "object",
         properties: {
@@ -66,7 +68,7 @@ const removeFilter = ctx.tools.addFilter((tool) => {
 
 - **`pi/tool-registered`**：当新工具被注册时触发 `(tool: ToolDef)`；
 - **`pi/tool-unregistered`**：当工具被注销时触发 `(name: string)`；
-- **`pi/tool-call`**：工具执行前触发 `{ toolName: string, args: Record<string, unknown>, sessionId?: string }`；
+- **`pi/tool-call`**：工具执行前触发 `{ toolName: string, args: Record<string, unknown>, sessionId?: string, hasUI?: boolean }`；
 - **`pi/tool-result`**：工具执行完成后触发 `{ toolName: string, args: Record<string, unknown>, result: unknown }`。
 
 ---

@@ -6,6 +6,6 @@
 
 工具接受 `questions[]`，也兼容旧式 `question`/`options`。每题支持带说明与备注的标签选项；Pi 提供文本输入能力时，会增加可选的自定义回答入口。返回结果包含稳定 ID、所选标签、备注和自定义文本。
 
-当前 Pi UI 桥接每题只提供一次单选。输入类型为兼容性保留 `preview` 元数据，但不会渲染独立预览窗，也不宣称支持多选。
+Pi UI 桥接每题提供一次单选。带 `preview` 的选项会优先在 Pi 可滚动 Editor 中以只读副本完整审阅，再经二次确认才接受该选择；极简 UI Provider 则在确认步骤中收到全文。用户可以明确返回选项列表；插件不宣称支持多选。
 
-Headless 执行返回 `INTERACTIVE_UI_UNAVAILABLE`，空问题返回 `INVALID_QUESTION`，取消返回空选择与 `cancelled: true`。插件不会用默认值冒充用户决定。
+Headless 执行返回 `INTERACTIVE_UI_UNAVAILABLE`，空问题返回 `INVALID_QUESTION`，取消返回空选择与 `cancelled: true`，并立即停止剩余问题。渲染器会区分失败、取消与成功回答；插件不会用默认值冒充用户决定。

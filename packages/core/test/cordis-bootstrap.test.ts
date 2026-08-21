@@ -323,6 +323,27 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		expect(typeof resultComp.render).toBe("function");
 		const resultLines = resultComp.render(80);
 		expect(resultLines.join("\n")).toContain("Result is 84");
+
+		ctx.tools.register({
+			name: "test_failure_result_tool",
+			description: "test normalized failure",
+			execute: async () => ({ success: false, error: "expected failure" }),
+		});
+		const normalizedFailure = await registeredTool.execute("call-1", {});
+		expect(normalizedFailure.isError).toBe(true);
+		expect(normalizedFailure.details.error).toBe("expected failure");
+
+		ctx.tools.register({
+			name: "test_structured_failure_result_tool",
+			description: "test normalized structured failure",
+			execute: async () => ({
+				success: false,
+				error: "structured failure",
+				content: [{ type: "text", text: "structured failure" }],
+			}),
+		});
+		const normalizedStructuredFailure = await registeredTool.execute("call-2", {});
+		expect(normalizedStructuredFailure.isError).toBe(true);
 	});
 
 	it("11. ExtensionService: bridges before_agent_start prompt transformation and session lifecycle events", async () => {

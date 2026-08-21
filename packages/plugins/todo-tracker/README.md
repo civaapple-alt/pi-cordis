@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 Native Cordis task tracking and adaptive prompt injection plugin. It provides `todo_write` and `todo_read` tools supporting a 4-state task machine (`pending`, `in_progress`, `completed`, `cancelled`), topological sort cycle validation (`dependsOn`), and adaptive prompt compression that collapses finished tasks to save token budget.
 
+Todo state is keyed by Pi session and survives `default`/`ptc` Profile remounts within the current process. Updates are transactional: the plugin validates the complete candidate dependency graph before committing any field, so a rejected update cannot partially change a task.
+
 ## Tools
 
 ### `todo_write`
@@ -30,4 +32,5 @@ When `injectToPrompt: true`, active non-completed tasks and their blocker depend
 ## Model Experience
 - **Focus and Progress**: Keeps the model oriented on remaining work and dependencies across long, multi-turn sessions.
 - **Dependency Guard**: Pre-validates acyclic dependency graphs to prevent task deadlocks.
+- **Stable Profile Switching**: Capability presentation can change without resetting the current session's task state.
 - **Token Efficiency**: Finished tasks do not consume repetitive prompt tokens.

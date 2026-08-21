@@ -9,10 +9,11 @@ English | [中文](tool-registry-service.zh.md)
 ## Core Mechanisms
 
 1. **Unified Tool Registry**: Aggregates built-in tools with dynamic tools registered by plugins. Same-name registrations use stack semantics, so disposing the newest registration restores the previous live definition;
+   - A tool may declare `sideEffect: "none" | "workspace" | "external"`, or derive it from arguments. Policy plugins use this semantic metadata before falling back to name-based heuristics;
 2. **Presentation Tool Masking**:
    - Allows plugins (such as `@pi-cordis/plugin-code-mode` or `@pi-cordis/plugin-plan-mode`) to hide specific tools dynamically via `ctx.tools.addFilter()`, ensuring the model only perceives the tools relevant to the active mode;
 3. **Hooked Execution Pipeline (`executeTool`)**:
-   - Pre-execution: Emits `pi/tool-call` for policy plugins (e.g. Safety Gate or Plan) to block disallowed actions. When Pi supplies an execution context, its session ID is included so policy stays session-scoped, including nested PTC calls;
+   - Pre-execution: Emits `pi/tool-call` for policy plugins (e.g. Safety Gate or Plan) to block disallowed actions. When Pi supplies an execution context, its session ID and `hasUI` state are included so policy stays session-scoped and interaction-aware, including nested PTC calls;
    - Post-execution: Runs a serial mutable `pi/tool-result` transformation chain. The final `event.result` is returned to Pi.
 
 ---
@@ -25,6 +26,7 @@ Registers a custom tool definition. Returns a disposer function that unregisters
 const unregister = ctx.tools.registerCustomTool({
     name: "db_query",
     description: "Executes a read-only database query",
+    sideEffect: "none",
     parameters: {
         type: "object",
         properties: {
@@ -66,7 +68,7 @@ Executes a tool through the full lifecycle pipeline:
 
 - **`pi/tool-registered`**: `(tool: ToolDef)`
 - **`pi/tool-unregistered`**: `(name: string)`
-- **`pi/tool-call`**: `{ toolName: string, args: Record<string, unknown>, sessionId?: string }`
+- **`pi/tool-call`**: `{ toolName: string, args: Record<string, unknown>, sessionId?: string, hasUI?: boolean }`
 - **`pi/tool-result`**: `{ toolName: string, args: Record<string, unknown>, result: unknown }`
 
 ---

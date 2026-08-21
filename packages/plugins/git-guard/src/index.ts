@@ -16,6 +16,14 @@ export interface GitCheckpointInfo {
 	description?: string;
 }
 
+interface GitCheckpointExecutionContext {
+	signal?: AbortSignal;
+	ctx?: {
+		hasUI?: boolean;
+		ui?: { select?: (title: string, options: string[], config?: { signal?: AbortSignal }) => Promise<string | undefined> };
+	};
+}
+
 export const name = "git-guard";
 export const inject = ["settings", "tools"];
 
@@ -46,6 +54,7 @@ export function apply(ctx: Context, config: GitGuardConfig = {}) {
 	const unregisterTool = (ctx as any).tools?.register?.({
 		name: "git_checkpoint",
 		description: "Create, list, or apply process-local references to tracked-file git stash snapshots.",
+		sideEffect: (args: { action?: string }) => args.action === "restore" ? "workspace" : "none",
 		parameters: {
 			type: "object",
 			properties: {
@@ -65,7 +74,10 @@ export function apply(ctx: Context, config: GitGuardConfig = {}) {
 			},
 			required: ["action"],
 		},
-		execute: async (args: { action: "create" | "restore" | "list"; checkpointId?: string; description?: string }) => {
+		execute: async (
+			args: { action: "create" | "restore" | "list"; checkpointId?: string; description?: string },
+			executionContext?: GitCheckpointExecutionContext,
+		) => {
 			const cwd = getCwd();
 
 			if (args.action === "create") {
@@ -91,6 +103,21 @@ export function apply(ctx: Context, config: GitGuardConfig = {}) {
 				const cp = checkpoints.get(args.checkpointId);
 				if (!cp) {
 					return { success: false, error: `Checkpoint "${args.checkpointId}" not found.` };
+				}
+				const ui = executionContext?.ctx?.ui;
+				if (!executionContext?.ctx?.hasUI || !ui?.select) {
+					return {
+						success: false,
+						error: "Interactive confirmation is required before applying a checkpoint to the working tree.",
+					};
+				}
+				const choice = await ui.select(
+					`Apply checkpoint "${cp.id}" (${cp.sha.slice(0, 7)}) to the current working tree? This can conflict with current changes.`,
+					["Apply checkpoint", "Cancel"],
+					{ signal: executionContext.signal },
+				);
+				if (choice !== "Apply checkpoint") {
+					return { success: false, error: "Checkpoint restore cancelled; the working tree was not changed." };
 				}
 				try {
 					await execFileAsync("git", ["stash", "apply", cp.sha], { cwd });

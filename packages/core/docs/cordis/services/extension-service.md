@@ -15,6 +15,7 @@ It provides:
 - dynamic provider registration/unregistration forwarding;
 - guarded `sendUserMessage()` forwarding for Cordis commands after Pi's runtime becomes active;
 - Pi `ExtensionContext` forwarding to tool execution so plugins can use real `ui.select`, `ui.input`, and `ui.notify` handles.
+- normalization of Cordis tool failures (`isError`, `success: false`, or a non-empty `error`) into Pi error results, so presentation cannot make a failed operation look successful.
 
 Pi currently has no command-unregistration API. A disposed command proxy therefore remains in Pi's command catalog but refuses execution with an “unavailable in the active profile” notice. It never calls the disposed handler. Tool definitions and providers are registered during Pi's extension-loading phase; the first `setActiveTools()` synchronization is deferred to `session_start`, after Pi binds runtime-only action methods. Later profile and tool changes synchronize immediately.
 

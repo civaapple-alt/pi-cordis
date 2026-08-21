@@ -7,3 +7,5 @@
 Pi 已经发现 `AGENTS.override.md`、`AGENTS.md` 与 `CLAUDE.md`，因此本插件默认不重复注入。只有在明确关闭上游 Pi 上下文文件加载时，才应设置 `includePiContextFiles: true` 或提供显式 `ruleFiles`。
 
 目录遍历顺序确定，文件不可读时明确失败，`maxTotalBytes` 默认 128 KiB。SHA-256 内容哈希用于在内容未变时复用已格式化文本块；它不会省去检测变更所需的文件读取，也不保证 Provider 侧 KV Cache 行为。
+
+提示词管线评估某个工作目录后，`/rules` 会展示实际应用的文件、字节数与内容哈希，并在 Pi 编辑器可用时打开完整补充规则块。尚未评估或没有匹配规则时会明确说明；该命令以可逆 Cordis Effect 注册。

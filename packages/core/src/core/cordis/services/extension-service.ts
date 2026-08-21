@@ -184,15 +184,25 @@ export class ExtensionService extends Service {
 					onUpdate,
 					ctx,
 				})) ?? (await tool.execute?.(params, { toolCallId, signal, onUpdate, ctx }));
+				const isError = Boolean(
+					result
+					&& typeof result === "object"
+					&& (
+						result.isError === true
+						|| result.success === false
+						|| (typeof result.error === "string" && result.error.length > 0)
+					),
+				);
 
 				if (result && typeof result === "object" && "content" in result && Array.isArray(result.content)) {
-					return result;
+					return isError && result.isError !== true ? { ...result, isError: true } : result;
 				}
 
 				const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
 				return {
 					content: [{ type: "text", text }],
 					details: result,
+					isError,
 				};
 			},
 		};

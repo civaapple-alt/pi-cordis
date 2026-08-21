@@ -13,9 +13,9 @@ export function apply(ctx: Context) {
 		}
 	};
 
-	const unregisterTool = ctx.on("pi/tool-call" as any, (evt: { name?: string; toolName?: string }) => {
+	const unregisterTool = ctx.on("pi/tool-call" as any, (evt: { name?: string; toolName?: string; hasUI?: boolean }) => {
 		const tool = evt?.name ?? evt?.toolName;
-		if (tool === "ask_question") {
+		if (tool === "ask_question" && evt.hasUI !== false) {
 			emitOsc777("Pi Agent", "Waiting for your answer...");
 		}
 	});

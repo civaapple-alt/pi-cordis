@@ -16,6 +16,29 @@ export interface TodoTrackerConfig {
 export const name = "todo-tracker";
 export const inject = ["tools"];
 
+const DEFAULT_SESSION_ID = "default";
+const todoStores = new WeakMap<object, Map<string, TodoItem[]>>();
+
+interface TodoExecutionContext {
+	ctx?: { sessionManager?: { getSessionId?: () => string } };
+}
+
+function sessionIdFromContext(context?: TodoExecutionContext["ctx"]): string | undefined {
+	try {
+		return context?.sessionManager?.getSessionId?.();
+	} catch {
+		return undefined;
+	}
+}
+
+function summarizeTodos(todos: TodoItem[]) {
+	return {
+		total: todos.length,
+		active: todos.filter((todo) => todo.status === "pending" || todo.status === "in_progress").length,
+		completed: todos.filter((todo) => todo.status === "completed").length,
+	};
+}
+
 export function hasCycle(items: TodoItem[], targetId: string, dependencies: string[]): boolean {
 	const graph = new Map<string, string[]>();
 	for (const item of items) {
@@ -42,7 +65,21 @@ export function hasCycle(items: TodoItem[], targetId: string, dependencies: stri
 }
 
 export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
-	const todos: TodoItem[] = [];
+	const rootKey = ctx.root as object;
+	let sessions = todoStores.get(rootKey);
+	if (!sessions) {
+		sessions = new Map<string, TodoItem[]>();
+		todoStores.set(rootKey, sessions);
+	}
+	let activeSessionId = DEFAULT_SESSION_ID;
+	const todosFor = (sessionId: string): TodoItem[] => {
+		let todos = sessions.get(sessionId);
+		if (!todos) {
+			todos = [];
+			sessions.set(sessionId, todos);
+		}
+		return todos;
+	};
 	const injectToPrompt = config.injectToPrompt ?? true;
 	const collapseCompleted = config.collapseCompletedInPrompt ?? true;
 
@@ -81,9 +118,13 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 			return `${theme.fg("accent", theme.bold("📝 todo_write "))}${theme.fg("dim", `[${actionTag}]`)} ${theme.fg("foreground", desc)}`;
 		},
 		renderResult: (result: any, options?: any, theme?: any) => {
-			const activeCount = todos.filter((t) => t.status === "pending" || t.status === "in_progress").length;
-			const doneCount = todos.filter((t) => t.status === "completed").length;
-			const msg = result?.message ?? `Todos: ${todos.length}`;
+			if (result?.error) {
+				if (!theme?.fg) return `✗ ${result.error}`;
+				return theme.fg("error", `✗ ${result.error}`);
+			}
+			const activeCount = result?.summary?.active ?? 0;
+			const doneCount = result?.summary?.completed ?? 0;
+			const msg = result?.message ?? `Todos: ${result?.summary?.total ?? 0}`;
 			if (!theme?.fg) return `${msg} (${activeCount} active, ${doneCount} done)`;
 			return `${theme.fg("success", msg)} ${theme.fg("dim", `(${activeCount} active, ${doneCount} done)`)}`;
 		},
@@ -94,7 +135,9 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 			status?: TodoItem["status"];
 			category?: string;
 			dependsOn?: string[];
-		}) => {
+		}, executionContext?: TodoExecutionContext) => {
+			const sessionId = sessionIdFromContext(executionContext?.ctx) ?? activeSessionId;
+			const todos = todosFor(sessionId);
 			if (args.action === "add" && args.title) {
 				const id = args.id ?? `todo_${todos.length + 1}`;
 				const deps = args.dependsOn ?? [];
@@ -120,12 +163,17 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 					dependsOn: deps.length > 0 ? deps : undefined,
 				};
 				todos.push(item);
-				return { message: `Added task "${args.title}" [${id}]`, item };
+				return { message: `Added task "${args.title}" [${id}]`, item, summary: summarizeTodos(todos) };
 			}
+			if (args.action === "add") return { error: "title is required for add action." };
 
 			if (args.action === "update" && args.id) {
 				const item = todos.find((t) => t.id === args.id);
 				if (item) {
+					const candidate: TodoItem = {
+						...item,
+						dependsOn: item.dependsOn ? [...item.dependsOn] : undefined,
+					};
 					if (args.dependsOn !== undefined) {
 						if (args.dependsOn.includes(item.id)) {
 							return { error: `Task "${item.id}" cannot depend on itself` };
@@ -133,11 +181,12 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 						if (hasCycle(todos, item.id, args.dependsOn)) {
 							return { error: `Cyclic dependency detected for task "${item.id}"` };
 						}
-						item.dependsOn = args.dependsOn;
+						candidate.dependsOn = [...args.dependsOn];
 					}
-					if (args.title) item.title = args.title;
+					if (args.title !== undefined) candidate.title = args.title;
+					if (args.category !== undefined) candidate.category = args.category;
 					if (args.status === "in_progress" || args.status === "completed") {
-						const incompleteDependencies = (item.dependsOn ?? []).filter((dependencyId) => {
+						const incompleteDependencies = (candidate.dependsOn ?? []).filter((dependencyId) => {
 							const dependency = todos.find((todo) => todo.id === dependencyId);
 							return !dependency || dependency.status !== "completed";
 						});
@@ -145,20 +194,21 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 							return { error: `Task "${item.id}" is blocked by incomplete dependencies: ${incompleteDependencies.join(", ")}` };
 						}
 					}
-					if (args.status) item.status = args.status;
-					if (args.category) item.category = args.category;
-					return { message: `Updated task ${args.id} -> ${item.status}`, item };
+					if (args.status) candidate.status = args.status;
+					Object.assign(item, candidate);
+					return { message: `Updated task ${args.id} -> ${item.status}`, item, summary: summarizeTodos(todos) };
 				}
 				return { error: `Task ${args.id} not found` };
 			}
+			if (args.action === "update") return { error: "id is required for update action." };
 
 			if (args.action === "clear") {
 				const clearedCount = todos.length;
 				todos.length = 0;
-				return { message: `Todo list cleared (${clearedCount} tasks removed)` };
+				return { message: `Todo list cleared (${clearedCount} tasks removed)`, summary: summarizeTodos(todos) };
 			}
 
-			return { total: todos.length, todos: [...todos] };
+			return { error: `Unknown todo action: ${args.action}` };
 		},
 	});
 
@@ -167,18 +217,18 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 		name: "todo_read",
 		description: "Read the current list of tasks in the session todo list.",
 		parameters: { type: "object", properties: {} },
-		execute: async () => ({
-			total: todos.length,
-			active: todos.filter((t) => t.status === "pending" || t.status === "in_progress").length,
-			completed: todos.filter((t) => t.status === "completed").length,
-			todos: [...todos],
-		}),
+		execute: async (_args: Record<string, never>, executionContext?: TodoExecutionContext) => {
+			const sessionId = sessionIdFromContext(executionContext?.ctx) ?? activeSessionId;
+			const todos = todosFor(sessionId);
+			return { ...summarizeTodos(todos), todos: [...todos] };
+		},
 	});
 
 	// 3. Adaptive Prompt Injection (collapses completed tasks to preserve token budget)
 	let removePromptHook: (() => void) | undefined;
 	if (injectToPrompt) {
-		removePromptHook = ctx.on("pi/prompt-transform" as any, async (event: { prompt: string }) => {
+		removePromptHook = ctx.on("pi/prompt-transform" as any, async (event: { prompt: string; sessionId?: string }) => {
+			const todos = todosFor(event.sessionId ?? activeSessionId);
 			const activeTodos = todos.filter((t) => t.status === "pending" || t.status === "in_progress");
 			const completedTodos = todos.filter((t) => t.status === "completed");
 			const cancelledTodos = todos.filter((t) => t.status === "cancelled");
@@ -214,10 +264,16 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 		});
 	}
 
+	const removeSessionStart = ctx.on("pi/session-start", (event) => {
+		activeSessionId = event.sessionId ?? DEFAULT_SESSION_ID;
+		todosFor(activeSessionId);
+	});
+
 	return () => {
 		unregisterWrite();
 		unregisterRead();
 		removePromptHook?.();
+		removeSessionStart();
 	};
 }
 

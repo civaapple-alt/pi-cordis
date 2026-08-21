@@ -21,6 +21,12 @@ export interface CodeExecutionResult {
 	output: string;
 	error?: string;
 	executionTimeMs: number;
+	backend: "worker" | "vm";
+	degraded?: boolean;
+}
+
+interface CodeExecutionContext {
+	signal?: AbortSignal;
 }
 
 export const name = "code-mode";
@@ -81,7 +87,7 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 		},
 		renderCall: (args: { code?: string }, theme?: any) => renderCodeModeCall(args, theme),
 		renderResult: (result: any, options?: any, theme?: any) => renderCodeModeResult(result, options, theme),
-		execute: async (args: { code: string }, executionContext?: unknown): Promise<CodeExecutionResult> => {
+		execute: async (args: { code: string }, executionContext?: CodeExecutionContext): Promise<CodeExecutionResult> => {
 			const allTools = ctx.tools.getAllToolDefinitions().filter((tool) => tool.name !== "run_code");
 			const executeTool = (toolName: string, toolArgs: unknown) => (
 				ctx.tools.executeTool(toolName, (toolArgs ?? {}) as Record<string, unknown>, executionContext)
@@ -95,6 +101,7 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 						code: args.code,
 						timeoutMs,
 						toolNames,
+						signal: executionContext?.signal,
 						callTool: async (toolName, toolArgs) => {
 							const res = await executeTool(toolName, toolArgs);
 							if (res && typeof res === "object" && "details" in res) {
@@ -104,13 +111,29 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 						},
 					});
 				} catch (err: any) {
-					// If Worker spawning fails, fall back to node:vm
+					return {
+						success: false,
+						output: "",
+						error: `Worker isolation unavailable: ${err?.message || String(err)}`,
+						executionTimeMs: 0,
+						backend: "worker",
+					};
 				}
 			}
 
 			// 2.2 Fallback: node:vm execution context (not a permission boundary)
 			const startTime = Date.now();
 			const logs: string[] = [];
+			if (executionContext?.signal?.aborted) {
+				return {
+					success: false,
+					output: "",
+					error: "Execution cancelled before VM evaluation started.",
+					executionTimeMs: 0,
+					backend: "vm",
+					degraded: true,
+				};
+			}
 			const flatTools: Record<string, Function> = {};
 
 			for (const t of allTools) {
@@ -192,12 +215,32 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 				const wrappedCode = `(async () => {\n${args.code}\n})()`;
 				const script = new vm.Script(wrappedCode);
 				const evalPromise = script.runInContext(vmContext, { timeout: timeoutMs });
-				await evalPromise;
+				let abortHandler: (() => void) | undefined;
+				let timeoutTimer: NodeJS.Timeout | undefined;
+				const abortPromise = new Promise<never>((_resolve, reject) => {
+					abortHandler = () => reject(new Error("Execution cancelled during VM evaluation."));
+					executionContext?.signal?.addEventListener("abort", abortHandler, { once: true });
+					if (executionContext?.signal?.aborted) abortHandler();
+				});
+				const timeoutPromise = new Promise<never>((_resolve, reject) => {
+					timeoutTimer = setTimeout(
+						() => reject(new Error(`VM execution timed out after ${timeoutMs}ms and cannot be force-isolated.`)),
+						timeoutMs,
+					);
+				});
+				try {
+					await Promise.race([evalPromise, abortPromise, timeoutPromise]);
+				} finally {
+					if (timeoutTimer) clearTimeout(timeoutTimer);
+					if (abortHandler) executionContext?.signal?.removeEventListener("abort", abortHandler);
+				}
 
 				return {
 					success: true,
 					output: logs.join("\n") || "(Execution completed with no output)",
 					executionTimeMs: Date.now() - startTime,
+					backend: "vm",
+					degraded: true,
 				};
 			} catch (err: any) {
 				return {
@@ -205,6 +248,8 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 					output: logs.join("\n"),
 					error: err?.message || String(err),
 					executionTimeMs: Date.now() - startTime,
+					backend: "vm",
+					degraded: true,
 				};
 			}
 		},

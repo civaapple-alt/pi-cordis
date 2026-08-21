@@ -35,23 +35,25 @@ export function renderCodeModeResult(result: any, options: RenderOptions = {}, t
 	const timeMs = details.executionTimeMs ?? 0;
 	const output = (details.output ?? "").trim();
 	const error = details.error;
+	const backend = details.backend ?? "unknown";
+	const backendLabel = details.degraded ? `${backend}, degraded` : backend;
 
 	if (!theme || typeof theme.fg !== "function") {
 		if (!success) {
-			return `✗ Failed in ${timeMs}ms: ${error}\n${output}`;
+			return `✗ Failed in ${timeMs}ms [${backendLabel}]: ${error}\n${output}`;
 		}
 		if (!options.expanded) {
 			const firstLine = output.split("\n")[0] || "(No output)";
-			return `✓ Executed in ${timeMs}ms: ${firstLine}`;
+			return `✓ Executed in ${timeMs}ms [${backendLabel}]: ${firstLine}`;
 		}
-		return `✓ Executed in ${timeMs}ms\n${output}`;
+		return `✓ Executed in ${timeMs}ms [${backendLabel}]\n${output}`;
 	}
 
 	let text = "";
 	if (success) {
-		text += theme.fg("success", `✓ Executed in ${timeMs}ms`);
+		text += theme.fg("success", `✓ Executed in ${timeMs}ms [${backendLabel}]`);
 	} else {
-		text += theme.fg("error", `✗ Failed in ${timeMs}ms: ${error ?? "Unknown error"}`);
+		text += theme.fg("error", `✗ Failed in ${timeMs}ms [${backendLabel}]: ${error ?? "Unknown error"}`);
 	}
 
 	if (!options.expanded) {

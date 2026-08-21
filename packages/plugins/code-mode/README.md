@@ -16,6 +16,8 @@ Returns:
 - `output` (string): Intercepted console logs and formatted output.
 - `error` (string, optional): Error message or stack trace if execution failed.
 - `executionTimeMs` (number): Wall-clock execution time in milliseconds.
+- `backend` (`"worker"` | `"vm"`): Execution backend actually used.
+- `degraded` (boolean, optional): Present when the explicitly configured VM backend is in use.
 
 ## Key Architectural Features
 
@@ -35,15 +37,15 @@ Returns:
 
 ### 3. Isolated Worker Thread Execution Engine (`worker-runner.ts`)
 - Spawns a dedicated Node.js `worker_threads.Worker` (isolated V8 Isolate and OS thread) for each execution.
-- **Timeout Protection**: If the script exceeds `timeoutMs`, the main thread invokes `worker.terminate()`.
-- **Fallback**: Falls back to a `node:vm` execution context if Worker creation fails.
+- **Timeout and Cancellation**: If the script exceeds `timeoutMs` or Pi cancels the call, the main thread terminates the Worker and returns an explicit failure.
+- **No Silent Fallback**: Worker creation failure is reported as a failure. `node:vm` runs only when `useWorkerThreads: false` is configured deliberately, and every result is marked `backend: "vm", degraded: true`.
 - **Security Boundary**: Neither Worker threads nor `node:vm` are permission sandboxes. Generated code runs with the Picds user's local authority and must be treated like code executed by the shell tool. Calls through `pi.*` still pass through the Cordis tool and Safety Gate pipeline.
 
 ### 4. TUI Visual Cards (`renderer.ts`)
 - `renderCall`: Displays a formatted header with line count and a 4-line syntax preview.
 - `renderResult`:
   - **Collapsed**: Compact single-line summary with duration (`✓ Executed in 12ms → summary`).
-  - **Expanded**: Full console logs, structured output, and error diagnostics.
+  - **Expanded**: Full console logs, structured output, error diagnostics, and the actual backend/degraded state.
 
 ## Configuration
 
@@ -73,4 +75,5 @@ Returns:
 
 ## Known Limitations and Deferred Work
 - Cross-session persistent global variables within the worker are intentionally not preserved (each execution starts from a fresh isolate).
+- A configured `node:vm` backend cannot forcibly terminate already-running synchronous JavaScript; use the default Worker backend when hard timeout/cancellation is required.
 - Multi-host distributed worker dispatching is deferred.

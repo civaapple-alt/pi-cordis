@@ -16,6 +16,8 @@ Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。它可将多轮串�
 - `output` (string)：捕获的控制台日志与格式化输出。
 - `error` (string, 可选)：执行失败时的错误信息或异常堆栈。
 - `executionTimeMs` (number)：执行耗时（毫秒）。
+- `backend` (`"worker"` | `"vm"`)：本次实际使用的执行后端。
+- `degraded` (boolean, 可选)：显式配置 VM 后端时标记降级执行。
 
 ## 核心架构特性
 
@@ -35,15 +37,15 @@ Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。它可将多轮串�
 
 ### 3. 独立工作线程执行引擎 (`worker-runner.ts`)
 - 每次执行启动一个全新的 Node.js `worker_threads.Worker`（独立的 V8 Isolate 与操作系统线程）；
-- **超时保护**：脚本执行超过 `timeoutMs` 时，主线程调用 `worker.terminate()`；
-- **环境降级**：Worker 创建失败时回退到 `node:vm` 执行上下文；
+- **超时与取消**：脚本超过 `timeoutMs` 或 Pi 取消调用时，主线程终止 Worker 并明确返回失败；
+- **不静默回退**：Worker 创建失败会明确失败。只有显式配置 `useWorkerThreads: false` 才使用 `node:vm`，且每次结果都标记 `backend: "vm", degraded: true`；
 - **安全边界**：Worker 与 `node:vm` 都不是权限沙箱。生成代码拥有 Picds 用户的本机权限，应按 Shell 工具执行代码看待；经 `pi.*` 发起的调用仍经过 Cordis 工具与 Safety Gate 管线。
 
 ### 4. TUI 专属可视化卡片 (`renderer.ts`)
 - `renderCall`：显示代码行数统计标签与前 4 行语法高亮预览（`⚡ run_code (N lines)`）；
 - `renderResult`：
   - **折叠状态**：输出紧凑单行执行摘要与耗时（`✓ Executed in 12ms → summary`）；
-  - **展开状态**：输出完整的控制台日志、结构化输出与错误排版。
+  - **展开状态**：输出完整的控制台日志、结构化输出、错误排版与实际后端/降级状态。
 
 ## 配置示例
 
@@ -73,4 +75,5 @@ Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。它可将多轮串�
 
 ## 已知限制与暂缓事项
 - Worker 内不保留跨次执行的全局变量持久状态（每次执行均为独立纯净 Isolate）；
+- 显式配置的 `node:vm` 后端无法强制终止已经运行的同步 JavaScript；需要强超时/取消时应使用默认 Worker 后端；
 - 跨主机或分布式 Worker 分发暂缓至未来演进。

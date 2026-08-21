@@ -109,6 +109,24 @@ describe("Cordis Native Plugins and Profiles System", () => {
 
 		await registeredCommand.handler("ptc", mockUI);
 		expect(notification).toContain('Switched to profile: "ptc"');
+		expect(notification).toContain('Previous profile: "default"');
+		expect(notification).toContain("Added: code-mode");
+		expect(notification).toContain("Removed: btw, terminal-notifier");
+
+		let selectorTitle = "";
+		let selectorItems: string[] = [];
+		await registeredCommand.handler("", {
+			hasUI: true,
+			ui: {
+				select: async (title: string, items: string[]) => {
+					selectorTitle = title;
+					selectorItems = items;
+					return undefined;
+				},
+			},
+		});
+		expect(selectorTitle).toContain("Current Profile: ptc");
+		expect(selectorItems.some((item) => item.startsWith("● ptc -"))).toBe(true);
 		expect(notification).toContain("code-mode");
 		await expect(registeredCommand.handler("plan", mockUI)).rejects.toThrow("Plan is session state");
 	});
@@ -251,6 +269,11 @@ profiles:
 		// Trigger reload
 		const hmr = (ctx as any).hmrManager;
 		expect(hmr).toBeDefined();
+		const profileCommand = ctx.extensions.getRegisteredCommands().get("profile")!;
+		await profileCommand.handler("default", { hasUI: false, cwd: tmpDir });
+		expect(hmr.currentProfileName).toBe("default");
+		await profileCommand.handler("custom-hmr", { hasUI: false, cwd: tmpDir });
+		expect(hmr.currentProfileName).toBe("custom-hmr");
 
 		// Update preset YAML file content
 		fs.writeFileSync(
@@ -263,6 +286,9 @@ profiles:
 
 		expect(reloadFired).toBe(true);
 		expect(updatedProfileName).toBe("custom-hmr");
+		hmr.activeForks.set("broken", { dispose: async () => { throw new Error("dispose failed"); } });
+		await expect(hmr.reloadCurrentProfile()).rejects.toThrow("failed to dispose 1 hot-loaded plugin Fiber");
+		hmr.activeForks.delete("broken");
 
 		await hmr.stop();
 		// Cleanup
@@ -292,9 +318,42 @@ profiles:
 
 		const blockedRes = await tool!.execute({ action: "update", id: "t2", status: "in_progress" });
 		expect(blockedRes.error).toContain("blocked by incomplete dependencies: t1");
+		const atomicFailure = await tool!.execute({
+			action: "update",
+			id: "t2",
+			title: "Must not be committed",
+			dependsOn: ["missing"],
+			status: "in_progress",
+		});
+		expect(atomicFailure.error).toContain("blocked by incomplete dependencies: missing");
+		const afterAtomicFailure = await ctx.tools.get("todo_read")!.execute({});
+		expect(afterAtomicFailure.todos.find((todo: any) => todo.id === "t2")).toMatchObject({
+			title: "Task 2",
+			dependsOn: ["t1"],
+		});
 		await tool!.execute({ action: "update", id: "t1", status: "completed" });
 		const unblockedRes = await tool!.execute({ action: "update", id: "t2", status: "in_progress" });
 		expect(unblockedRes.item.status).toBe("in_progress");
+	});
+
+	it("keeps todo state isolated by Pi session and stable across Profile switches", async () => {
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
+		const forSession = (sessionId: string) => ({
+			ctx: { sessionManager: { getSessionId: () => sessionId } },
+		});
+		await ctx.tools.get("todo_write")!.execute(
+			{ action: "add", id: "session-task", title: "Session A task" },
+			forSession("session-a"),
+		);
+		expect((await ctx.tools.get("todo_read")!.execute({}, forSession("session-a"))).total).toBe(1);
+		expect((await ctx.tools.get("todo_read")!.execute({}, forSession("session-b"))).total).toBe(0);
+
+		const profile = ctx.extensions.getRegisteredCommands().get("profile")!;
+		await profile.handler("ptc", { hasUI: false });
+		await profile.handler("default", { hasUI: false });
+		expect((await ctx.tools.get("todo_read")!.execute({}, forSession("session-a"))).todos[0].title)
+			.toBe("Session A task");
+		await ctx.fiber.dispose();
 	});
 
 	it("should register /btw command and setup OSC 777 terminal notifier", async () => {

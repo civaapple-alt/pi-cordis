@@ -8,6 +8,6 @@
 
 ## 核心机制
 
-- 监听 `ask_question` 的 `pi/tool-call` 与 `pi/turn-end`；
+- 监听 `ask_question` 的 `pi/tool-call` 与 `pi/turn-end`；调用明确没有交互 UI 时不发送等待用户回答通知；
 - 写入 OSC 777 序列，实际展示取决于终端支持与通知设置；
 - stdout 不是 TTY 时不执行，也不调用平台专用通知 API。

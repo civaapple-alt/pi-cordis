@@ -8,6 +8,7 @@ export interface SmartCommitResult {
 	success: boolean;
 	commitMessage: string;
 	instruction: string;
+	command: { executable: "git"; args: string[] };
 	conventional: boolean;
 	isBreakingChange: boolean;
 }
@@ -55,7 +56,7 @@ export function apply(ctx: Context, config: GitAutomationConfig = {}) {
 			return `${theme.fg("accent", theme.bold("🌿 git_smart_commit "))} ${theme.fg("foreground", preview)}`;
 		},
 		renderResult: (result: SmartCommitResult, options?: any, theme?: any) => {
-			if (!theme?.fg) return `✓ Ready: ${result.instruction}`;
+			if (!theme?.fg) return `✓ Commit proposal ready:\n${result.commitMessage}`;
 			return `${theme.fg("success", "✓ Commit Ready:")} ${theme.fg("dim", result.commitMessage)}`;
 		},
 		execute: async (args: {
@@ -77,14 +78,13 @@ export function apply(ctx: Context, config: GitAutomationConfig = {}) {
 				formattedMessage += `\n\nBREAKING CHANGE: ${args.breakingChange}`;
 			}
 
-			const escaped = formattedMessage.replace(/"/g, '\\"');
-
 			return {
 				success: true,
 				commitMessage: formattedMessage,
 				conventional: conventionalCommits,
 				isBreakingChange: !!args.breakingChange,
-				instruction: `git commit -m "${escaped}"`,
+				instruction: "Review commitMessage, then execute Git through the normal guarded tool path.",
+				command: { executable: "git", args: ["commit", "-m", formattedMessage] },
 			};
 		},
 	});

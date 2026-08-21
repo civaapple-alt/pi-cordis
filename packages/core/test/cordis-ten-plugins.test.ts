@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { execFileSync } from "node:child_process";
 import { createPiContext } from "../src/core/cordis/bootstrap.js";
 import subagentPlugin from "@pi-cordis/plugin-subagent";
 import codeModePlugin from "@pi-cordis/plugin-code-mode";
@@ -143,6 +144,23 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 			}),
 		).rejects.toThrow("not allowlisted as read-only");
 
+		const gitGuardFork = await ctx.plugin(gitGuardPlugin);
+		await expect(
+			ctx.serial("pi/tool-call", {
+				name: "git_checkpoint",
+				args: { action: "restore", checkpointId: "checkpoint" },
+				sessionId: "session-a",
+			}),
+		).rejects.toThrow("declares a workspace side effect");
+		await expect(
+			ctx.serial("pi/tool-call", {
+				name: "git_checkpoint",
+				args: { action: "list" },
+				sessionId: "session-a",
+			}),
+		).resolves.toBeUndefined();
+		await gitGuardFork.dispose();
+
 		const headless = await exitTool!.execute(
 			{ plan: "# Ready plan\n\n1. Implement it." },
 			{ ctx: { hasUI: false, sessionManager: { getSessionId: () => "session-a" } } },
@@ -274,6 +292,7 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		});
 
 		expect(result.success).toBe(true);
+		expect(result.backend).toBe("worker");
 		expect(result.output).toContain("Doubled values: [\n  2,\n  4,\n  6\n]");
 		expect(result.output).toContain("FS namespace available: true");
 		expect(result.output).toContain("Bash namespace available: true");
@@ -310,6 +329,23 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		expect(loopResult.success).toBe(false);
 		expect(loopResult.error).toContain("timed out");
 		await shortTimeoutFork.dispose();
+
+		const abortController = new AbortController();
+		const cancelledPromise = tool!.execute(
+			{ code: "while (true) { await new Promise(resolve => setTimeout(resolve, 10)); }" },
+			{ signal: abortController.signal },
+		);
+		setTimeout(() => abortController.abort(), 30);
+		const cancelledResult = await cancelledPromise;
+		expect(cancelledResult.success).toBe(false);
+		expect(cancelledResult.backend).toBe("worker");
+		expect(cancelledResult.error).toContain("cancelled");
+
+		const vmFork = await ctx.plugin(codeModePlugin, { useWorkerThreads: false });
+		const vmResult = await ctx.tools.get("run_code")!.execute({ code: "console.log('vm');" });
+		expect(vmResult).toMatchObject({ success: true, backend: "vm", degraded: true });
+		expect((ctx.tools.get("run_code") as any).renderResult(vmResult, { expanded: false })).toContain("vm, degraded");
+		await vmFork.dispose();
 
 		await fork.dispose();
 		expect(ctx.tools.has("run_code")).toBe(false);
@@ -399,6 +435,78 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		expect(resultCancelled.cancelled).toBe(true);
 		expect(resultCancelled.answers[0].selected).toEqual([]);
 
+		let batchSelectCalls = 0;
+		const cancelledBatch = await tool!.execute(
+			{
+				questions: [
+					{ id: "first", question: "First?", options: [{ label: "Yes" }] },
+					{ id: "second", question: "Second?", options: [{ label: "No" }] },
+				],
+			},
+			{
+				ctx: {
+					hasUI: true,
+					ui: {
+						select: async () => {
+							batchSelectCalls += 1;
+							return undefined;
+						},
+					},
+				},
+			},
+		);
+		expect(batchSelectCalls).toBe(1);
+		expect(cancelledBatch.answers.map((answer: any) => answer.id)).toEqual(["first"]);
+		expect((tool as any).renderResult(resultFallback)).toContain("✗ Question failed");
+		expect((tool as any).renderResult(resultCancelled)).toBe("○ Question cancelled");
+
+		const previewTitles: string[] = [];
+		const previewed = await tool!.execute(
+			{
+				question: "Apply which change?",
+				options: [{ label: "Patch A", preview: "- old\n+ new" }],
+				allowCustom: false,
+			},
+			{
+				ctx: {
+					hasUI: true,
+					ui: {
+						select: async (title: string) => {
+							previewTitles.push(title);
+							return previewTitles.length === 1 ? "Patch A" : 'Choose "Patch A"';
+						},
+					},
+				},
+			},
+		);
+		expect(previewTitles[1]).toContain("- old\n+ new");
+		expect(previewed.selected).toBe("Patch A");
+
+		let editorPreview = "";
+		const editorReviewed = await tool!.execute(
+			{
+				question: "Apply the long change?",
+				options: [{ label: "Patch B", preview: "# Complete preview\n\n- before\n+ after" }],
+				allowCustom: false,
+			},
+			{
+				ctx: {
+					hasUI: true,
+					ui: {
+						editor: async (_title: string, prefill: string) => {
+							editorPreview = prefill;
+							return prefill;
+						},
+						select: async (title: string) => title.startsWith("Apply the long")
+							? "Patch B"
+							: 'Choose "Patch B"',
+					},
+				},
+			},
+		);
+		expect(editorPreview).toContain("# Complete preview");
+		expect(editorReviewed.selected).toBe("Patch B");
+
 		await fork.dispose();
 		expect(ctx.tools.has("ask_question")).toBe(false);
 	});
@@ -472,6 +580,8 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		expect(result.success).toBe(true);
 		expect(handoffData.newGoal).toBe("Implement authentication endpoints");
 		expect(handoffData.nextSteps).toHaveLength(2);
+		expect((tool as any).renderResult(result, { expanded: true })).toContain("# Session Handoff Briefing");
+		expect((tool as any).renderResult(result, { expanded: true })).toContain("Add JWT token generation");
 
 		await fork.dispose();
 		expect(ctx.tools.has("session_handoff")).toBe(false);
@@ -491,6 +601,15 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 
 		expect(result.success).toBe(true);
 		expect(result.commitMessage).toBe("feat(plugins): add subagent and code-mode plugins (#42)");
+		const shellSensitive = await tool!.execute({
+			type: "fix",
+			message: "preserve $(touch should-not-run) and `literal` text",
+		});
+		expect(shellSensitive.instruction).not.toContain("$(touch");
+		expect(shellSensitive.command).toEqual({
+			executable: "git",
+			args: ["commit", "-m", "fix: preserve $(touch should-not-run) and `literal` text"],
+		});
 
 		await fork.dispose();
 		expect(ctx.tools.has("git_smart_commit")).toBe(false);
@@ -555,6 +674,8 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		// 5. An allow-list entry is exact and cannot whitelist an injected suffix.
 		expect(isCommandDangerous("rm -rf /", [], ["rm -rf /"])).toEqual({ dangerous: false });
 		expect(isCommandDangerous("rm -rf /; echo bypass", [], ["rm -rf /"])).toMatchObject({ dangerous: true });
+		expect(isCommandDangerous("git status 2>/dev/null")).toEqual({ dangerous: false });
+		expect(isCommandDangerous("echo destroy >/dev/nvme0n1")).toMatchObject({ dangerous: true });
 
 		await fork.dispose();
 	});
@@ -574,6 +695,52 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		expect(ctx.tools.has("git_checkpoint")).toBe(false);
 	});
 
+	it("13.1 @pi-cordis/plugin-git-guard: requires review before restoring a checkpoint", async () => {
+		const gitCwd = fs.mkdtempSync(path.join(os.tmpdir(), "picds-checkpoint-review-"));
+		const filePath = path.join(gitCwd, "tracked.txt");
+		fs.writeFileSync(filePath, "original\n", "utf8");
+		execFileSync("git", ["init"], { cwd: gitCwd });
+		execFileSync("git", ["add", "tracked.txt"], { cwd: gitCwd });
+		execFileSync(
+			"git",
+			["-c", "user.name=Pi Cordis Test", "-c", "user.email=picds@example.invalid", "commit", "-m", "initial"],
+			{ cwd: gitCwd },
+		);
+		fs.writeFileSync(filePath, "checkpoint change\n", "utf8");
+
+		const guardCtx = await createPiContext({ cwd: gitCwd, allowModelNetwork: false, profile: false });
+		try {
+			const fork = await guardCtx.plugin(gitGuardPlugin);
+			const tool = guardCtx.tools.get("git_checkpoint")!;
+			const created = await tool.execute({ action: "create", description: "review test" });
+			expect(created.success).toBe(true);
+			fs.writeFileSync(filePath, "original\n", "utf8");
+
+			const headless = await tool.execute({ action: "restore", checkpointId: created.checkpoint.id });
+			expect(headless).toMatchObject({ success: false });
+			expect(headless.error).toContain("Interactive confirmation");
+			expect(fs.readFileSync(filePath, "utf8")).toBe("original\n");
+
+			const cancelled = await tool.execute(
+				{ action: "restore", checkpointId: created.checkpoint.id },
+				{ ctx: { hasUI: true, ui: { select: async () => "Cancel" } } },
+			);
+			expect(cancelled.error).toContain("cancelled");
+			expect(fs.readFileSync(filePath, "utf8")).toBe("original\n");
+
+			const restored = await tool.execute(
+				{ action: "restore", checkpointId: created.checkpoint.id },
+				{ ctx: { hasUI: true, ui: { select: async () => "Apply checkpoint" } } },
+			);
+			expect(restored.success).toBe(true);
+			expect(fs.readFileSync(filePath, "utf8").replaceAll("\r\n", "\n")).toBe("checkpoint change\n");
+			await fork.dispose();
+		} finally {
+			await guardCtx.fiber.dispose();
+			fs.rmSync(gitCwd, { recursive: true, force: true });
+		}
+	});
+
 	it("14. @pi-cordis/plugin-rules-injector: injects project rules and caches content with SHA-256", async () => {
 		const rulesCwd = fs.mkdtempSync(path.join(os.tmpdir(), "picds-rules-test-"));
 		fs.writeFileSync(path.join(rulesCwd, ".cursorrules"), "Use deterministic tests.\n", "utf8");
@@ -584,7 +751,20 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 			await rulesCtx.parallel("pi/prompt-transform", promptEvent);
 			expect(promptEvent.prompt).toContain("Use deterministic tests.");
 			expect(promptEvent.prompt).not.toContain("AGENTS.md");
+			let inspectedRules = "";
+			await rulesCtx.extensions.getRegisteredCommands().get("rules")!.handler("", {
+				hasUI: true,
+				ui: {
+					editor: async (_title: string, prefill: string) => {
+						inspectedRules = prefill;
+						return prefill;
+					},
+				},
+			});
+			expect(inspectedRules).toContain(".cursorrules");
+			expect(inspectedRules).toContain("Use deterministic tests.");
 			await fork.dispose();
+			expect(rulesCtx.extensions.getRegisteredCommands().has("rules")).toBe(false);
 		} finally {
 			await rulesCtx.fiber.dispose();
 			fs.rmSync(rulesCwd, { recursive: true, force: true });
@@ -625,6 +805,19 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		expect(answerNotify).toContain("SSE stands for Server-Sent Events.");
 		expect(queryFired).toBe(true);
 		expect(responseFired).toBe(true);
+
+		let reviewedAnswer = "";
+		await cmd.handler("show the complete answer", {
+			hasUI: true,
+			ui: {
+				notify: () => {},
+				editor: async (_title: string, prefill: string) => {
+					reviewedAnswer = prefill;
+					return prefill;
+				},
+			},
+		});
+		expect(reviewedAnswer).toBe("SSE stands for Server-Sent Events.");
 
 		await fork.dispose();
 		expect(ctx.extensions.getRegisteredCommands().has("btw")).toBe(false);

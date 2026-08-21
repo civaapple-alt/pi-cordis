@@ -38,6 +38,21 @@ interface ActiveProfileMount {
 }
 
 const activeProfileMounts = new WeakMap<Context, ActiveProfileMount[]>();
+const activeProfileNames = new WeakMap<Context, string>();
+
+export interface ActiveProfileSnapshot {
+	name?: string;
+	plugins: string[];
+}
+
+/** Return the active Profile identity and mounted built-in plugins for a root Context. */
+export function getActiveProfile(ctx: Context): ActiveProfileSnapshot {
+	const root = ctx.root;
+	return {
+		name: activeProfileNames.get(root),
+		plugins: (activeProfileMounts.get(root) ?? []).map((mount) => mount.name),
+	};
+}
 
 export interface PluginEntryConfig {
 	name: string;
@@ -266,6 +281,7 @@ export async function applyProfile(
 	}
 
 	const previousMounts = activeProfileMounts.get(profileScope) ?? [];
+	const previousProfileName = activeProfileNames.get(profileScope);
 	const loadedPlugins: string[] = [];
 	const mountedPlugins: ActiveProfileMount[] = [];
 
@@ -287,11 +303,31 @@ export async function applyProfile(
 
 	// Dispose only the exact Fibers owned by the previous profile after the new
 	// profile is mounted successfully.
-	await Promise.allSettled(previousMounts.map((mount) => Promise.resolve(mount.dispose())));
+	const disposalResults = await Promise.allSettled(
+		previousMounts.map((mount) => Promise.resolve(mount.dispose())),
+	);
 	activeProfileMounts.set(profileScope, mountedPlugins);
+	activeProfileNames.set(profileScope, profileName);
 
 	// 3. Synchronize active tools in upstream Pi runtime
 	(ctx as any).extensions?.syncActiveTools?.();
+	ctx.emit("pi/profile-changed", {
+		previousProfile: previousProfileName,
+		profileName,
+		plugins: loadedPlugins,
+	});
+
+	const disposalFailures = disposalResults.flatMap((result, index) => (
+		result.status === "rejected"
+			? [{ plugin: previousMounts[index]?.name ?? `plugin-${index + 1}`, reason: result.reason }]
+			: []
+	));
+	if (disposalFailures.length > 0) {
+		throw new AggregateError(
+			disposalFailures.map((failure) => failure.reason),
+			`Profile "${profileName}" was mounted, but failed to dispose previous plugins: ${disposalFailures.map((failure) => failure.plugin).join(", ")}. Restart Picds before relying on the active capability surface.`,
+		);
+	}
 
 	return loadedPlugins;
 }
@@ -327,10 +363,15 @@ export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 			const availableProfiles = Object.keys(allProfiles);
 
 			if (targetProfile) {
+				const before = getActiveProfile(ctx);
 				const loaded = await applyProfile(ctx, targetProfile, undefined, { cwd });
 				if (cmdCtx.hasUI) {
+					const added = loaded.filter((plugin) => !before.plugins.includes(plugin));
+					const removed = before.plugins.filter((plugin) => !loaded.includes(plugin));
 					cmdCtx.ui.notify(
-						`Switched to profile: "${targetProfile}"\nActive plugins: ${loaded.join(", ") || "none"}`,
+						`Switched to profile: "${targetProfile}"\nPrevious profile: "${before.name ?? "none"}"\n` +
+						`Added: ${added.join(", ") || "none"}\nRemoved: ${removed.join(", ") || "none"}\n` +
+						`Active plugins: ${loaded.join(", ") || "none"}`,
 						"info",
 					);
 				}
@@ -338,16 +379,29 @@ export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 			}
 
 			if (cmdCtx.hasUI) {
-				const items = availableProfiles.map(
-					(p) => `${p} - ${allProfiles[p]?.description ?? "Custom profile"}`,
+				const current = getActiveProfile(ctx);
+				const profileByLabel = new Map<string, string>();
+				const items = availableProfiles.map((profileName) => {
+					const marker = profileName === current.name ? "●" : " ";
+					const label = `${marker} ${profileName} - ${allProfiles[profileName]?.description ?? "Custom profile"}`;
+					profileByLabel.set(label, profileName);
+					return label;
+				});
+				const selected = await cmdCtx.ui.select(
+					`Current Profile: ${current.name ?? "none"}. Select a capability Profile`,
+					items,
 				);
-				const selected = await cmdCtx.ui.select("Select Cordis Profile", items);
 				if (selected) {
-					const chosenName = selected.split(" - ")[0];
-					if (allProfiles[chosenName]) {
+					const chosenName = profileByLabel.get(selected);
+					if (chosenName && allProfiles[chosenName]) {
+						const before = getActiveProfile(ctx);
 						const loaded = await applyProfile(ctx, chosenName, undefined, { cwd });
+						const added = loaded.filter((plugin) => !before.plugins.includes(plugin));
+						const removed = before.plugins.filter((plugin) => !loaded.includes(plugin));
 						cmdCtx.ui.notify(
-							`Switched to profile: "${chosenName}"\nActive plugins: ${loaded.join(", ") || "none"}`,
+							`Switched to profile: "${chosenName}"\nPrevious profile: "${before.name ?? "none"}"\n` +
+							`Added: ${added.join(", ") || "none"}\nRemoved: ${removed.join(", ") || "none"}\n` +
+							`Active plugins: ${loaded.join(", ") || "none"}`,
 							"info",
 						);
 					}

@@ -88,8 +88,10 @@ export function apply(ctx: Context) {
 		},
 		renderResult: (result: any, options?: any, theme?: any) => {
 			const msg = result?.message ?? "Handoff ready";
-			if (!theme?.fg) return `✓ ${msg}`;
-			return `${theme.fg("success", "✓")} ${theme.fg("foreground", msg)}`;
+			const markdown = result?.handoff?.formattedMarkdown ?? "";
+			if (!theme?.fg) return options?.expanded && markdown ? `✓ ${msg}\n\n${markdown}` : `✓ ${msg}`;
+			const summary = `${theme.fg("success", "✓")} ${theme.fg("foreground", msg)}`;
+			return options?.expanded && markdown ? `${summary}\n\n${markdown}` : summary;
 		},
 		execute: async (args: {
 			newGoal: string;

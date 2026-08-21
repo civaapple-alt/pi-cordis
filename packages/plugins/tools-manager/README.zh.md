@@ -10,13 +10,15 @@
 
 接受参数：
 - `action` (`"list"` | `"disable"` | `"enable"`, 必填)：管理操作行为。
-- `toolName` (string, 可选)：启用或禁用的目标工具名称。
+- `toolName` (string，`enable`/`disable` 时必填)：目标工具名称；缺失时明确失败，只有 `list` 执行查看。
 
 返回值：
 - `total` (number)：已注册的工具总数。
 - `active` (string[])：当前处于活跃状态的工具名称列表。
 - `disabled` (string[])：已被禁用的工具名称列表。
 - `message` (string, 可选)：操作反馈信息。
+
+未知 Action、缺失目标与未知工具名称都会按失败渲染，不会伪装成成功的列表结果。
 
 ## 模型体验
 - **动态专注**：针对特定纯分析或纯只读任务动态关闭无关工具。

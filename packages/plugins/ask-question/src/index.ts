@@ -59,6 +59,7 @@ export function apply(ctx: Context) {
 										label: { type: "string", description: "Option label (append (Recommended) if suggested)" },
 										description: { type: "string", description: "Optional explanation" },
 										preview: { type: "string", description: "Optional Markdown/Code diff preview content" },
+										note: { type: "string", description: "Optional note returned with this selection" },
 									},
 									required: ["label"],
 								},
@@ -100,7 +101,15 @@ export function apply(ctx: Context) {
 			return `${theme.fg("accent", theme.bold("❓ ask_question "))}${theme.fg("dim", `(${count} question${count > 1 ? "s" : ""}${previewTag})`)}\n${theme.fg("foreground", title)}`;
 		},
 		renderResult: (result: AskQuestionResult, options?: any, theme?: any) => {
-			const ans = result.error ?? (result.cancelled ? "Cancelled" : result?.answers?.[0]?.selected?.join(", ") || result?.selected || "No answer");
+			if (result.error) {
+				if (!theme?.fg) return `✗ Question failed: ${result.error}`;
+				return `${theme.fg("error", "✗ Question failed:")} ${theme.fg("foreground", result.error)}`;
+			}
+			if (result.cancelled) {
+				if (!theme?.fg) return "○ Question cancelled";
+				return theme.fg("warning", "○ Question cancelled");
+			}
+			const ans = result?.answers?.[0]?.selected?.join(", ") || result?.selected || "No answer";
 			const noteText = result?.notes ? ` (Note: ${result.notes})` : "";
 			if (!theme?.fg) return `✓ User answer: ${ans}${noteText}`;
 			return `${theme.fg("success", "✓ User answer:")} ${theme.fg("foreground", ans)}${theme.fg("dim", noteText)}`;
@@ -166,25 +175,50 @@ export function apply(ctx: Context) {
 							displayLabels.push("✍️ Other (Type custom answer)");
 						}
 
-						const chosen = await ui.select(q.question, displayLabels, { signal });
+						while (!cancelled && selected.length === 0) {
+							const chosen = await ui.select(q.question, displayLabels, { signal });
 
-						if (chosen === "✍️ Other (Type custom answer)") {
-							const inputVal = await ui.input(q.question, "Enter your answer...", { signal });
-							const trimmed = inputVal?.trim();
-							if (trimmed) {
-								custom = trimmed;
-								selected = [trimmed];
+							if (chosen === "✍️ Other (Type custom answer)") {
+								const inputVal = await ui.input(q.question, "Enter your answer...", { signal });
+								const trimmed = inputVal?.trim();
+								if (trimmed) {
+									custom = trimmed;
+									selected = [trimmed];
+								} else {
+									cancelled = true;
+								}
+							} else if (chosen) {
+								const matched = optionMap.get(chosen);
+								const label = matched?.label ?? chosen;
+								if (matched?.preview) {
+									if (typeof ui.editor === "function") {
+										const reviewed = await ui.editor(
+											`Review "${label}". This is a read-only preview; edits are discarded.`,
+											matched.preview,
+										);
+										if (reviewed === undefined) {
+											cancelled = true;
+											continue;
+										}
+									}
+									const confirmation = await ui.select(
+										typeof ui.editor === "function"
+											? `Choose "${label}" after reviewing the complete preview?`
+											: `Review "${label}" before choosing:\n\n${matched.preview}`,
+										[`Choose "${label}"`, "Back to options"],
+										{ signal },
+									);
+									if (confirmation === "Back to options") continue;
+									if (confirmation !== `Choose "${label}"`) {
+										cancelled = true;
+										continue;
+									}
+								}
+								selected = [label];
+								notes = matched?.note;
 							} else {
 								cancelled = true;
 							}
-						} else if (chosen) {
-							const matched = optionMap.get(chosen);
-							const label = matched?.label ?? chosen;
-							selected = [label];
-							notes = matched?.note;
-						} else {
-							// Cancelled by user
-							cancelled = true;
 						}
 					} else if (typeof ui.input === "function") {
 						// Free-text question without options
@@ -207,6 +241,7 @@ export function apply(ctx: Context) {
 					custom,
 					notes,
 				});
+				if (cancelled) break;
 			}
 
 			const primaryAnswer = answers[0]?.selected?.[0] ?? "";

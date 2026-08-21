@@ -80,9 +80,7 @@ graph LR
 
 ### 待评审与演进中提案 (`proposed/`)
 
-| 日期 | 标题 | 关注点 |
-|---|---|---|
-| `2026-08-21` | [体验优先的内置插件契约](proposed/2026-08-21-pi-cordis-experience-first-built-in-plugin-contracts.zh.md) | 用户旅程、产物可见性、失败原子性、Session 所有权、副作用策略与上线证据 |
+当前无。
 
 ---
 
@@ -106,6 +104,7 @@ graph LR
 | `2026-08-20` | [Pi-Cordis 双向工具桥接中枢、Profile 动态工具遮罩与终端交互式 UI 规范](implemented/architecture/2026-08-20-pi-cordis-bidirectional-tool-bridge-and-interactive-ui.zh.md) | 避免 CLI `--tools` 白名单过滤副作用、ExtensionService 统一桥接搜索工具与插件工具、Profile 热切换插件生命周期卸载与 `pi.setActiveTools` 动态遮罩同步、`ask_question` 真实终端阻塞式多选弹窗与自定义输入规范 |
 | `2026-08-21` | [Pi-Cordis 产品边界与上线门禁](implemented/architecture/2026-08-21-pi-cordis-product-boundary-and-production-gates.zh.md) | 轻量 Cordis 控制面定位、能力真实性、精确 Fiber 销毁、发布产物与跨平台门禁 |
 | `2026-08-21` | [Pi-Cordis Plan 状态与 Profile 边界](implemented/architecture/2026-08-21-pi-cordis-plan-state-and-profile-boundary.zh.md) | Plan 作为稳定的每 Session 协作状态、`exit_plan_mode` 与 `default`/`ptc` Profile 分离 |
+| `2026-08-21` | [Pi-Cordis 体验优先的内置插件契约](implemented/architecture/2026-08-21-pi-cordis-experience-first-built-in-plugin-contracts.zh.md) | 完整产物审阅、明确取消/失败/降级、Session 所有权、语义副作用策略与用户旅程级上线证据 |
 
 #### 特性与扩展类决策 (`implemented/feature/`)
 | 制定日期 | 决策标题 | 核心关注点 |

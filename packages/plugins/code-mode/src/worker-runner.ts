@@ -6,6 +6,7 @@ export interface RunWorkerOptions {
 	timeoutMs: number;
 	toolNames: string[];
 	callTool: (name: string, args: any) => Promise<any>;
+	signal?: AbortSignal;
 }
 
 export function createWorkerScript(): string {
@@ -109,10 +110,20 @@ export async function executeInWorkerThread(options: RunWorkerOptions): Promise<
 	const startTime = Date.now();
 	const logs: string[] = [];
 	const workerScript = createWorkerScript();
+	if (options.signal?.aborted) {
+		return {
+			success: false,
+			output: "",
+			error: "Execution cancelled before Worker start.",
+			executionTimeMs: 0,
+			backend: "worker",
+		};
+	}
 
 	return new Promise((resolve) => {
 		let isSettled = false;
 		let timeoutTimer: NodeJS.Timeout | null = null;
+		let abortHandler: (() => void) | undefined;
 
 		const worker = new Worker(workerScript, {
 			eval: true,
@@ -128,27 +139,50 @@ export async function executeInWorkerThread(options: RunWorkerOptions): Promise<
 				timeoutTimer = null;
 			}
 			worker.removeAllListeners();
+			if (abortHandler) options.signal?.removeEventListener("abort", abortHandler);
 		};
 
-		timeoutTimer = setTimeout(async () => {
+		const terminateAndResolve = async (result: CodeExecutionResult) => {
 			if (isSettled) return;
 			isSettled = true;
 			cleanup();
 			await worker.terminate();
-			resolve({
+			resolve(result);
+		};
+
+		abortHandler = () => {
+			void terminateAndResolve({
+				success: false,
+				output: logs.join("\n"),
+				error: "Execution cancelled; Worker thread terminated.",
+				executionTimeMs: Date.now() - startTime,
+				backend: "worker",
+			});
+		};
+		options.signal?.addEventListener("abort", abortHandler, { once: true });
+		if (options.signal?.aborted) {
+			abortHandler();
+			return;
+		}
+
+		timeoutTimer = setTimeout(async () => {
+			await terminateAndResolve({
 				success: false,
 				output: logs.join("\n"),
 				error: `Execution timed out after ${options.timeoutMs}ms (Worker thread terminated)`,
 				executionTimeMs: Date.now() - startTime,
+				backend: "worker",
 			});
 		}, options.timeoutMs);
 
 		worker.on("message", async (msg) => {
+			if (isSettled) return;
 			if (msg.type === "log") {
 				logs.push(msg.message);
 			} else if (msg.type === "tool_call") {
 				try {
 					const result = await options.callTool(msg.toolName, msg.args);
+					if (isSettled) return;
 					try {
 						worker.postMessage({ type: "tool_response", callId: msg.callId, result });
 					} catch {
@@ -160,32 +194,28 @@ export async function executeInWorkerThread(options: RunWorkerOptions): Promise<
 						}
 					}
 				} catch (err: any) {
-					worker.postMessage({ type: "tool_response", callId: msg.callId, error: err?.message || String(err) });
+					if (!isSettled) {
+						worker.postMessage({ type: "tool_response", callId: msg.callId, error: err?.message || String(err) });
+					}
 				}
 			} else if (msg.type === "done") {
-				if (isSettled) return;
-				isSettled = true;
-				cleanup();
-				await worker.terminate();
-				resolve({
+				await terminateAndResolve({
 					success: msg.success,
 					output: logs.join("\n") || "(Execution completed with no output)",
 					error: msg.error,
 					executionTimeMs: Date.now() - startTime,
+					backend: "worker",
 				});
 			}
 		});
 
 		worker.on("error", async (err) => {
-			if (isSettled) return;
-			isSettled = true;
-			cleanup();
-			await worker.terminate();
-			resolve({
+			await terminateAndResolve({
 				success: false,
 				output: logs.join("\n"),
 				error: err.message,
 				executionTimeMs: Date.now() - startTime,
+				backend: "worker",
 			});
 		});
 
@@ -198,6 +228,7 @@ export async function executeInWorkerThread(options: RunWorkerOptions): Promise<
 				output: logs.join("\n"),
 				error: code !== 0 ? `Worker stopped with exit code ${code}` : undefined,
 				executionTimeMs: Date.now() - startTime,
+				backend: "worker",
 			});
 		});
 	});

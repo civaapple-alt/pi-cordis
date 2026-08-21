@@ -350,6 +350,15 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 		const sessionId = event.sessionId ?? activeSessionId;
 		if (!stateFor(sessionId).active) return;
 		const toolName = event.toolName ?? event.name ?? "";
+		const tool = ctx.tools.get(toolName);
+		const declaredSideEffect = typeof tool?.sideEffect === "function"
+			? tool.sideEffect(event.args ?? {})
+			: tool?.sideEffect;
+		if (declaredSideEffect === "workspace" || declaredSideEffect === "external") {
+			throw new Error(
+				`[plan-mode] Tool "${toolName}" declares a ${declaredSideEffect} side effect and is blocked while Plan mode is active. Use exit_plan_mode or /plan off.`,
+			);
+		}
 		if (MUTATING_TOOLS.has(toolName)) {
 			throw new Error(`[plan-mode] Tool "${toolName}" is blocked while Plan mode is active. Use exit_plan_mode or /plan off.`);
 		}

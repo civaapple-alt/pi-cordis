@@ -12,7 +12,7 @@ export interface RulesInjectorConfig {
 }
 
 export const name = "rules-injector";
-export const inject = ["settings"];
+export const inject = ["settings", "extensions"];
 
 function findMarkdownFiles(dir: string): string[] {
 	const results: string[] = [];
@@ -40,6 +40,28 @@ export function apply(ctx: Context, config: RulesInjectorConfig = {}) {
 
 	let cachedHash = "";
 	let cachedBlock = "";
+	let lastSnapshot: { cwd: string; files: string[]; totalBytes: number; hash: string; block: string } | undefined;
+
+	const unregisterCommand = ctx.extensions.registerCommand("rules", {
+		description: "Inspect the supplemental rule files currently injected by Pi-Cordis",
+		handler: async (args: string, commandContext: any) => {
+			if (args.trim()) {
+				commandContext.ui?.notify?.("Usage: /rules", "warning");
+				return;
+			}
+			const snapshotText = lastSnapshot
+				? `Supplemental rules for ${lastSnapshot.cwd}\nFiles: ${lastSnapshot.files.join(", ") || "none"}\nBytes: ${lastSnapshot.totalBytes}\nSHA-256: ${lastSnapshot.hash || "none"}${lastSnapshot.block}`
+				: "Supplemental rules have not been evaluated for an agent turn yet.";
+			if (typeof commandContext.ui?.editor === "function") {
+				await commandContext.ui.editor(
+					"Pi-Cordis supplemental rules. This is a read-only review copy; edits are discarded.",
+					snapshotText,
+				);
+			} else {
+				commandContext.ui?.notify?.(snapshotText, "info");
+			}
+		},
+	});
 
 	const removeHook = ctx.on("pi/prompt-transform" as any, async (event: { prompt: string }) => {
 		const cwd = (ctx as any).settings?.getCwd?.() ?? process.cwd();
@@ -70,7 +92,10 @@ export function apply(ctx: Context, config: RulesInjectorConfig = {}) {
 			}
 		}
 
-		if (rulesFound.length === 0) return;
+		if (rulesFound.length === 0) {
+			lastSnapshot = { cwd, files: [], totalBytes: 0, hash: "", block: "" };
+			return;
+		}
 		const totalBytes = rulesFound.reduce(
 			(total, rule) => total + Buffer.byteLength(rule.content, "utf8"),
 			0,
@@ -86,6 +111,13 @@ export function apply(ctx: Context, config: RulesInjectorConfig = {}) {
 		const currentHash = crypto.createHash("sha256").update(combinedRaw).digest("hex");
 
 		if (currentHash === cachedHash && cachedBlock) {
+			lastSnapshot = {
+				cwd,
+				files: rulesFound.map((rule) => rule.file),
+				totalBytes,
+				hash: currentHash,
+				block: cachedBlock,
+			};
 			event.prompt += cachedBlock;
 			return;
 		}
@@ -96,11 +128,19 @@ export function apply(ctx: Context, config: RulesInjectorConfig = {}) {
 
 		cachedHash = currentHash;
 		cachedBlock = `\n\n## 📋 Project Instructions & Rules:\n${formattedRules}\n`;
+		lastSnapshot = {
+			cwd,
+			files: rulesFound.map((rule) => rule.file),
+			totalBytes,
+			hash: currentHash,
+			block: cachedBlock,
+		};
 		event.prompt += cachedBlock;
 	});
 
 	return () => {
 		removeHook();
+		unregisterCommand();
 	};
 }
 

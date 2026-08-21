@@ -10,13 +10,15 @@ Native Cordis dynamic tool management and inspection plugin. It registers the `m
 
 Accepts:
 - `action` (`"list"` | `"disable"` | `"enable"`, required): Tool management action.
-- `toolName` (string, optional): Target tool name for enable/disable operations.
+- `toolName` (string, required for `enable`/`disable`): Target tool name. Omitting it is an explicit error; only `list` performs inspection.
 
 Returns:
 - `total` (number): Total registered tools.
 - `active` (string[]): List of currently active tool names.
 - `disabled` (string[]): List of disabled tool names.
 - `message` (string, optional): Status feedback message.
+
+Unknown actions, missing targets, and unknown tool names render as failures rather than successful-looking list output.
 
 ## Model Experience
 - **Focus Control**: Disables irrelevant or distracting tools for specific tasks.

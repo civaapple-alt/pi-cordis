@@ -18,7 +18,7 @@ Native Cordis multi-tier security gate and command/file protection plugin. It in
    - Disk formatting: `mkfs`, `dd if=`, `format`
    - Fork bombs: `:(){ :|:& };:`
    - Unrestricted permissions: `chmod -R 777 /`
-   - Direct device writes: `> /dev/sda`, `> /dev/nvme`
+   - Direct block-device writes: `> /dev/sda`, `> /dev/nvme0n1` (ordinary null redirection such as `2>/dev/null` remains allowed)
    - Untrusted remote piping: `curl ... | bash`
    - Secret credential dumps: `cat .env`, `cat ~/.ssh/*`
    - Windows root deletion/formatting: destructive `Remove-Item`, `del`/`rd`, `format`, and `Clear-Disk` forms
@@ -27,6 +27,6 @@ Native Cordis multi-tier security gate and command/file protection plugin. It in
 
 ## Model Experience
 - **Pre-execution Guardrails**: Immediate, clear feedback before any potentially destructive action executes.
-- **Default Coverage**: Included out-of-the-box in the `default`, `plan`, and `ptc` profiles.
+- **Default Coverage**: Included in both `default` and `ptc`; independent Plan state adds its own read-only policy.
 
 This plugin is a defense-in-depth guardrail against common mistakes. Pattern matching is not a security sandbox and must not be treated as an isolation boundary for untrusted code.

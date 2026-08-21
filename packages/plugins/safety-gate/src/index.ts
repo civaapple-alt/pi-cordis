@@ -19,7 +19,7 @@ export const DEFAULT_DANGEROUS_PATTERNS: RegExp[] = [
 	/\bmkfs(\.[a-z0-9]+)?\s+/i,
 	/\bdd\s+.*(of=\/dev\/[a-z0-9]+)/i,
 	/\bchmod\s+(-R\s+)?(777|a\+rwx)\s+(\/|~|\$HOME)/i,
-	/>\s*\/dev\/(sd[a-z]|nvme[0-9]|null)/i,
+	/>\s*\/dev\/(?:sd[a-z](?:[0-9]+)?|nvme[0-9]+n[0-9]+(?:p[0-9]+)?)(?=\s|[;&|]|$)/i,
 	/:(){\s*:\|:&\s*};\s*:/,
 	/\bcurl\s+.*\|\s*(sh|bash|zsh)\b/i,
 	/\bcat\s+.*(\.env|\.ssh\/id_rsa|\.ssh\/id_ed25519)/i,

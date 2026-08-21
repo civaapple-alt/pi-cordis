@@ -15,6 +15,8 @@ describe("tools-manager lifecycle", () => {
 		await tool.execute({ action: "enable", toolName: "read" });
 		expect(ctx.tools.getExportedToolNames()).toContain("read");
 		expect((await tool.execute({ action: "enable", toolName: "missing" })).error).toContain("does not exist");
+		expect((await tool.execute({ action: "disable" })).error).toContain("toolName is required");
+		expect(tool.renderResult({ error: "failed" })).toContain("✗ failed");
 
 		const removeExternalFilter = ctx.tools.addFilter((definition) => definition.name !== "write");
 		const listed = await tool.execute({ action: "list" });

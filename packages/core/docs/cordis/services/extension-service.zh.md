@@ -15,6 +15,7 @@
 - 动态 Provider 注册/注销转发；
 - Pi 运行期激活后，为 Cordis 命令提供受保护的 `sendUserMessage()` 转发；
 - 把 Pi `ExtensionContext` 传给工具，使插件使用真实 `ui.select`、`ui.input`、`ui.notify`。
+- 把 Cordis 工具失败（`isError`、`success: false` 或非空 `error`）统一转换为 Pi Error Result，避免失败操作在表现层看起来像成功。
 
 Pi 当前没有命令注销 API。因此命令销毁后，代理仍可能出现在 Pi 命令目录中，但只会提示“当前 Profile 不可用”，绝不会调用已销毁 Handler。Tool Definition 与 Provider 在 Pi 的 Extension 加载阶段注册；首次 `setActiveTools()` 同步延迟到 `session_start`，此时 Pi 已完成仅运行期可用的 Action Method 绑定。后续 Profile 与工具变更仍会立即同步。
 

@@ -33,6 +33,12 @@ export function apply(ctx: Context, config: ToolsManagerConfig = {}) {
 			},
 			required: ["action"],
 		},
+		renderCall: (args: { action: string; toolName?: string }) => (
+			`manage_tools ${args.action}${args.toolName ? ` ${args.toolName}` : ""}`
+		),
+		renderResult: (result: any) => result?.error
+			? `✗ ${result.error}`
+			: result?.message ?? `Active tools: ${(result?.active ?? []).join(", ") || "none"}`,
 		execute: async (args: { action: "list" | "disable" | "enable"; toolName?: string }) => {
 			const allToolNames = ctx.tools.getToolNames();
 
@@ -50,6 +56,7 @@ export function apply(ctx: Context, config: ToolsManagerConfig = {}) {
 				ctx.emit("pi/tools-changed");
 				return { message: `Tool "${args.toolName}" disabled for this session.` };
 			}
+			if (args.action === "disable") return { error: "toolName is required for disable action." };
 
 			if (args.action === "enable" && args.toolName) {
 				if (!allowRuntimeToggle) {
@@ -62,12 +69,14 @@ export function apply(ctx: Context, config: ToolsManagerConfig = {}) {
 				ctx.emit("pi/tools-changed");
 				return { message: `Tool "${args.toolName}" re-enabled.` };
 			}
+			if (args.action === "enable") return { error: "toolName is required for enable action." };
 
-			return {
+			if (args.action === "list") return {
 				total: allToolNames.length,
 				active: ctx.tools.getExportedToolNames(),
 				disabled: Array.from(disabledTools),
 			};
+			return { error: `Unknown manage_tools action: ${(args as any).action}` };
 		},
 	});
 

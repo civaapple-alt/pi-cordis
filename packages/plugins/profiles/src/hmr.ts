@@ -42,6 +42,21 @@ export function setupPluginHmr(
 	const watchers: fs.FSWatcher[] = [];
 	const debounceTimers = new Set<NodeJS.Timeout>();
 	let reloadPromise: Promise<void> | undefined;
+	const removeProfileChanged = ctx.on("pi/profile-changed", (event) => {
+		currentProfileName = event.profileName;
+	});
+	const disposeForks = async (forks: any[], operation: string): Promise<void> => {
+		const results = await Promise.allSettled(forks.map((fork) => Promise.resolve(fork.dispose())));
+		const failures = results.flatMap((result, index) => (
+			result.status === "rejected" ? [{ index, reason: result.reason }] : []
+		));
+		if (failures.length > 0) {
+			throw new AggregateError(
+				failures.map((failure) => failure.reason),
+				`${operation} failed to dispose ${failures.length} hot-loaded plugin Fiber(s): ${failures.map((failure) => failure.index + 1).join(", ")}.`,
+			);
+		}
+	};
 
 	// Helper to reload current active profile
 	const reloadCurrentProfile = async (): Promise<void> => {
@@ -51,9 +66,7 @@ export function setupPluginHmr(
 			const profile = allProfiles[currentProfileName];
 			if (!profile) throw new Error(`Cannot reload unknown profile "${currentProfileName}".`);
 
-			await Promise.allSettled(
-				Array.from(activeForks.values(), (fork) => Promise.resolve(fork.dispose())),
-			);
+			await disposeForks(Array.from(activeForks.values()), "Profile reload");
 			activeForks.clear();
 
 			await applyProfile(ctx, currentProfileName, undefined, {
@@ -138,7 +151,9 @@ export function setupPluginHmr(
 					debounceTimers.add(debounceTimer);
 				});
 				watchers.push(watcher);
-			} catch {}
+			} catch (error) {
+				console.warn(`[HMR] Failed to watch preset directory "${pDir}":`, error);
+			}
 		}
 	}
 
@@ -169,7 +184,9 @@ export function setupPluginHmr(
 					debounceTimers.add(debounceTimer);
 				});
 				watchers.push(watcher);
-			} catch {}
+			} catch (error) {
+				console.warn(`[HMR] Failed to watch plugin directory "${pluginsDir}":`, error);
+			}
 		}
 	}
 
@@ -184,6 +201,7 @@ export function setupPluginHmr(
 		reloadCurrentProfile,
 		hotReloadPluginCode,
 		stop: async () => {
+			removeProfileChanged();
 			for (const timer of debounceTimers) clearTimeout(timer);
 			debounceTimers.clear();
 			for (const w of watchers) {
@@ -193,9 +211,7 @@ export function setupPluginHmr(
 			}
 			watchers.length = 0;
 			if (reloadPromise) await reloadPromise;
-			await Promise.allSettled(
-				Array.from(activeForks.values(), (fork) => Promise.resolve(fork.dispose())),
-			);
+			await disposeForks(Array.from(activeForks.values()), "HMR shutdown");
 			activeForks.clear();
 		},
 	};
