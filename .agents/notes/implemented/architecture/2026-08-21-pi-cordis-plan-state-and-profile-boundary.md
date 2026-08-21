@@ -22,16 +22,20 @@ Pi-Cordis does not copy all four product personas: `minimal` would weaken the ve
 ## Model and user controls
 
 - `/plan` activates Plan for the current Pi session;
+- `/plan <request>` activates Plan before submitting the original request as a real Pi user message; when an agent turn is already running, delivery uses Pi's `steer` queue;
 - `/plan off` is the explicit user exit;
 - `exit_plan_mode({ plan })` remains registered in every state, rejects calls outside Plan, requires a Markdown `#` heading, and exits only after interactive approval;
+- interactive TUI review renders the complete plan in the tool row and opens a scrollable full-text preview before the separate approval selector; preview edits require resubmission rather than changing the approved artifact silently;
 - approval does not switch Profile;
 - `picds --plan` selects initial Plan state without inventing a `plan` Profile.
 
 The tool catalog therefore stays stable when Plan changes. `todo_write` remains the execution tracker after approval; Plan does not duplicate Todo state, write plan artifacts, or generate unverified Walkthrough files.
 
+The command is designed from the observable user journey rather than an argument allowlist. Empty input and the exact `on`/`off` words are controls; every other non-empty string is request content and preserves its original spelling. Activation happens before delivery so the new turn observes Plan policy. If Pi rejects message submission, the plugin restores the previous session state instead of leaving a partially applied transition.
+
 ## Enforcement and scope
 
-While Plan is active, prompt policy forbids implementation, file mutation tools are blocked, and Shell commands must match a read-only allowlist. PTC passes its nested SDK calls through the same `ToolRegistryService.executeTool()` pipeline, so inner writes and Shell mutations reach the Plan gate.
+While Plan is active, prompt policy forbids implementation, file mutation tools are blocked, and every segment of a compound Shell command must match a read-only allowlist. Process-local navigation commands are allowed so real inspection sequences such as `cd ... && git status && git log` remain usable, while a safe first segment cannot hide an unknown suffix. PTC passes its nested SDK calls through the same `ToolRegistryService.executeTool()` pipeline, so inner writes and Shell mutations reach the Plan gate.
 
 This interception is a guardrail, not an operating-system permission sandbox. Unknown or custom tools need their own policy. State is keyed by the live Pi session ID forwarded by `ExtensionService` and lasts for the Picds process; it is not claimed as durable logged state across process restarts.
 
@@ -49,5 +53,8 @@ Regression coverage proves:
 - `exit_plan_mode` remains registered across Profile switches;
 - Plan prompt state survives `default -> ptc -> default`;
 - approval exits Plan without switching Profile;
+- approval UI exposes the complete plan before the decision, with a full-text fallback for providers without Pi's multi-line editor;
+- `/plan <request>` preserves request text, activates policy before delivery, uses `steer` while busy, does not submit `off`, and rolls state back when delivery fails;
+- compound Shell inspection is accepted only when every segment is allowlisted; command substitution and unknown suffixes fail closed;
 - ordinary and PTC-nested mutations cross the Plan gate;
 - session IDs flow from Pi `ExtensionContext` into Cordis lifecycle envelopes.

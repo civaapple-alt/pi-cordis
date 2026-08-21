@@ -39,7 +39,7 @@ PTC Profile 增加 `code-mode`，通过动态 `pi` SDK 与 `run_code` 呈现底�
 
 ### Plan
 
-Plan 是每 Session 协作状态，不是 Profile。根作用域稳定挂载的 `plan-mode` 插件在两个 Profile 中都提供 `/plan`、`/plan off` 与 `exit_plan_mode`。进入或退出 Plan 不装卸插件，也不改变工具 Schema；激活期间的规划规则与修改护栏同时覆盖普通调用和 PTC 内部调用。
+Plan 是每 Session 协作状态，不是 Profile。根作用域稳定挂载的 `plan-mode` 插件在两个 Profile 中都提供 `/plan`、`/plan <请求>`、`/plan off` 与 `exit_plan_mode`。`/plan <请求>` 会进入 Plan，并立即在只读策略下提交该文本。进入或退出 Plan 不装卸插件，也不改变工具 Schema；激活期间的规划规则与修改护栏同时覆盖普通调用和 PTC 内部调用。
 ## 从源码启动
 
 要求 Node.js 22.19 或更高版本，以及 pnpm。

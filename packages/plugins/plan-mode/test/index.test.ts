@@ -6,7 +6,11 @@ describe("plan-mode policy helpers", () => {
 		expect(isReadOnlyPlanCommand("git status")).toBe(true);
 		expect(isReadOnlyPlanCommand("Get-ChildItem packages")).toBe(true);
 		expect(isReadOnlyPlanCommand("rg -n plan packages")).toBe(true);
+		expect(isReadOnlyPlanCommand("cd /workspace && git status && git log --oneline -5")).toBe(true);
+		expect(isReadOnlyPlanCommand("rg -n 'plan|profile' packages | head -40")).toBe(true);
 		expect(isReadOnlyPlanCommand("git status; git commit -am test")).toBe(false);
+		expect(isReadOnlyPlanCommand("git status; node mutate-workspace.js")).toBe(false);
+		expect(isReadOnlyPlanCommand("echo $(node mutate-workspace.js)")).toBe(false);
 		expect(isReadOnlyPlanCommand("echo changed > file.txt")).toBe(false);
 		expect(isReadOnlyPlanCommand("Set-Content file.txt changed")).toBe(false);
 		expect(isReadOnlyPlanCommand("unknown-command")).toBe(false);

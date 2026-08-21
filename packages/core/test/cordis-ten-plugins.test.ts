@@ -56,6 +56,24 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 
 		const planCommand = ctx.extensions.getRegisteredCommands().get("plan");
 		expect(planCommand).toBeDefined();
+		const bridgeEvents: Record<string, Function> = {};
+		const submittedRequests: Array<{ content: string; options?: { deliverAs?: string } }> = [];
+		let rejectSubmittedRequest = false;
+		ctx.extensions.createBridgeExtensionFactory().factory({
+			registerCommand: () => {},
+			registerTool: () => {},
+			on: (eventName: string, handler: Function) => {
+				bridgeEvents[eventName] = handler;
+			},
+			sendUserMessage: (content: string, options?: { deliverAs?: string }) => {
+				if (rejectSubmittedRequest) throw new Error("message queue rejected");
+				submittedRequests.push({ content, options });
+			},
+			setActiveTools: () => {},
+		});
+		bridgeEvents.session_start({ reason: "startup" }, {
+			sessionManager: { getSessionId: () => "session-a" },
+		});
 		await planCommand!.handler("on", {
 			hasUI: false,
 			sessionManager: { getSessionId: () => "session-a" },
@@ -66,6 +84,42 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		expect(promptEvent.prompt).toContain("## Plan mode");
 		expect(promptEvent.prompt).toContain("exit_plan_mode");
 		expect(promptEvent.prompt).toContain("Do not use todo_write");
+
+		await planCommand!.handler(" 继续计划 ", {
+			hasUI: false,
+			isIdle: () => true,
+			sessionManager: { getSessionId: () => "session-c" },
+		});
+		expect(submittedRequests).toEqual([{ content: "继续计划", options: undefined }]);
+		const inlineRequestPrompt = { prompt: "Base prompt", sessionId: "session-c" };
+		await ctx.serial("pi/prompt-transform", inlineRequestPrompt);
+		expect(inlineRequestPrompt.prompt).toContain("## Plan mode");
+
+		await planCommand!.handler("补充错误处理", {
+			hasUI: false,
+			isIdle: () => false,
+			sessionManager: { getSessionId: () => "session-c" },
+		});
+		expect(submittedRequests.at(-1)).toEqual({
+			content: "补充错误处理",
+			options: { deliverAs: "steer" },
+		});
+		await planCommand!.handler("off", {
+			hasUI: false,
+			sessionManager: { getSessionId: () => "session-c" },
+		});
+		expect(submittedRequests).toHaveLength(2);
+
+		rejectSubmittedRequest = true;
+		await expect(Promise.resolve().then(() => planCommand!.handler("无法排队", {
+			hasUI: false,
+			isIdle: () => true,
+			sessionManager: { getSessionId: () => "session-d" },
+		}))).rejects.toThrow("previous Plan state was restored");
+		const rejectedRequestPrompt = { prompt: "Base prompt", sessionId: "session-d" };
+		await ctx.serial("pi/prompt-transform", rejectedRequestPrompt);
+		expect(rejectedRequestPrompt.prompt).not.toContain("## Plan mode");
+		rejectSubmittedRequest = false;
 
 		await expect(
 			ctx.serial("pi/tool-call", {
@@ -103,18 +157,81 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		expect(invalid.isError).toBe(true);
 		expect(invalid.content[0].text).toContain("# heading");
 
+		const completePlan = "# Ready plan\n\n## Steps\n\n1. Inspect the current behavior.\n2. Implement and verify the fix.";
+		expect(exitTool!.renderCall({ plan: completePlan })).toContain(completePlan);
+		let previewShown = false;
 		const approved = await exitTool!.execute(
-			{ plan: "# Ready plan\n\n1. Implement it." },
+			{ plan: completePlan },
 			{
 				ctx: {
 					hasUI: true,
 					sessionManager: { getSessionId: () => "session-a" },
-					ui: { select: async () => "Approve and leave Plan mode", notify: () => {} },
+					ui: {
+						editor: async (title: string, prefill: string) => {
+							expect(title).toContain("complete plan");
+							expect(prefill).toBe(completePlan);
+							previewShown = true;
+							return prefill;
+						},
+						notify: () => {},
+						select: async (title: string) => {
+							expect(previewShown).toBe(true);
+							expect(title).toContain("complete plan you just reviewed");
+							return "Approve and leave Plan mode";
+						},
+					},
 				},
 			},
 		);
 		expect(approved.details.approved).toBe(true);
 		expect(approved.details.active).toBe(false);
+		expect(approved.details.plan).toBe(completePlan);
+
+		await planCommand!.handler("on", {
+			hasUI: false,
+			sessionManager: { getSessionId: () => "session-b" },
+		});
+		let fallbackReviewTitle = "";
+		const fallbackReview = await exitTool!.execute(
+			{ plan: completePlan },
+			{
+				ctx: {
+					hasUI: true,
+					sessionManager: { getSessionId: () => "session-b" },
+					ui: {
+						select: async (title: string) => {
+							fallbackReviewTitle = title;
+							return "Keep planning";
+						},
+					},
+				},
+			},
+		);
+		expect(fallbackReviewTitle).toContain(completePlan);
+		expect(fallbackReview.details.active).toBe(true);
+
+		let selectionOpenedForEditedPlan = false;
+		const editedReview = await exitTool!.execute(
+			{ plan: completePlan },
+			{
+				ctx: {
+					hasUI: true,
+					sessionManager: { getSessionId: () => "session-b" },
+					ui: {
+						editor: async () => `${completePlan}\n3. Add a regression test.`,
+						select: async () => {
+							selectionOpenedForEditedPlan = true;
+							return "Approve and leave Plan mode";
+						},
+					},
+				},
+			},
+		);
+		expect(selectionOpenedForEditedPlan).toBe(false);
+		expect(editedReview.details.approved).toBe(false);
+		expect(editedReview.details.plan).toContain("3. Add a regression test.");
+		expect(editedReview.content[0].text).toContain("3. Add a regression test.");
+		expect(editedReview.details.active).toBe(true);
 
 		await expect(
 			ctx.serial("pi/tool-call", {

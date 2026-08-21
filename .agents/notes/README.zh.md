@@ -80,7 +80,9 @@ graph LR
 
 ### 待评审与演进中提案 (`proposed/`)
 
-*当前暂无待评审提案。*
+| 日期 | 标题 | 关注点 |
+|---|---|---|
+| `2026-08-21` | [体验优先的内置插件契约](proposed/2026-08-21-pi-cordis-experience-first-built-in-plugin-contracts.zh.md) | 用户旅程、产物可见性、失败原子性、Session 所有权、副作用策略与上线证据 |
 
 ---
 

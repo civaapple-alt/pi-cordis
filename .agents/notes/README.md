@@ -80,7 +80,9 @@ If a proposed approach is rejected during review:
 
 ### Proposed Notes Under Review (`proposed/`)
 
-*Currently no proposed notes under review.*
+| Date | Title | Focus |
+|---|---|---|
+| `2026-08-21` | [Experience-First Built-in Plugin Contracts](proposed/2026-08-21-pi-cordis-experience-first-built-in-plugin-contracts.md) | User journeys, artifact visibility, atomic failure, session ownership, side-effect policy, and release evidence |
 
 ---
 

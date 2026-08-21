@@ -9,6 +9,7 @@
 ### Changed
 
 - Plan 从可装卸的 `plan` Profile 收敛为根作用域、按会话隔离的协作状态：`/plan` 进入、`/plan off` 显式退出，`exit_plan_mode({ plan })` 负责交互式审阅；Plan 状态在 `default` 与 `ptc` Profile 切换时保持，批准后也不再隐式切换 Profile。
+- `/plan <请求>` 现在会先激活 Plan，再把原始文本作为真实用户消息提交；Agent 忙碌时通过 `steer` 排队，投递失败时恢复先前状态，不再把自然语言误报为未知参数。
 - Profile 仅保留 `default` 与 `ptc` 两种工具呈现/执行形态；CLI 新增 `--plan` 作为独立初始状态开关。Pi ExtensionContext 的 session ID 现贯穿 Prompt 与工具前置事件，PTC 嵌套调用也保留该执行上下文。
 
 ### Removed
@@ -18,6 +19,8 @@
 ### Fixed
 
 - Cordis Bridge 不再于 Pi Extension 加载阶段提前调用 `setActiveTools()`；首次工具可见性同步延迟到运行期已绑定的 `session_start`，修复 `pnpm picds` 启动时报 `Extension runtime not initialized`。
+- `exit_plan_mode` 不再只渲染计划首行：TUI 在批准选择前提供可滚动的计划全文预览，工具记录保留完整 Markdown；缺少多行编辑器的 UI Provider 会在选择提示中收到全文，预览修改则要求重新提交后再批准。
+- Plan 的 Shell 只读门禁改为逐段校验复合命令：允许 `cd` 加只读检查的实际规划路径，同时拒绝安全首段后拼接未知命令或命令替换。
 
 ## [0.4.0] - 2026-08-21
 

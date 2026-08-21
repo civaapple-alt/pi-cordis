@@ -39,7 +39,7 @@ The PTC Profile adds `code-mode` and presents raw tools through the generated `p
 
 ### Plan
 
-Plan is per-session collaboration state, not a Profile. The stable root-scoped `plan-mode` plugin contributes `/plan`, `/plan off`, and `exit_plan_mode` in both Profiles. Entering or leaving Plan does not remount plugins or change the tool schema. While active, Plan guidance and mutation guardrails apply equally to ordinary and PTC tool calls.
+Plan is per-session collaboration state, not a Profile. The stable root-scoped `plan-mode` plugin contributes `/plan`, `/plan <request>`, `/plan off`, and `exit_plan_mode` in both Profiles. `/plan <request>` enters Plan and immediately submits that text under its read-only policy. Entering or leaving Plan does not remount plugins or change the tool schema. While active, Plan guidance and mutation guardrails apply equally to ordinary and PTC tool calls.
 ## Quick start from source
 
 Requirements: Node.js 22.19 or newer and pnpm.

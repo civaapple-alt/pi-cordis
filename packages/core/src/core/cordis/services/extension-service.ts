@@ -15,6 +15,11 @@ export interface ExtensionServiceConfig {
 	extensionPaths?: string[];
 }
 
+export interface SendUserMessageOptions {
+	deliverAs?: "steer" | "followUp";
+	expandPromptTemplates?: boolean;
+}
+
 export const inject = ["tools", "ai"];
 
 export class ExtensionService extends Service {
@@ -74,6 +79,14 @@ export class ExtensionService extends Service {
 
 	public getLoadedTools() {
 		return this.lastLoadedResult?.runtime?.tools ?? [];
+	}
+
+	/** Submit a real Pi user message after the interactive extension runtime is ready. */
+	public sendUserMessage(content: string, options?: SendUserMessageOptions): void {
+		if (!this.piRuntimeReady || typeof this.activePi?.sendUserMessage !== "function") {
+			throw new Error("Pi extension runtime is not ready to submit a user message.");
+		}
+		this.activePi.sendUserMessage(content, options);
 	}
 
 	/**

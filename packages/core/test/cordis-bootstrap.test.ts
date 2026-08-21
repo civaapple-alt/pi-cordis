@@ -477,6 +477,35 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		await ctx.fiber.dispose();
 	});
 
+	it("11.2 ExtensionService: submits user messages only through the live Pi runtime", async () => {
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: false });
+		const eventHandlers: Record<string, Function> = {};
+		const submitted: Array<{ content: string; options?: { deliverAs?: string } }> = [];
+		ctx.extensions.createBridgeExtensionFactory().factory({
+			registerTool: () => {},
+			registerCommand: () => {},
+			on: (eventName: string, handler: Function) => {
+				eventHandlers[eventName] = handler;
+			},
+			sendUserMessage: (content: string, options?: { deliverAs?: string }) => {
+				submitted.push({ content, options });
+			},
+			setActiveTools: () => {},
+		});
+
+		expect(() => ctx.extensions.sendUserMessage("too early")).toThrow("runtime is not ready");
+		eventHandlers.session_start({ reason: "startup" }, {});
+		ctx.extensions.sendUserMessage("continue planning", { deliverAs: "steer" });
+		expect(submitted).toEqual([{
+			content: "continue planning",
+			options: { deliverAs: "steer" },
+		}]);
+
+		eventHandlers.session_shutdown({ reason: "exit" });
+		expect(() => ctx.extensions.sendUserMessage("too late")).toThrow("runtime is not ready");
+		await ctx.fiber.dispose();
+	});
+
 	it("12. ExtensionService: returns Cordis tool-result transformations to Pi", async () => {
 		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: false });
 		const eventHandlers: Record<string, Function> = {};

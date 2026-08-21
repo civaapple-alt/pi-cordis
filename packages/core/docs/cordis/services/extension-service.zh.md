@@ -13,9 +13,12 @@
 - Session、Agent、Turn、Tool 与模型选择事件转发；
 - 从 Pi 实时 `ExtensionContext` 解析 Session ID，并写入 Session、Prompt 与 Tool-call 事件信封；
 - 动态 Provider 注册/注销转发；
+- Pi 运行期激活后，为 Cordis 命令提供受保护的 `sendUserMessage()` 转发；
 - 把 Pi `ExtensionContext` 传给工具，使插件使用真实 `ui.select`、`ui.input`、`ui.notify`。
 
 Pi 当前没有命令注销 API。因此命令销毁后，代理仍可能出现在 Pi 命令目录中，但只会提示“当前 Profile 不可用”，绝不会调用已销毁 Handler。Tool Definition 与 Provider 在 Pi 的 Extension 加载阶段注册；首次 `setActiveTools()` 同步延迟到 `session_start`，此时 Pi 已完成仅运行期可用的 Action Method 绑定。后续 Profile 与工具变更仍会立即同步。
+
+`sendUserMessage(content, options)` 遵循同一运行期边界：只在 `session_start` 与 `session_shutdown` 之间转发给 Pi，区间之外明确失败。这样 `/plan <请求>` 等命令可以触发真实用户 Turn，又不会绕开 Cordis Service 接缝或在 Extension 加载阶段误调 Pi Action Method。
 
 `load()` 是 Pi Extension 发现的 SDK 侧封装。交互 CLI 的普通 Extension 发现仍由上游 Pi 所有；Pi-Cordis 只注入隐藏的 Cordis Bridge Factory。
 
