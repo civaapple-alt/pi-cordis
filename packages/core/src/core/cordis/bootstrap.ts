@@ -11,6 +11,7 @@ import { ExtensionService, type ExtensionServiceConfig } from "./services/extens
 import { PackageManagerService, type PackageManagerServiceConfig } from "./services/package-manager-service.ts";
 import { AgentService } from "./services/agent-service.ts";
 import profilesPlugin, { applyProfile, setupPluginHmr, type BuiltinPluginName, type HmrManager } from "@pi-cordis/profiles";
+import planModePlugin from "@pi-cordis/plugin-plan-mode";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 export interface CreatePiContextOptions {
@@ -22,11 +23,14 @@ export interface CreatePiContextOptions {
 	extensionPaths?: string[];
 	allowModelNetwork?: boolean;
 	signal?: AbortSignal;
-	profile?: string;
+	/** Initial Profile name, or `false` for a core-only embedding with no capability Profile. */
+	profile?: string | false;
+	planMode?: boolean;
 	plugins?: Partial<Record<BuiltinPluginName, boolean | Record<string, unknown>>>;
 	enableHmr?: boolean;
 }
 
+/** Bootstrap the Cordis control plane, optional capability Profile, and Pi-facing services. */
 export async function createPiContext(options: CreatePiContextOptions = {}): Promise<Context> {
 	const cwd = options.cwd ?? process.cwd();
 	const agentDir = options.agentDir ?? getAgentDir();
@@ -45,13 +49,19 @@ export async function createPiContext(options: CreatePiContextOptions = {}): Pro
 		ctx.plugin(PackageManagerService, { cwd, agentDir });
 		ctx.plugin(AgentService);
 
-		// 2. Mount profiles management plugin & apply active profile
+		// 2. Mount session collaboration controls outside the switchable Profile
+		// scope. Plan state therefore survives presentation changes such as PTC.
+		ctx.plugin(planModePlugin, { initialActive: options.planMode ?? false });
+
+		// 3. Mount profiles management plugin & apply active profile
 		ctx.plugin(profilesPlugin);
 		const profileName = options.profile ?? "default";
-		await applyProfile(ctx, profileName, options.plugins, { cwd, agentDir });
+		if (profileName !== false) {
+			await applyProfile(ctx, profileName, options.plugins, { cwd, agentDir });
+		}
 
-		// 3. Optional HMR Watcher for presets and packages/plugins
-		if (options.enableHmr) {
+		// 4. Optional HMR Watcher for presets and packages/plugins
+		if (options.enableHmr && profileName !== false) {
 			const hmr = setupPluginHmr(ctx, profileName, {
 				cwd,
 				agentDir,

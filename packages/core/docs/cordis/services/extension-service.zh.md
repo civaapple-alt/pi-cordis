@@ -11,10 +11,11 @@
 - 串行执行前 `pi/tool-call` 与执行后 `pi/tool-result` 管线；
 - Agent Turn 前的串行 Prompt 变换；
 - Session、Agent、Turn、Tool 与模型选择事件转发；
+- 从 Pi 实时 `ExtensionContext` 解析 Session ID，并写入 Session、Prompt 与 Tool-call 事件信封；
 - 动态 Provider 注册/注销转发；
 - 把 Pi `ExtensionContext` 传给工具，使插件使用真实 `ui.select`、`ui.input`、`ui.notify`。
 
-Pi 当前没有命令注销 API。因此命令销毁后，代理仍可能出现在 Pi 命令目录中，但只会提示“当前 Profile 不可用”，绝不会调用已销毁 Handler。工具可见性则通过 `setActiveTools()` 完整同步。
+Pi 当前没有命令注销 API。因此命令销毁后，代理仍可能出现在 Pi 命令目录中，但只会提示“当前 Profile 不可用”，绝不会调用已销毁 Handler。Tool Definition 与 Provider 在 Pi 的 Extension 加载阶段注册；首次 `setActiveTools()` 同步延迟到 `session_start`，此时 Pi 已完成仅运行期可用的 Action Method 绑定。后续 Profile 与工具变更仍会立即同步。
 
 `load()` 是 Pi Extension 发现的 SDK 侧封装。交互 CLI 的普通 Extension 发现仍由上游 Pi 所有；Pi-Cordis 只注入隐藏的 Cordis Bridge Factory。
 

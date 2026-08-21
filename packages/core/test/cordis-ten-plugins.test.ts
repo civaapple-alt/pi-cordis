@@ -4,7 +4,6 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { createPiContext } from "../src/core/cordis/bootstrap.js";
 import subagentPlugin from "@pi-cordis/plugin-subagent";
-import planModePlugin from "@pi-cordis/plugin-plan-mode";
 import codeModePlugin from "@pi-cordis/plugin-code-mode";
 import askQuestionPlugin from "@pi-cordis/plugin-ask-question";
 import outputTruncatorPlugin, { truncateText } from "@pi-cordis/plugin-output-truncator";
@@ -23,7 +22,7 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 	let ctx: any;
 
 	beforeEach(async () => {
-		ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
+		ctx = await createPiContext({ allowModelNetwork: false, profile: false });
 	});
 
 	it("1. @pi-cordis/plugin-subagent: exposes explicit unavailable and depth-limit failures", async () => {
@@ -46,137 +45,85 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		expect(ctx.tools.has("subagent")).toBe(false);
 	});
 
-	it("2. @pi-cordis/plugin-plan-mode: manages plan steps, generates implementation_plan.md, gates approval, and emits walkthrough", async () => {
-		const planCwd = fs.mkdtempSync(path.join(os.tmpdir(), "picds-plan-test-"));
-		const fork = await ctx.plugin(planModePlugin, { cwd: planCwd });
-		expect(ctx.tools.has("plan_step")).toBe(true);
-
-		const tool = ctx.tools.get("plan_step");
-
-		// 1. Set comprehensive plan metadata
-		const setRes = await tool!.execute({
-			action: "set_plan",
-			title: "Database Migration & Service Upgrade",
-			overview: "Refactor core services to implement The 5 Pillars",
-			userReviewRequired: "Confirm if backward compatibility shims are needed",
-			openQuestions: ["Should SQLite retain WAL mode?"],
-			proposedChanges: [
-				{ action: "MODIFY", path: "src/db.ts", description: "Update schema version" },
-			],
-			verificationPlan: "Run all vitest suites",
-		});
-		expect(setRes.planFilePath).toBeDefined();
-		expect(setRes.markdown).toContain("# Database Migration & Service Upgrade");
-		expect(setRes.markdown).toContain("Confirm if backward compatibility shims");
-
-		// 2. Add step 1 and step 2
-		const addRes1 = await tool!.execute({ action: "add", title: "Analyze database schema" });
-		expect(addRes1.step.title).toBe("Analyze database schema");
-		expect(addRes1.step.status).toBe("pending");
-
-		const addRes2 = await tool!.execute({ action: "add", title: "Run migration", dependsOn: [1] });
-		expect(addRes2.step.dependsOn).toEqual([1]);
-
-		// 3. Verify write tool blocking before user approval
-		let writeBlocked = false;
-		try {
-			await ctx.parallel("pi/tool-call", { name: "write", args: { path: "test.txt", content: "data" } });
-		} catch (err: any) {
-			writeBlocked = true;
-			const msg = String(err) + (err.errors ? err.errors.map(String).join(" ") : "");
-			expect(msg).toContain("blocked in session [default]");
-		}
-		expect(writeBlocked).toBe(true);
-
-		// 4. Request review (non-interactive) and interactive UI approve
-		const reviewRes = await tool!.execute({ action: "request_review" });
-		expect(reviewRes.isApproved).toBe(false);
-		expect(reviewRes.markdown).toContain("Pending User Review");
-		const selfApproveRes = await tool!.execute({ action: "approve" });
-		expect(selfApproveRes.status).toBe("approval_unavailable");
-		expect(selfApproveRes.isApproved).toBe(false);
-
-		// 4.1 Interactive UI approval
-		let profileSwitchEmitted = false;
-		ctx.on("pi/profile-switch" as any, (target: string) => {
-			if (target === "default") profileSwitchEmitted = true;
-		});
-
-		const mockApprovalUI: any = {
-			select: async () => "✅ 批准计划并自动切换至 Default 模式 (Approve & Switch to default)",
-			notify: () => {},
-		};
-
-		const approveRes = await tool!.execute(
-			{ action: "request_review" },
-			{ ctx: { hasUI: true, ui: mockApprovalUI } },
-		);
-		expect(approveRes.isApproved).toBe(true);
-		expect(approveRes.autoSwitchedProfile).toBe("default");
-		expect(profileSwitchEmitted).toBe(true);
-
-		// 5. Verify write tool is now unblocked
-		let writeAllowed = true;
-		try {
-			await ctx.parallel("pi/tool-call", { name: "write", args: { path: "test.txt", content: "data" } });
-		} catch {
-			writeAllowed = false;
-		}
-		expect(writeAllowed).toBe(true);
-
-		// 6. Update step 1 to completed and view plan
-		await tool!.execute({ action: "update", id: 1, status: "completed" });
-		const viewRes = await tool!.execute({ action: "view" });
-		expect(viewRes.percentage).toBe(50);
-		expect(viewRes.markdown).toContain("[✓] **#1**: Analyze database schema");
-
-		// 7. Prompt transform check
-		const promptEvent = { prompt: "Base prompt" };
-		await ctx.parallel("pi/prompt-transform", promptEvent);
-		expect(promptEvent.prompt).toContain("Current Implementation Plan");
-		expect(promptEvent.prompt).toContain("50%");
-		expect(promptEvent.prompt).toContain("Analyze database schema");
-
-		// 8. Multi-session concurrency test
-		// Session B has an unapproved plan
-		await tool!.execute({
-			action: "set_plan",
-			sessionId: "session_b",
-			title: "Session B Plan",
-			overview: "Isolated concurrent plan for session B",
-		});
-		await tool!.execute({ action: "add", sessionId: "session_b", title: "Session B Step 1" });
-
-		const listSessionsRes = await tool!.execute({ action: "list_sessions" });
-		expect(listSessionsRes.totalSessions).toBeGreaterThanOrEqual(2);
-		expect(listSessionsRes.sessions.some((s: any) => s.sessionId === "session_b")).toBe(true);
-
-		// Verify Session B blocks write while default session is approved
-		let sessionBBlocked = false;
-		try {
-			await ctx.parallel("pi/tool-call", { name: "write", sessionId: "session_b", args: { path: "b.txt", content: "data" } });
-		} catch (err: any) {
-			sessionBBlocked = true;
-			const msg = String(err) + (err.errors ? err.errors.map(String).join(" ") : "");
-			expect(msg).toContain("blocked in session [session_b]");
-		}
-		expect(sessionBBlocked).toBe(true);
-
-		// 9. Finish rejects incomplete work, then generates a walkthrough once complete.
-		const incompleteFinish = await tool!.execute({ action: "finish" });
-		expect(incompleteFinish.error).toBe("PLAN_STEPS_INCOMPLETE");
-		await tool!.execute({ action: "update", id: 2, status: "completed" });
-		const finishRes = await tool!.execute({ action: "finish", summary: "Database migration successfully completed." });
-		expect(finishRes.message).toContain("Plan finalized");
-		expect(finishRes.walkthroughFilePath).toBeDefined();
-
-		await fork.dispose();
-		fs.rmSync(planCwd, { recursive: true, force: true });
-		// Approval switched to the lean default profile, where planning controls are
-		// intentionally absent from the model-facing tool surface.
+	it("2. @pi-cordis/plugin-plan-mode: keeps a stable exit tool and toggles per-session Plan policy", async () => {
+		expect(ctx.tools.has("exit_plan_mode")).toBe(true);
 		expect(ctx.tools.has("plan_step")).toBe(false);
-	});
 
+		const exitTool = ctx.tools.get("exit_plan_mode");
+		const inactive = await exitTool!.execute({ plan: "# Ready plan" });
+		expect(inactive.isError).toBe(true);
+		expect(inactive.details.active).toBe(false);
+
+		const planCommand = ctx.extensions.getRegisteredCommands().get("plan");
+		expect(planCommand).toBeDefined();
+		await planCommand!.handler("on", {
+			hasUI: false,
+			sessionManager: { getSessionId: () => "session-a" },
+		});
+
+		const promptEvent = { prompt: "Base prompt", sessionId: "session-a" };
+		await ctx.serial("pi/prompt-transform", promptEvent);
+		expect(promptEvent.prompt).toContain("## Plan mode");
+		expect(promptEvent.prompt).toContain("exit_plan_mode");
+		expect(promptEvent.prompt).toContain("Do not use todo_write");
+
+		await expect(
+			ctx.serial("pi/tool-call", {
+				name: "write",
+				args: { path: "test.txt", content: "data" },
+				sessionId: "session-a",
+			}),
+		).rejects.toThrow("blocked while Plan mode is active");
+		await expect(
+			ctx.serial("pi/tool-call", {
+				name: "bash",
+				args: { command: "git status" },
+				sessionId: "session-a",
+			}),
+		).resolves.toBeUndefined();
+		await expect(
+			ctx.serial("pi/tool-call", {
+				name: "bash",
+				args: { command: "git status; git commit -am test" },
+				sessionId: "session-a",
+			}),
+		).rejects.toThrow("not allowlisted as read-only");
+
+		const headless = await exitTool!.execute(
+			{ plan: "# Ready plan\n\n1. Implement it." },
+			{ ctx: { hasUI: false, sessionManager: { getSessionId: () => "session-a" } } },
+		);
+		expect(headless.isError).toBe(true);
+		expect(headless.details.active).toBe(true);
+
+		const invalid = await exitTool!.execute(
+			{ plan: "No heading" },
+			{ ctx: { hasUI: true, sessionManager: { getSessionId: () => "session-a" }, ui: {} } },
+		);
+		expect(invalid.isError).toBe(true);
+		expect(invalid.content[0].text).toContain("# heading");
+
+		const approved = await exitTool!.execute(
+			{ plan: "# Ready plan\n\n1. Implement it." },
+			{
+				ctx: {
+					hasUI: true,
+					sessionManager: { getSessionId: () => "session-a" },
+					ui: { select: async () => "Approve and leave Plan mode", notify: () => {} },
+				},
+			},
+		);
+		expect(approved.details.approved).toBe(true);
+		expect(approved.details.active).toBe(false);
+
+		await expect(
+			ctx.serial("pi/tool-call", {
+				name: "write",
+				args: { path: "test.txt", content: "data" },
+				sessionId: "session-a",
+			}),
+		).resolves.toBeUndefined();
+	});
 	it("3. @pi-cordis/plugin-code-mode (PTC): executes JavaScript/TypeScript program in sandbox and injects .d.ts", async () => {
 		const fork = await ctx.plugin(codeModePlugin);
 		expect(ctx.tools.has("run_code")).toBe(true);
@@ -446,21 +393,18 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 		expect(ctx.tools.has("ssh_exec")).toBe(false);
 	});
 
-	it("11. @pi-cordis/profiles: default, plan, and ptc profiles mount all required plugins cleanly", async () => {
-		// Plan profile
-		const planCtx = await createPiContext({ allowModelNetwork: false, profile: "plan" });
-		expect(planCtx.tools.has("plan_step")).toBe(true);
-		expect(planCtx.tools.has("todo_write")).toBe(true);
-
+	it("11. @pi-cordis/profiles: default and ptc keep stable Plan controls while changing presentation", async () => {
 		// PTC profile
 		const ptcCtx = await createPiContext({ allowModelNetwork: false, profile: "ptc" });
 		expect(ptcCtx.tools.has("run_code")).toBe(true);
 		expect(ptcCtx.tools.has("todo_write")).toBe(true);
+		expect(ptcCtx.tools.has("exit_plan_mode")).toBe(true);
 
 		// Default profile (Default is Best: verified essentials, not every plugin)
 		const defaultCtx = await createPiContext({ allowModelNetwork: false, profile: "default" });
 		expect(defaultCtx.tools.has("todo_write")).toBe(true);
 		expect(defaultCtx.tools.has("ask_question")).toBe(true);
+		expect(defaultCtx.tools.has("exit_plan_mode")).toBe(true);
 		expect(defaultCtx.tools.has("subagent")).toBe(false);
 		expect(defaultCtx.tools.has("trigger_compact")).toBe(false);
 		expect(defaultCtx.tools.has("ssh_exec")).toBe(false);
@@ -516,7 +460,7 @@ describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 	it("14. @pi-cordis/plugin-rules-injector: injects project rules and caches content with SHA-256", async () => {
 		const rulesCwd = fs.mkdtempSync(path.join(os.tmpdir(), "picds-rules-test-"));
 		fs.writeFileSync(path.join(rulesCwd, ".cursorrules"), "Use deterministic tests.\n", "utf8");
-		const rulesCtx = await createPiContext({ cwd: rulesCwd, allowModelNetwork: false, profile: "minimal" });
+		const rulesCtx = await createPiContext({ cwd: rulesCwd, allowModelNetwork: false, profile: false });
 		try {
 			const fork = await rulesCtx.plugin(rulesInjectorPlugin);
 			const promptEvent = { prompt: "Base instructions" };

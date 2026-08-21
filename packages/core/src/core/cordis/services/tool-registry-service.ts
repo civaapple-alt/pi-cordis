@@ -192,7 +192,9 @@ export class ToolRegistryService extends Service {
 		}
 
 		// 1. Pre-execution hook
-		await this.ctx.serial("pi/tool-call", { toolName, name: toolName, args });
+		const executionContext = rest[0]?.ctx;
+		const sessionId = executionContext?.sessionManager?.getSessionId?.();
+		await this.ctx.serial("pi/tool-call", { toolName, name: toolName, args, sessionId });
 
 		// 2. Execution
 		const resultEvent = {

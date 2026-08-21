@@ -27,48 +27,19 @@ Pi Agent Core                      模型适配与工具执行原语
 4. **安全拦截必须串行。** 包括 PTC 内部调用在内，所有工具执行都经过同一条 Cordis 安全管线。
 5. **未实现的能力不得伪装成功。** Subagent、SSH 和 Compaction 原型已私有化，并从可发布 Profile 依赖图移除。
 
-## 三种运行模式
+## Profile 与 Plan 状态
 
 ### `default`
 
-日常开发只启用经过核验的必要增强：
-
-- `safety-gate`
-- `git-guard`
-- `rules-injector`
-- `todo-tracker`
-- `output-truncator`
-- `ask-question`
-- `btw`
-- `terminal-notifier`
-
-默认模式不再堆叠规划控制、远程执行或实验性委派能力。
-
-### `plan`
-
-用于只读探索和计划编写：
-
-- `plan-mode`
-- `safety-gate`（`readOnly: true`）
-- `rules-injector`
-- `todo-tracker`
-- `output-truncator`
-- `ask-question`
+默认 Profile 保留 Pi 的普通工具呈现，并挂载八项已核验增强：`safety-gate`、`git-guard`、`rules-injector`、`todo-tracker`、`output-truncator`、`ask-question`、`btw` 与 `terminal-notifier`。
 
 ### `ptc`
 
-通过可超时终止的 Worker 执行 Programmatic Tool Calling（不是权限沙箱）：
+PTC Profile 增加 `code-mode`，通过动态 `pi` SDK 与 `run_code` 呈现底层工具。Worker 只提供超时与故障隔离，不是权限沙箱；内部调用仍经过 Cordis 拦截。
 
-- `code-mode`
-- `safety-gate`
-- `git-guard`
-- `rules-injector`
-- `todo-tracker`
-- `output-truncator`
-- `ask-question`
+### Plan
 
-底层工具从模型顶层工具面隐藏，通过动态生成的 `pi` SDK 暴露；实际执行仍然经过 Cordis 的工具调用与结果拦截钩子。
-
+Plan 是每 Session 协作状态，不是 Profile。根作用域稳定挂载的 `plan-mode` 插件在两个 Profile 中都提供 `/plan`、`/plan off` 与 `exit_plan_mode`。进入或退出 Plan 不装卸插件，也不改变工具 Schema；激活期间的规划规则与修改护栏同时覆盖普通调用和 PTC 内部调用。
 ## 从源码启动
 
 要求 Node.js 22.19 或更高版本，以及 pnpm。
@@ -76,11 +47,11 @@ Pi Agent Core                      模型适配与工具执行原语
 ```bash
 pnpm install
 pnpm picds
-pnpm picds --profile plan
+pnpm picds --plan
 pnpm picds --profile ptc
 ```
 
-命令名仅为 `picds` 和 `picordis`，不会抢占 `pi`。全局用户数据位于 `~/.picds/agent/`。Pi-Cordis 控制面文件（Profile、计划和 Spill 输出）使用 `.picds/`，只在明确说明处回退 `.pi/`；Prompt Template 等 Pi 所有的项目资源继续遵循上游 Pi 路径。
+命令名仅为 `picds` 和 `picordis`，不会抢占 `pi`。全局用户数据位于 `~/.picds/agent/`。Pi-Cordis 控制面文件（Profile 与 Spill 输出）使用 `.picds/`，只在明确说明处回退 `.pi/`；Prompt Template 等 Pi 所有的项目资源继续遵循上游 Pi 路径。
 
 ## 包与插件状态
 
@@ -110,7 +81,7 @@ CI 在 Ubuntu、Windows 和 macOS 的 Node 22.19 上执行 `release:check`。只
 ## 仓库结构
 
 ```text
-presets/                 default、plan、ptc 场景组合
+presets/                 default、ptc 能力组合
 packages/core/           Cordis 服务、Pi 桥接与 picds CLI
 packages/plugins/        原生 Cordis 插件工作区
 .agents/notes/           生效中的架构决策与历史记录

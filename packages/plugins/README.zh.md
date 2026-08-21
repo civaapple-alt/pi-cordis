@@ -12,7 +12,7 @@
 | `git-automation` | `tools` | 根据显式输入格式化 Conventional Commit，不执行提交。 |
 | `git-guard` | `settings`, `tools` | 基于 `git stash create` 的轻量检查点。 |
 | `output-truncator` | `settings` | 递归文本截断与 `.picds/spill` 转存。 |
-| `plan-mode` | `tools`, `settings` | 计划状态、评审流程与只读写阻断。 |
+| `plan-mode` | `tools`, `extensions` | 稳定的每 Session Plan 状态、`/plan`、`exit_plan_mode` 与修改护栏。 |
 | `profiles` | `extensions`, `settings`, `tools` | 内置 Profile 组合与开发期 HMR。 |
 | `rules-injector` | `settings` | 项目规则发现与提示词注入。 |
 | `safety-gate` | 无 | 串行危险命令和受保护路径拦截。 |
@@ -28,8 +28,9 @@
 ## Profile
 
 - `default`：八项经过核验的日常开发增强；
-- `plan`：只读规划与评审控制；
 - `ptc`：使用同一安全管线的编程化工具调用；
 - `minimal`：仅供内部和测试使用，不挂载能力插件。
+
+Plan 在这些 Profile Fiber 之外稳定挂载，通过 `/plan` 控制；它不是 Profile。
 
 精确组合与发布门禁见[根 README](../../README.zh.md)。

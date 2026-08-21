@@ -6,11 +6,11 @@ import { createPiContext } from "../src/core/cordis/index.ts";
 import { BUILTIN_PROFILES, applyProfile, loadProfilesFromYaml, setupPluginHmr } from "@pi-cordis/profiles";
 
 describe("Cordis Native Plugins and Profiles System", () => {
-	it("should define 3 standard canonical presets", () => {
+	it("should keep only the two profiles that materially change the capability presentation", () => {
 		expect(BUILTIN_PROFILES.default).toBeDefined();
-		expect(BUILTIN_PROFILES.plan).toBeDefined();
 		expect(BUILTIN_PROFILES.ptc).toBeDefined();
-		expect(Object.keys(BUILTIN_PROFILES)).toEqual(["default", "plan", "ptc"]);
+		expect(BUILTIN_PROFILES.plan).toBeUndefined();
+		expect(Object.keys(BUILTIN_PROFILES)).toEqual(["default", "ptc"]);
 	});
 
 	it("should initialize Pi context with default profile (rules-injector + todo-tracker)", async () => {
@@ -25,6 +25,7 @@ describe("Cordis Native Plugins and Profiles System", () => {
 		const toolNames = ctx.tools.getToolNames();
 		expect(toolNames).toContain("todo_write");
 		expect(toolNames).toContain("todo_read");
+		expect(toolNames).toContain("exit_plan_mode");
 	});
 
 	it("should support default profile with safety-gate interceptor", async () => {
@@ -64,10 +65,13 @@ describe("Cordis Native Plugins and Profiles System", () => {
 		expect(blocked).toBe(true);
 	});
 
-	it("should support plan profile with read-only protection", async () => {
-		const ctx = await createPiContext({ allowModelNetwork: false, profile: "plan" });
-		const toolNames = ctx.tools.getToolNames();
-		expect(toolNames).toContain("plan_step");
+	it("should reject the removed plan profile with a direct mode migration", async () => {
+		await expect(createPiContext({ allowModelNetwork: false, profile: "plan" })).rejects.toThrow(
+			'Plan is session state. Use "picds --plan" or /plan instead',
+		);
+		await expect(createPiContext({ allowModelNetwork: false, profile: "minimal" })).rejects.toThrow(
+			'Unknown profile "minimal"',
+		);
 	});
 
 	it("should provide /profile slash command with completions and switching handler", async () => {
@@ -89,7 +93,7 @@ describe("Cordis Native Plugins and Profiles System", () => {
 
 		// Test autocompletions
 		const completions = registeredCommand.getArgumentCompletions("p");
-		expect(completions.some((c: any) => c.value === "plan")).toBe(true);
+		expect(completions.some((c: any) => c.value === "plan")).toBe(false);
 		expect(completions.some((c: any) => c.value === "ptc")).toBe(true);
 
 		// Test switching via handler
@@ -103,9 +107,10 @@ describe("Cordis Native Plugins and Profiles System", () => {
 			},
 		};
 
-		await registeredCommand.handler("plan", mockUI);
-		expect(notification).toContain('Switched to profile: "plan"');
-		expect(notification).toContain("plan-mode");
+		await registeredCommand.handler("ptc", mockUI);
+		expect(notification).toContain('Switched to profile: "ptc"');
+		expect(notification).toContain("code-mode");
+		await expect(registeredCommand.handler("plan", mockUI)).rejects.toThrow("Plan is session state");
 	});
 
 	it("should load and merge custom profiles from YAML configuration", async () => {
@@ -206,9 +211,9 @@ profiles:
 	});
 
 	it("rejects unknown profile names instead of silently loading default", async () => {
-		const ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
 		await expect(applyProfile(ctx, "typo-profile")).rejects.toThrow('Unknown profile "typo-profile"');
-		expect(ctx.tools.has("todo_write")).toBe(false);
+		expect(ctx.tools.has("todo_write")).toBe(true);
 	});
 
 	it("should support HMR reload of presets and active plugins", async () => {
@@ -326,6 +331,7 @@ profiles:
 		expect(toolsRegisteredInPi.has("ls")).toBe(true);
 		expect(toolsRegisteredInPi.has("ask_question")).toBe(true);
 		expect(toolsRegisteredInPi.has("todo_write")).toBe(true);
+		expect(toolsRegisteredInPi.has("exit_plan_mode")).toBe(true);
 
 		// 3. Test /btw handler without active model
 		let notifyMsg = "";
@@ -366,9 +372,13 @@ profiles:
 		const ctx = await createPiContext({ profile: "default" });
 
 		let activeToolsInPi: string[] = [];
+		let sessionStart: Function | undefined;
 		const mockPi: any = {
 			registerCommand: () => {},
 			registerTool: () => {},
+			on: (eventName: string, handler: Function) => {
+				if (eventName === "session_start") sessionStart = handler;
+			},
 			setActiveTools: (tools: string[]) => {
 				activeToolsInPi = tools;
 			},
@@ -376,6 +386,8 @@ profiles:
 
 		const bridge = ctx.extensions.createBridgeExtensionFactory();
 		bridge.factory(mockPi);
+		expect(activeToolsInPi).toEqual([]);
+		sessionStart?.({ reason: "startup" });
 
 		expect(activeToolsInPi).toContain("grep");
 		expect(activeToolsInPi).toContain("ask_question");
@@ -400,48 +412,45 @@ profiles:
 		expect(activeToolsInPi).not.toContain("run_code");
 	});
 
-	it("should keep planning controls scoped to plan mode while preserving state", async () => {
-		const profileCwd = fs.mkdtempSync(path.join(os.tmpdir(), "picds-profile-plan-test-"));
-		const ctx = await createPiContext({ profile: "plan", cwd: profileCwd });
+	it("should keep Plan state and exit_plan_mode stable across Profile switches", async () => {
+		const ctx = await createPiContext({ profile: "default" });
+		const planCommand = ctx.extensions.getRegisteredCommands().get("plan");
+		expect(planCommand).toBeDefined();
+		await planCommand!.handler("on", { hasUI: false });
 
-		const tool = ctx.tools.get("plan_step");
-		expect(tool).toBeDefined();
+		const promptBefore = { prompt: "Base prompt" };
+		await ctx.serial("pi/prompt-transform", promptBefore);
+		expect(promptBefore.prompt).toContain("## Plan mode");
+		expect(ctx.tools.has("exit_plan_mode")).toBe(true);
 
-		// Formulate plan in plan mode
-		await tool!.execute({
-			action: "set_plan",
-			title: "Refactor Database Module",
-			overview: "Upgrade schema and add transactions",
-		});
-		await tool!.execute({ action: "add", title: "Write transaction wrapper" });
-
-		// Verify plan created in plan mode
-		const viewResPlan = await tool!.execute({ action: "view" });
-		expect(viewResPlan.planTitle).toBe("Refactor Database Module");
-		expect(viewResPlan.totalSteps).toBe(1);
-
-		// Switch to ptc mode
 		const profileDef = ctx.extensions.getRegisteredCommands().get("profile");
 		await profileDef!.handler("ptc", { hasUI: false });
+		expect(ctx.tools.has("exit_plan_mode")).toBe(true);
+		expect(ctx.tools.has("run_code")).toBe(true);
 
-		// PTC exposes only execution-oriented controls.
-		expect(ctx.tools.has("plan_step")).toBe(false);
+		const promptInPtc = { prompt: "PTC prompt" };
+		await ctx.serial("pi/prompt-transform", promptInPtc);
+		expect(promptInPtc.prompt).toContain("## Plan mode");
+		expect(promptInPtc.prompt).toContain("Programmatic Tool Calling");
 
-		// Switch to default mode
 		await profileDef!.handler("default", { hasUI: false });
-		expect(ctx.tools.has("plan_step")).toBe(false);
+		expect(ctx.tools.has("exit_plan_mode")).toBe(true);
 
-		// Switching back to plan restores the plugin and its module-level plan state.
-		await profileDef!.handler("plan", { hasUI: false });
-		const viewRestored = await ctx.tools.get("plan_step")!.execute({ action: "view" });
-		expect(viewRestored.planTitle).toBe("Refactor Database Module");
-		expect(viewRestored.totalSteps).toBe(1);
+		const approved = await ctx.tools.get("exit_plan_mode")!.execute(
+			{ plan: "# Refactor database\n\n1. Add transaction wrapper." },
+			{
+				ctx: {
+					hasUI: true,
+					ui: { select: async () => "Approve and leave Plan mode", notify: () => {} },
+				},
+			},
+		);
+		expect(approved.details.approved).toBe(true);
 
-		await ctx.tools.get("plan_step")!.execute({ action: "update", id: 1, status: "completed" });
-		const viewUpdated = await ctx.tools.get("plan_step")!.execute({ action: "view" });
-		expect(viewUpdated.percentage).toBe(100);
+		const promptAfter = { prompt: "After approval" };
+		await ctx.serial("pi/prompt-transform", promptAfter);
+		expect(promptAfter.prompt).toBe("After approval");
 
 		await ctx.fiber.dispose();
-		fs.rmSync(profileCwd, { recursive: true, force: true });
 	});
 });

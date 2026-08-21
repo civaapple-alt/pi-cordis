@@ -6,6 +6,19 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Plan 从可装卸的 `plan` Profile 收敛为根作用域、按会话隔离的协作状态：`/plan` 进入、`/plan off` 显式退出，`exit_plan_mode({ plan })` 负责交互式审阅；Plan 状态在 `default` 与 `ptc` Profile 切换时保持，批准后也不再隐式切换 Profile。
+- Profile 仅保留 `default` 与 `ptc` 两种工具呈现/执行形态；CLI 新增 `--plan` 作为独立初始状态开关。Pi ExtensionContext 的 session ID 现贯穿 Prompt 与工具前置事件，PTC 嵌套调用也保留该执行上下文。
+
+### Removed
+
+- 移除 `plan` Profile、隐式 `minimal` Profile 旁路、`plan_step`、`.picds/plans/` 计划落盘、批准后 `pi/profile-switch` 以及未由真实执行事实驱动的 Walkthrough 生成，避免 Plan Fiber 销毁迁移与第二套任务状态机；仅需 Core 的嵌入与测试改用 `profile: false`。
+
+### Fixed
+
+- Cordis Bridge 不再于 Pi Extension 加载阶段提前调用 `setActiveTools()`；首次工具可见性同步延迟到运行期已绑定的 `session_start`，修复 `pnpm picds` 启动时报 `Extension runtime not initialized`。
+
 ## [0.4.0] - 2026-08-21
 
 ### 🧭 产品边界与默认面收敛

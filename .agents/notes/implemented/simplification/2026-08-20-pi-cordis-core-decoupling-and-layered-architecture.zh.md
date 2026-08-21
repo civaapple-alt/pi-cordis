@@ -29,7 +29,7 @@ Created: 2026-08-20
 │                        Pi-Cordis 完整 4 层架构金字塔                   │
 ├────────────────────────────────────────────────────────────────────────┤
 │ 【Level 4: 场景预设与原生插件生态】                                     │
-│   • presets/ (default, plan, ptc)                                      │
+│   • presets/ (default, ptc)；Plan 是跨 Profile 的会话状态              │
 │   • packages/plugins/* (safety-gate, plan-mode, subagent, todo, etc.)  │
 │   • 职责: 仅面向 Cordis 服务矩阵编程 (inject: ["tools", "session"])     │
 ├────────────────────────────────────────────────────────────────────────┤

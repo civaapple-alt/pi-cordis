@@ -12,7 +12,7 @@ English | [中文](tool-registry-service.zh.md)
 2. **Presentation Tool Masking**:
    - Allows plugins (such as `@pi-cordis/plugin-code-mode` or `@pi-cordis/plugin-plan-mode`) to hide specific tools dynamically via `ctx.tools.addFilter()`, ensuring the model only perceives the tools relevant to the active mode;
 3. **Hooked Execution Pipeline (`executeTool`)**:
-   - Pre-execution: Emits `pi/tool-call` for security inspection plugins (e.g. `@pi-cordis/plugin-safety-gate`) to block destructive actions;
+   - Pre-execution: Emits `pi/tool-call` for policy plugins (e.g. Safety Gate or Plan) to block disallowed actions. When Pi supplies an execution context, its session ID is included so policy stays session-scoped, including nested PTC calls;
    - Post-execution: Runs a serial mutable `pi/tool-result` transformation chain. The final `event.result` is returned to Pi.
 
 ---
@@ -66,7 +66,7 @@ Executes a tool through the full lifecycle pipeline:
 
 - **`pi/tool-registered`**: `(tool: ToolDef)`
 - **`pi/tool-unregistered`**: `(name: string)`
-- **`pi/tool-call`**: `{ toolName: string, args: Record<string, unknown> }`
+- **`pi/tool-call`**: `{ toolName: string, args: Record<string, unknown>, sessionId?: string }`
 - **`pi/tool-result`**: `{ toolName: string, args: Record<string, unknown>, result: unknown }`
 
 ---

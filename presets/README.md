@@ -2,15 +2,14 @@
 
 English | [中文](README.zh.md)
 
-Pi-Cordis keeps three profiles whose behavior is materially different. Each directory contains display metadata in `preset.yml` and an ordered Cordis plugin list in `cordis.yml`.
+Pi-Cordis keeps two profiles whose capability presentation is materially different. Each directory contains display metadata in `preset.yml` and an ordered Cordis plugin list in `cordis.yml`.
 
 | Profile | Composition | Purpose |
 |---|---|---|
 | `default` | `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `btw`, `terminal-notifier` | Daily development with a small set of verified controls. |
-| `plan` | `plan-mode`, read-only `safety-gate`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question` | Read-only planning and review. |
 | `ptc` | `code-mode`, `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question` | Programmatic batching through `run_code`. |
 
-Start with `pnpm picds`, `pnpm picds --profile plan`, or `pnpm picds --profile ptc`. In the TUI, use `/profile <name>`.
+Start with `pnpm picds` or `pnpm picds --profile ptc`. Plan is independent session state: use `pnpm picds --plan`, `/plan`, and `/plan off`; it survives `/profile default` and `/profile ptc` switches.
 
 Project configuration prefers `<cwd>/.picds/` and falls back to `<cwd>/.pi/` only when `.picds/` is absent. User configuration lives under `~/.picds/agent/`. Unknown profiles and unknown plugin names fail explicitly.
 

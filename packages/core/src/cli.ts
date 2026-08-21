@@ -25,17 +25,19 @@ function printCliHelp(): void {
 	console.log(`picds - Pi coding agent with a reversible Cordis control plane
 
 Usage:
-  picds [--profile <default|plan|ptc>] [Pi options] [@files...] [messages...]
+  picds [--profile <default|ptc>] [--plan] [Pi options] [@files...] [messages...]
 
 Pi-Cordis options:
   --profile, -P <name>   Select the initial Cordis profile (default: default)
+  --plan                 Start the session in Plan mode
   --help, -h             Show this Pi-Cordis help
   --version, -v          Show the Pi-Cordis package version
 
 Profiles:
   default   Verified daily-development policy and interaction plugins
-  plan      Read-only planning and review controls
   ptc       Worker-based Programmatic Tool Calling with the same safety hooks
+
+Plan is session state, not a Profile. Use --plan, /plan, or /plan off.
 
 All other arguments and subcommands are delegated to @earendil-works/pi-coding-agent.
 Use "picds <subcommand> --help" for upstream subcommand help.
@@ -59,6 +61,7 @@ async function runCli() {
 		return;
 	}
 	let profileName = "default";
+	let planMode = false;
 	const cleanArgs: string[] = [];
 
 	for (let i = 0; i < rawArgs.length; i++) {
@@ -71,6 +74,8 @@ async function runCli() {
 			profileName = arg.slice("--profile=".length);
 		} else if (arg.startsWith("-P=")) {
 			profileName = arg.slice("-P=".length);
+		} else if (arg === "--plan") {
+			planMode = true;
 		} else {
 			cleanArgs.push(arg);
 		}
@@ -84,6 +89,7 @@ async function runCli() {
 	// 1. Boot Cordis Microkernel & Core Services + Active Profile
 	const cordisCtx = await createPiContext({
 		profile: profileName,
+		planMode,
 		cwd: process.cwd(),
 	});
 

@@ -23,4 +23,4 @@
 ### 2. 微内核与插件开发指南 ([`cordis/`](cordis/))
 - [Cordis 微内核架构深度剖析](cordis/architecture.zh.md) — IoC 容器、Fiber 作用域、Disposer 模式与事件总线
 - [原生 Cordis 插件开发教程](cordis/plugin-development.zh.md) — 编写 `@pi-cordis/plugin-*` 插件、显式 `inject` 依赖与可逆副作用
-- [场景预设与 YAML 组合指南](cordis/profiles-and-presets.zh.md) — 3 大核心预设（`default`, `plan`, `ptc`）、`cordis.yml` 与双轨 HMR
+- [场景预设与 YAML 组合指南](cordis/profiles-and-presets.zh.md) — `default`/`ptc` 能力 Profile、独立 Plan 状态、`cordis.yml` 与双轨 HMR

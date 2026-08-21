@@ -31,6 +31,7 @@ Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。它可将多轮串�
 - 自动从大模型可见的顶层工具列表中过滤掉底层零散工具（`read`、`write`、`edit`、`bash`、`grep`、`find`、`ls`）；
 - 仅向模型暴露 `run_code` 与白名单中的顶层交互工具，减少重复的工具 Schema 表面积；
 - Worker 内通过 `pi.*` SDK 保留对当前活跃工具的程序化调用能力。
+- `exit_plan_mode` 以稳定 Schema 保持顶层可见；嵌套 `pi.*` 调用保留 Pi 执行上下文，因此活跃 Plan 会话可同时拦截 `run_code` 内部与顶层的变更操作。
 
 ### 3. 独立工作线程执行引擎 (`worker-runner.ts`)
 - 每次执行启动一个全新的 Node.js `worker_threads.Worker`（独立的 V8 Isolate 与操作系统线程）；
@@ -56,6 +57,7 @@ Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。它可将多轮串�
     allowedTopLevelTools:         # 允许保留在顶层工具列表中的工具白名单
       - run_code
       - ask_question
+      - exit_plan_mode
       - session_handoff
 ```
 

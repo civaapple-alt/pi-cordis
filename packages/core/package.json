@@ -36,6 +36,7 @@
 	"dependencies": {
 		"@deepseek-ai/cordis": "^4.0.1",
 		"@pi-cordis/profiles": "workspace:*",
+		"@pi-cordis/plugin-plan-mode": "workspace:*",
 		"@pi-cordis/plugin-terminal-notifier": "workspace:*",
 		"@earendil-works/pi-coding-agent": "^0.84.2",
 		"@earendil-works/pi-ai": "^0.84.2",

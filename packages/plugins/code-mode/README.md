@@ -31,6 +31,7 @@ Returns:
 - Automatically filters out raw underlying tools (`read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`) from the model's top-level tool list.
 - Only exposes `run_code` and explicitly allowed interaction tools at the top level, reducing repeated tool-schema surface.
 - Retains programmatic access to active tools inside the Worker through the `pi.*` SDK.
+- Keeps `exit_plan_mode` visible with a stable schema. Nested `pi.*` calls preserve Pi's execution context, so an active Plan session can reject mutations inside `run_code` as well as top-level calls.
 
 ### 3. Isolated Worker Thread Execution Engine (`worker-runner.ts`)
 - Spawns a dedicated Node.js `worker_threads.Worker` (isolated V8 Isolate and OS thread) for each execution.
@@ -56,6 +57,7 @@ Returns:
     allowedTopLevelTools:         # Whitelist of unmasked top-level tools
       - run_code
       - ask_question
+      - exit_plan_mode
       - session_handoff
 ```
 

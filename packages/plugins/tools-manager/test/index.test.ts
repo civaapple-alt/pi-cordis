@@ -4,7 +4,7 @@ import toolsManagerPlugin from "../src/index.js";
 
 describe("tools-manager lifecycle", () => {
 	it("changes exported tools and restores visibility after disposal", async () => {
-		const ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: false });
 		const fork = await ctx.plugin(toolsManagerPlugin);
 		const tool = ctx.tools.get("manage_tools")!;
 

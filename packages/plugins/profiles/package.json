@@ -25,7 +25,6 @@
 		"@pi-cordis/plugin-git-guard": "workspace:*",
 		"@pi-cordis/plugin-todo-tracker": "workspace:*",
 		"@pi-cordis/plugin-rules-injector": "workspace:*",
-		"@pi-cordis/plugin-plan-mode": "workspace:*",
 		"@pi-cordis/plugin-code-mode": "workspace:*",
 		"@pi-cordis/plugin-ask-question": "workspace:*",
 		"@pi-cordis/plugin-output-truncator": "workspace:*",

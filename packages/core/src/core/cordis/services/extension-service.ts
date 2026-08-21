@@ -26,6 +26,7 @@ export class ExtensionService extends Service {
 	public lastLoadedResult?: any;
 	private commands = new Map<string, ExtensionCommandDefinition[]>();
 	private activePi?: any;
+	private piRuntimeReady = false;
 	private activeCommandNames = new Set<string>();
 
 	constructor(ctx: Context, config?: ExtensionServiceConfig) {
@@ -193,6 +194,7 @@ export class ExtensionService extends Service {
 			hidden: true,
 			factory: (pi: any) => {
 				this.activePi = pi;
+				this.piRuntimeReady = false;
 				this.activeCommandNames.clear();
 				this.ctx.ai.setModelSwitcher((model) => (
 					typeof pi.setModel === "function" ? pi.setModel(model) : Promise.resolve(false)
@@ -226,17 +228,21 @@ export class ExtensionService extends Service {
 					}
 				}
 
-				// 4. Synchronize active tools according to active filters (e.g. PTC code-mode)
-				this.syncActiveTools();
+				// 4. Tool definitions may be registered while Pi loads extensions, but
+				// action methods such as setActiveTools() are unavailable until Pi binds
+				// the extension runtime. The session_start bridge below performs the
+				// initial visibility synchronization after that boundary.
 
 				// 5. Connect prompt transformation bridge (rules-injector, todo-tracker, plan-mode, code-mode)
-				pi.on?.("before_agent_start", async (event: any) => {
+				pi.on?.("before_agent_start", async (event: any, extensionContext: any) => {
+					const sessionId = extensionContext?.sessionManager?.getSessionId?.();
 					await this.ctx.serial("pi/session-before", {
 						session: event.session,
 						prompt: event.prompt ?? "",
 					});
 					const promptEvent = {
 						prompt: event.systemPrompt ?? "",
+						sessionId,
 						userPrompt: event.prompt ?? "",
 					};
 					await this.ctx.serial("pi/prompt-transform", promptEvent);
@@ -246,11 +252,17 @@ export class ExtensionService extends Service {
 				});
 
 				// 6. Connect session lifecycle events
-				pi.on?.("session_start", (event: any) => {
-					this.ctx.emit("pi/session-start", event);
+				pi.on?.("session_start", (event: any, extensionContext: any) => {
+					this.piRuntimeReady = true;
+					this.syncActiveTools();
+					this.ctx.emit("pi/session-start", {
+						...event,
+						sessionId: extensionContext?.sessionManager?.getSessionId?.(),
+					});
 				});
 
 				pi.on?.("session_shutdown", (event: any) => {
+					this.piRuntimeReady = false;
 					this.ctx.emit("pi/session-shutdown", event);
 				});
 
@@ -282,11 +294,12 @@ export class ExtensionService extends Service {
 				});
 
 				// 8. Forward tool_call and tool_result events to Cordis EventBus
-				pi.on?.("tool_call", async (event: any) => {
+				pi.on?.("tool_call", async (event: any, extensionContext: any) => {
 					await this.ctx.serial("pi/tool-call", {
 						toolName: event.toolName,
 						name: event.toolName,
 						args: event.input ?? {},
+						sessionId: extensionContext?.sessionManager?.getSessionId?.(),
 					});
 				});
 
@@ -327,6 +340,7 @@ export class ExtensionService extends Service {
 		for (const tool of this.ctx.tools.getCustomTools()) {
 			this.activePi.registerTool?.(this.adaptToolForPi(tool));
 		}
+		if (!this.piRuntimeReady) return;
 
 		// 2. Compute exported tool names (taking active filters like code-mode into account)
 		const exportedToolNames = this.ctx.tools.getExportedToolNames();

@@ -12,7 +12,7 @@ Native plugins extend the Pi data plane through Cordis services. Every registrat
 | `git-automation` | `tools` | Conventional Commit message formatter from explicit inputs; it does not commit. |
 | `git-guard` | `settings`, `tools` | Lightweight `git stash create` checkpoints. |
 | `output-truncator` | `settings` | Recursive text truncation and `.picds/spill` persistence. |
-| `plan-mode` | `tools`, `settings` | Plan state, review flow, and read-only write blocking. |
+| `plan-mode` | `tools`, `extensions` | Stable per-session Plan state, `/plan`, `exit_plan_mode`, and mutation guardrails. |
 | `profiles` | `extensions`, `settings`, `tools` | Built-in profile composition and development HMR. |
 | `rules-injector` | `settings` | Project-rule discovery and prompt injection. |
 | `safety-gate` | none | Serial destructive-command and protected-path interception. |
@@ -28,8 +28,9 @@ Native plugins extend the Pi data plane through Cordis services. Every registrat
 ## Profiles
 
 - `default`: eight verified daily-development enhancements.
-- `plan`: read-only planning and review controls.
 - `ptc`: programmatic tool calling with the same safety pipeline.
 - `minimal`: internal/testing escape hatch with no native capability plugins.
+
+Plan is mounted outside these Profile Fibers and is controlled with `/plan`; it is not a Profile.
 
 See the [root README](../../README.md) for the exact composition and release gates.

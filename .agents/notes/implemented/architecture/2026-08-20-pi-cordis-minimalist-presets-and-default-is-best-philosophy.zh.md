@@ -3,13 +3,15 @@
 Status: implemented
 Created: 2026-08-20
 
+边界更新（2026-08-21）：本文记录首次预设精简里程碑，其中把 Plan 作为 Profile 的设计已由[《Plan 状态与 Profile 边界》](2026-08-21-pi-cordis-plan-state-and-profile-boundary.zh.md)取代。当前 Profile 仅为 `default` 与 `ptc`；Plan 是按会话保持的稳定状态，通过 `/plan` 或 `--plan` 进入。
+
 [English](2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.md) | 中文
 
 ## 摘要 (Executive Summary)
 
 本篇架构决策记录（ADR）针对 `pi-cordis` 原有预设体系中存在的**过度设计（Over-Engineering）与技术排列组合繁杂问题**进行了深刻反思，确立了回归 Pi 核心灵魂的 **“极简设计哲学（Minimalist Philosophy）” 与 “默认即最佳（Default is Best）” 准则**。
 
-本决策废除了基于“内部插件微小差异”人工堆砌的 5 大混乱预设（`default`, `safe`, `strict`, `full`, `minimal`），收敛为 **3 个具有根本行为形态差异的场景级预设（Default 标准编码 / Plan 规划审计 / PTC 编程调用）**，彻底消除了用户的心智负担。
+本决策废除了基于“内部插件微小差异”人工堆砌的 5 大混乱预设（`default`, `safe`, `strict`, `full`, `minimal`）。当前边界收敛为 **2 个执行 Profile（`default`、`ptc`）加一个正交的按会话 Plan 协作状态**，在保持 Pi 轻量产品灵魂的同时消除用户心智负担。
 
 ---
 
@@ -45,17 +47,17 @@ Created: 2026-08-20
 
 ---
 
-## 三、精简重构落地：从 5 大排列组合收敛至 3 大场景预设
+## 三、精简重构落地：两个 Profile 与一个正交 Plan 状态
 
-我们废除了无意义的技术排列组合，收敛为 **3 个语义极其明确的场景模式**：
+我们废除了无意义的技术排列组合，收敛为 **2 个执行 Profile 与一个独立 Plan 状态**：
 
 ```text
-【重构前 (5个技术排列组合)】                     【重构后 (3个极简场景预设)】
+【重构前 (5个技术排列组合)】                     【重构后 (2个 Profile + Plan 状态)】
   ├── default (无安全拦截？)    ───┐
-  ├── safe (4个插件全开)        ────┼───> 🌟 1. default (标准编码模式: 开箱即用，安全/规则/待办全开)
+  ├── safe (4个插件全开)        ────┼───> 🌟 Profile: default (开箱即用，安全/规则/待办全开)
   ├── full (4个插件，和safe重复) ───┘
-  ├── strict (无todo的只读？)   ────────> 🛡️ 2. plan / review (只读规划模式: 需求拆解与架构探索，严禁写操作)
-  └── minimal (为了凑数？)       ────────> ⚡ 3. ptc / code (编程调用模式: TypeScript 批量程序化调用)
+  ├── strict (无todo的只读？)   ────────> 🛡️ 状态: Plan (可叠加到任一 Profile 的只读规划)
+  └── minimal (为了凑数？)       ────────> ⚡ Profile: ptc (TypeScript 程序化调用)
 ```
 
 ---
@@ -71,13 +73,13 @@ Created: 2026-08-20
 
 ---
 
-### 2. 🛡️ `plan` (只读规划与审计模式)
-- **定位**：专用于大型重构、架构探索、需求拆解与安全审计的**只读沙箱模式**；
+### 2. 🛡️ Plan（只读规划与审阅状态）
+- **定位**：专用于大型重构、架构探索与需求拆解的按会话护栏状态；它既不是安全沙箱，也不是 Profile；
 - **能力矩阵**：
-  - 强制开启严格只读保护（`safety-gate: { readOnly: true }`），拦截一切写文件、删文件与破坏性 Bash 执行；
-  - 任务规划拆解与只读代码库探索；
-  - 保留待办追踪与规则注入。
-- **使用交互**：在 TUI 中输入 `/profile plan` 或 CLI 启动 `pnpm pi --profile plan`。
+  - 由根作用域稳定 Plan 插件拦截文件变更工具与非白名单 Shell；
+  - 通过 `exit_plan_mode` 显式交互审批，批准不会切换 Profile；
+  - 在 `default` 与 `ptc` 之间切换时保持同一会话状态。
+- **进入方式**：TUI 输入 `/plan` 或 CLI 启动 `picds --plan`；`/plan off` 显式退出。
 
 ---
 

@@ -2,10 +2,15 @@
 
 English | [中文](README.zh.md)
 
-Provides `plan_step`, a structured in-memory plan state machine with Markdown projection under `.picds/plans/`. It supports plan metadata, steps, status updates, session-scoped views, interactive review, and optional walkthrough generation.
+Plan is per-session collaboration state, not a Profile. `@pi-cordis/core` mounts this plugin once outside the switchable Profile scope, so `/profile default` and `/profile ptc` do not destroy Plan state or change its tool schema.
 
-Mutating file tools are blocked while the plan is unapproved. The standard `plan` Profile also mounts read-only Safety Gate coverage for shell mutations. Approval requires an actual Pi UI selection; a headless model call cannot self-approve. Approval emits `pi/profile-switch` to `default` or `ptc`.
+The plugin contributes two controls:
 
-Plan and index writes fail visibly if persistence fails. `finish` refuses empty or incomplete plans and records the supplied verification plan without claiming that tests ran. Walkthrough content remains caller-supplied, not independently verified.
+- `/plan` enters Plan mode; `/plan off` leaves it by explicit user action;
+- `exit_plan_mode({ plan })` presents a complete Markdown plan for interactive review and leaves Plan mode only after approval.
 
-This is workflow control, not an operating-system permission boundary. A user can explicitly leave Plan mode with `/profile default`.
+`exit_plan_mode` remains registered while Plan mode is inactive. This keeps the model-facing schema stable; calling it while inactive fails explicitly. Plan authoring does not duplicate execution tracking: use the plan argument for the review artifact, then use `todo_write` only during implementation.
+
+While active, the plugin injects concise planning guidance and blocks file mutation tools plus Shell commands that are not allowlisted as read-only. Calls made through PTC still cross this gate. This is a mistake-prevention guardrail, not a permission sandbox, and custom tools may require their own policy.
+
+Mode state is isolated by the Pi session ID supplied through `ExtensionService` and lasts for the current Picds process. The plugin does not write `.picds/plans/` artifacts or generate caller-authored Walkthrough claims.

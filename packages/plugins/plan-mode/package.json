@@ -1,7 +1,7 @@
 {
 	"name": "@pi-cordis/plugin-plan-mode",
 	"version": "0.1.0",
-	"description": "Claude Code style Plan Mode and step tracking plugin for Pi-Cordis",
+	"description": "Stable per-session Plan state and interactive review controls for Pi-Cordis",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",

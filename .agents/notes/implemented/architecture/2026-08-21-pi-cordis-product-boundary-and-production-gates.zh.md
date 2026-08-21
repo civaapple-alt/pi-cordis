@@ -1,5 +1,7 @@
 # Pi-Cordis 产品边界与上线门禁
 
+[English](2026-08-21-pi-cordis-product-boundary-and-production-gates.md) | 中文
+
 Status: implemented
 
 ## 决策
@@ -19,9 +21,10 @@ Pi-Cordis 定位为 **Pi 数据面之上的轻量 Cordis 控制面**。
 
 `default` 只组合已经存在真实执行路径和回归测试的八项增强：`safety-gate`、`git-guard`、`rules-injector`、`todo-tracker`、`output-truncator`、`ask-question`、`btw`、`terminal-notifier`。
 
+根控制面还会在所有 Profile 之外只挂载一次 `plan-mode`。Plan 默认不激活，只提供稳定的 `exit_plan_mode` Schema 与用户控制的 `/plan` 命令；它是 Session 协作状态，不是 Profile 能力集合。
+
 ### 场景启用
 
-- `plan-mode` 只在 `plan` 中出现；
 - `code-mode` 只在 `ptc` 中出现；
 - `git-automation`、`session-handoff`、`tools-manager` 保持显式可选，不占用默认工具面。
 
@@ -51,6 +54,7 @@ Pi-Cordis 定位为 **Pi 数据面之上的轻量 Cordis 控制面**。
 - 基于模式的命令拦截是防误操作护栏，不是执行不可信代码的安全沙箱；PTC Worker 只提供超时与故障隔离；
 - 无交互 UI 时，提问和计划审批返回显式不可用，不代替用户作选择；
 - Profile 替换先挂载候选项，失败则只销毁候选项并保留旧 Profile；
+- Plan 激活不会替换 Profile；批准后只退出 Plan，并保留当前 `default` 或 `ptc` 工具呈现；
 - 凭据写入使用进程内串行与原子替换，失败向调用方传播；它不冒充多进程事务数据库。
 
 ## 发布门禁

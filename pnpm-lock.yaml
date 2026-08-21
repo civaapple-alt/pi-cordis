@@ -51,6 +51,9 @@ importers:
       '@earendil-works/pi-tui':
         specifier: ^0.84.2
         version: 0.84.2
+      '@pi-cordis/plugin-plan-mode':
+        specifier: workspace:*
+        version: link:../plugins/plan-mode
       '@pi-cordis/plugin-terminal-notifier':
         specifier: workspace:*
         version: link:../plugins/terminal-notifier
@@ -145,9 +148,6 @@ importers:
       '@pi-cordis/plugin-output-truncator':
         specifier: workspace:*
         version: link:../output-truncator
-      '@pi-cordis/plugin-plan-mode':
-        specifier: workspace:*
-        version: link:../plan-mode
       '@pi-cordis/plugin-rules-injector':
         specifier: workspace:*
         version: link:../rules-injector

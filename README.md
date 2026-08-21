@@ -27,48 +27,19 @@ This boundary is deliberate: Pi-Cordis is useful when a Pi user needs runtime po
 4. **Security interception is serial.** Tool calls, including calls made inside PTC, pass through the same Cordis safety pipeline.
 5. **Do not report simulated work as success.** Unimplemented Subagent, SSH, and Compaction prototypes are private and absent from publishable profiles.
 
-## Runtime modes
+## Profiles and Plan state
 
 ### `default`
 
-The small daily-development surface:
-
-- `safety-gate`
-- `git-guard`
-- `rules-injector`
-- `todo-tracker`
-- `output-truncator`
-- `ask-question`
-- `btw`
-- `terminal-notifier`
-
-Planning controls, remote execution, and experimental delegation are intentionally absent.
-
-### `plan`
-
-Read-only exploration and plan authoring:
-
-- `plan-mode`
-- `safety-gate` with `readOnly: true`
-- `rules-injector`
-- `todo-tracker`
-- `output-truncator`
-- `ask-question`
+The default Profile keeps Pi's ordinary tool presentation and mounts eight verified enhancements: `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `btw`, and `terminal-notifier`.
 
 ### `ptc`
 
-Programmatic Tool Calling through a timeout-isolated Worker (not a permission sandbox):
+The PTC Profile adds `code-mode` and presents raw tools through the generated `pi` SDK and `run_code`. Its Worker provides timeout and failure isolation, not a permission sandbox; nested calls still cross Cordis interception.
 
-- `code-mode`
-- `safety-gate`
-- `git-guard`
-- `rules-injector`
-- `todo-tracker`
-- `output-truncator`
-- `ask-question`
+### Plan
 
-Raw tools are hidden from the model-facing surface and exposed through the generated `pi` SDK. Their execution still crosses Cordis tool-call and tool-result hooks.
-
+Plan is per-session collaboration state, not a Profile. The stable root-scoped `plan-mode` plugin contributes `/plan`, `/plan off`, and `exit_plan_mode` in both Profiles. Entering or leaving Plan does not remount plugins or change the tool schema. While active, Plan guidance and mutation guardrails apply equally to ordinary and PTC tool calls.
 ## Quick start from source
 
 Requirements: Node.js 22.19 or newer and pnpm.
@@ -76,11 +47,11 @@ Requirements: Node.js 22.19 or newer and pnpm.
 ```bash
 pnpm install
 pnpm picds
-pnpm picds --profile plan
+pnpm picds --plan
 pnpm picds --profile ptc
 ```
 
-The command names are `picds` and `picordis`; the project never claims `pi` on `PATH`. User data lives under `~/.picds/agent/`. Pi-Cordis control-plane files (Profiles, plans, and spill output) use `.picds/`, with `.pi/` fallback only where explicitly documented. Pi-owned project resources such as prompt templates continue to follow Pi's upstream locations.
+The command names are `picds` and `picordis`; the project never claims `pi` on `PATH`. User data lives under `~/.picds/agent/`. Pi-Cordis control-plane files (Profiles and spill output) use `.picds/`, with `.pi/` fallback only where explicitly documented. Pi-owned project resources such as prompt templates continue to follow Pi's upstream locations.
 
 ## Package and plugin status
 
@@ -110,7 +81,7 @@ CI runs `release:check` on Ubuntu, Windows, and macOS with Node 22.19. A release
 ## Repository layout
 
 ```text
-presets/                 default, plan, and ptc compositions
+presets/                 default and ptc capability compositions
 packages/core/           Cordis services, Pi bridge, and picds CLI
 packages/plugins/        native Cordis plugin workspaces
 .agents/notes/           active architectural decisions and history

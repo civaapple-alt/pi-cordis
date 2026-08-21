@@ -3,13 +3,15 @@
 Status: implemented
 Created: 2026-08-20
 
+Boundary update (2026-08-21): this note records the first preset simplification milestone. Its treatment of Plan as a Profile has been superseded by [Plan State and Profile Boundary](2026-08-21-pi-cordis-plan-state-and-profile-boundary.md): the current Profiles are `default` and `ptc`, while Plan is stable per-session state entered with `/plan` or `--plan`.
+
 English | [中文](2026-08-20-pi-cordis-minimalist-presets-and-default-is-best-philosophy.zh.md)
 
 ## Executive Summary
 
 This Architecture Decision Record (ADR) addresses the **over-engineering and fragmented technical permutations** in `pi-cordis`'s initial preset system, establishing the core tenets of **Minimalist Design Philosophy** and **"Default is Best"**.
 
-This decision deprecated the 5 cluttered internal permutations (`default`, `safe`, `strict`, `full`, `minimal`) in favor of **3 distinct, scenario-driven Agent Modes (Default Standard, Plan/Review, and PTC Code Mode)**, eliminating user cognitive burden and realigning with Pi's lightweight product soul.
+This decision deprecated the 5 cluttered internal permutations (`default`, `safe`, `strict`, `full`, `minimal`). The current boundary keeps **2 execution Profiles (`default` and `ptc`) plus Plan as orthogonal per-session collaboration state**, eliminating user cognitive burden while preserving Pi's lightweight product soul.
 
 ---
 
@@ -47,15 +49,15 @@ The previous design fell into the trap of **"permutations based on internal impl
 
 ---
 
-## 3. Simplification: From 5 Permutations to 3 Distinct Modes
+## 3. Simplification: Two Profiles, One Orthogonal Plan State
 
 ```text
-[Before: 5 Artificial Permutations]               [After: 3 Scenario-Driven Modes]
+[Before: 5 Artificial Permutations]               [After: 2 Profiles + Plan state]
   ├── default (Missing safety-gate?) ───┐
-  ├── safe (All 4 plugins)          ────┼───> 🌟 1. default (Standard Mode: Out-of-the-box safe & complete)
+  ├── safe (All 4 plugins)          ────┼───> 🌟 Profile: default (Out-of-the-box safe & complete)
   ├── full (All 4 plugins, dup safe) ───┘
-  ├── strict (Read-only without todo?) ─────> 🛡️ 2. plan / review (Read-Only Mode: Planning & exploration)
-  └── minimal (Arbitrary empty mode?)  ─────> ⚡ 3. ptc / code (Programmatic Tool Calling Mode)
+  ├── strict (Read-only without todo?) ─────> 🛡️ State: Plan (read-only planning in either Profile)
+  └── minimal (Arbitrary empty mode?)  ─────> ⚡ Profile: ptc (Programmatic Tool Calling)
 ```
 
 ---
@@ -71,13 +73,13 @@ The previous design fell into the trap of **"permutations based on internal impl
 
 ---
 
-### 2. 🛡️ `plan` (Read-Only Planning & Review Mode)
-- **Positioning**: Dedicated **read-only sandbox mode** for complex refactorings, architecture exploration, and proposal design;
+### 2. 🛡️ Plan (Read-Only Planning & Review State)
+- **Positioning**: Per-session guardrail state for complex refactorings, architecture exploration, and proposal design; it is not a security sandbox or Profile;
 - **Capabilities**:
-  - Strict read-only mode (`safety-gate: { readOnly: true }`), blocking all write, edit, delete, and mutating shell commands;
-  - Plan step tracking and read-only codebase exploration;
-  - Todo tracking and rules injection remain active.
-- **Switching**: `/profile plan` in TUI or `pnpm pi --profile plan` in CLI.
+  - Blocks file mutation tools and non-allowlisted Shell commands through the stable root-scoped Plan plugin;
+  - Uses `exit_plan_mode` for explicit interactive approval, without changing Profile;
+  - Keeps the same session state across `default` and `ptc`.
+- **Entry**: `/plan` in TUI or `picds --plan` in CLI; `/plan off` explicitly exits.
 
 ---
 

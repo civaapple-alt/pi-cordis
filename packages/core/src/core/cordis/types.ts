@@ -54,7 +54,7 @@ declare module "@deepseek-ai/cordis" {
 		"pi/tool-registered"(tool: ToolDef): void;
 		"pi/tool-unregistered"(name: string): void;
 		"pi/tools-changed"(): void;
-		"pi/tool-call"(event: { toolName?: string; name?: string; args: Record<string, unknown> }): void;
+		"pi/tool-call"(event: { toolName?: string; name?: string; args: Record<string, unknown>; sessionId?: string }): void;
 		"pi/tool-result"(event: { toolName?: string; name?: string; args?: Record<string, unknown>; result: unknown }): void;
 
 		// AI & Model lifecycle
@@ -82,11 +82,10 @@ declare module "@deepseek-ai/cordis" {
 		"pi/package-progress"(event: { message: string }): void;
 
 		// Prompts & Features
-		"pi/prompt-transform"(event: { prompt: string }): void;
+		"pi/prompt-transform"(event: { prompt: string; sessionId?: string; userPrompt?: string }): void;
 		"pi/compact"(event: { reason: string; timestamp: number; modifiedFiles?: string[]; keyDecisions?: string[]; resolvedIssues?: string[]; pendingBlockers?: string[] }): void;
 		"pi/handoff"(event: Record<string, unknown>): void;
-		"pi/plan-completed"(event: { totalSteps: number }): void;
-		"pi/profile-switch"(profileName: string): void;
+		"pi/plan-mode-changed"(event: { active: boolean; sessionId: string }): void;
 		"pi/hmr-preset-update"(event: { profileName: string; profile: unknown }): void;
 		"pi/hmr-plugin-update"(event: { pluginName: string; filePath: string }): void;
 	}

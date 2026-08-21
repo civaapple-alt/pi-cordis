@@ -2,10 +2,15 @@
 
 [English](README.md) | 中文
 
-提供 `plan_step`：内存中的结构化计划状态机，并把 Markdown 投影到 `.picds/plans/`。它支持计划元数据、步骤、状态更新、会话级视图、交互审查和可选 Walkthrough 生成。
+Plan 是每个 Session 的协作状态，不是 Profile。`@pi-cordis/core` 在可切换 Profile 作用域之外只挂载一次该插件，因此 `/profile default` 与 `/profile ptc` 不会销毁 Plan 状态，也不会改变 Plan 工具 Schema。
 
-计划未批准时会阻断文件修改工具；标准 `plan` Profile 还通过只读 Safety Gate 覆盖 Shell 修改。批准必须来自真实 Pi UI 选择，Headless 模型调用不能自我批准；批准后广播 `pi/profile-switch`，切换到 `default` 或 `ptc`。
+插件只提供两个控制入口：
 
-计划与索引持久化失败会明确报错。`finish` 拒绝空计划或未完成步骤，只记录调用者提供的验证计划，不会声称测试已经运行。Walkthrough 内容仍由调用者提供，并非独立核验结果。
+- `/plan` 进入 Plan mode；`/plan off` 由用户明确退出；
+- `exit_plan_mode({ plan })` 把完整 Markdown 计划交给交互式评审，只有批准后才退出 Plan mode。
 
-这是工作流控制，不是操作系统权限边界。用户可显式执行 `/profile default` 离开 Plan 模式。
+Plan 未激活时 `exit_plan_mode` 仍保持注册，以稳定模型可见 Schema；此时调用会明确失败。计划编写不再复制执行期任务追踪：评审内容放在 `plan` 参数中，批准后的实施进度才使用 `todo_write`。
+
+Plan 激活期间，插件注入精简规划规则，拦截文件修改工具以及未列入只读白名单的 Shell 命令；PTC 内部调用也经过同一门禁。它是防误操作护栏，不是权限沙箱，自定义工具仍可能需要自己的策略。
+
+状态按 `ExtensionService` 提供的 Pi Session ID 隔离，并维持到当前 Picds 进程结束。插件不再写入 `.picds/plans/`，也不再生成由调用者自行声明的 Walkthrough。

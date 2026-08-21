@@ -2,15 +2,14 @@
 
 [English](README.md) | 中文
 
-Pi-Cordis 只保留三种具有实质行为差异的 Profile。每个目录以 `preset.yml` 保存展示元数据，以 `cordis.yml` 保存有序的 Cordis 插件列表。
+Pi-Cordis 只保留两种能力呈现存在实质差异的 Profile。每个目录以 `preset.yml` 保存展示元数据，以 `cordis.yml` 保存有序的 Cordis 插件列表。
 
 | Profile | 组成 | 用途 |
 |---|---|---|
 | `default` | `safety-gate`、`git-guard`、`rules-injector`、`todo-tracker`、`output-truncator`、`ask-question`、`btw`、`terminal-notifier` | 带少量已核验控制能力的日常开发。 |
-| `plan` | `plan-mode`、只读 `safety-gate`、`rules-injector`、`todo-tracker`、`output-truncator`、`ask-question` | 只读规划与审查。 |
 | `ptc` | `code-mode`、`safety-gate`、`git-guard`、`rules-injector`、`todo-tracker`、`output-truncator`、`ask-question` | 通过 `run_code` 进行程序化批处理。 |
 
-使用 `pnpm picds`、`pnpm picds --profile plan` 或 `pnpm picds --profile ptc` 启动；TUI 内可执行 `/profile <name>`。
+使用 `pnpm picds` 或 `pnpm picds --profile ptc` 启动。Plan 是独立的 Session 状态：通过 `pnpm picds --plan`、`/plan` 与 `/plan off` 控制，并在 `/profile default` 与 `/profile ptc` 切换期间保持不变。
 
 项目配置优先读取 `<cwd>/.picds/`，仅在其不存在时回退到 `<cwd>/.pi/`；用户配置位于 `~/.picds/agent/`。未知 Profile 和未知插件名称都会明确失败。
 

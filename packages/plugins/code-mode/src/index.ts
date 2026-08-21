@@ -42,7 +42,7 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 				"session_handoff",
 				"todo_write",
 				"todo_read",
-				"plan_step",
+				"exit_plan_mode",
 			],
 		);
 
@@ -81,10 +81,10 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 		},
 		renderCall: (args: { code?: string }, theme?: any) => renderCodeModeCall(args, theme),
 		renderResult: (result: any, options?: any, theme?: any) => renderCodeModeResult(result, options, theme),
-		execute: async (args: { code: string }): Promise<CodeExecutionResult> => {
+		execute: async (args: { code: string }, executionContext?: unknown): Promise<CodeExecutionResult> => {
 			const allTools = ctx.tools.getAllToolDefinitions().filter((tool) => tool.name !== "run_code");
 			const executeTool = (toolName: string, toolArgs: unknown) => (
-				ctx.tools.executeTool(toolName, (toolArgs ?? {}) as Record<string, unknown>)
+				ctx.tools.executeTool(toolName, (toolArgs ?? {}) as Record<string, unknown>, executionContext)
 			);
 
 			// 2.1 Prefer a Worker Thread for timeout and failure isolation.

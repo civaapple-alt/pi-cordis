@@ -48,7 +48,7 @@ In production environments without code changes or HMR, reversible effects remai
 - **Reversible Microkernel**: The subagent runs inside an isolated `ctx.fork()` scope. Upon task completion, invoking `subagentScope.dispose()` atomically purges all temporary resources.
 
 ### 3. Plan-Mode vs Normal-Mode Transitions
-- **Scenario**: The user toggles `/plan` mode, mounting read-only constraints and a `plan_step` tool.
+- **Scenario**: The user toggles `/plan`, changing session-scoped policy while the root Plan Fiber and stable `exit_plan_mode` schema remain mounted.
 - **Reversible Microkernel**: Upon plan approval, the plan plugin is disposed, immediately restoring standard coding tools with zero residue.
 
 ### 4. Transactional Atomic Rollback on Load Failure

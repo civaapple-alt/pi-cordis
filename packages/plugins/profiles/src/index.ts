@@ -6,7 +6,6 @@ import safetyGatePlugin from "@pi-cordis/plugin-safety-gate";
 import gitGuardPlugin from "@pi-cordis/plugin-git-guard";
 import todoTrackerPlugin from "@pi-cordis/plugin-todo-tracker";
 import rulesInjectorPlugin from "@pi-cordis/plugin-rules-injector";
-import planModePlugin from "@pi-cordis/plugin-plan-mode";
 import codeModePlugin from "@pi-cordis/plugin-code-mode";
 import askQuestionPlugin from "@pi-cordis/plugin-ask-question";
 import outputTruncatorPlugin from "@pi-cordis/plugin-output-truncator";
@@ -21,7 +20,6 @@ export const builtinPlugins = {
 	"git-guard": gitGuardPlugin,
 	"todo-tracker": todoTrackerPlugin,
 	"rules-injector": rulesInjectorPlugin,
-	"plan-mode": planModePlugin,
 	"code-mode": codeModePlugin,
 	"ask-question": askQuestionPlugin,
 	"output-truncator": outputTruncatorPlugin,
@@ -69,18 +67,6 @@ export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 			"ask-question": true,
 			btw: true,
 			"terminal-notifier": true,
-		},
-	},
-	plan: {
-		name: "plan",
-		description: "规划与审计模式 (只读代码库探索 + 方案步骤拆解 + 强制写拦截保护)",
-		plugins: {
-			"plan-mode": true,
-			"safety-gate": { readOnly: true },
-			"rules-injector": true,
-			"todo-tracker": true,
-			"output-truncator": true,
-			"ask-question": true,
 		},
 	},
 	ptc: {
@@ -149,6 +135,7 @@ export function loadProfilesFromYaml(
 					: fs.existsSync(path.join(presetDir, "agent.cordis.yml"))
 						? path.join(presetDir, "agent.cordis.yml")
 						: null;
+				if (!fs.existsSync(presetYmlPath) && !cordisYmlPath) continue;
 
 				let displayName = entry.name;
 				let description = `Preset "${entry.name}" loaded from ${path.relative(cwd, presetDir)}`;
@@ -252,18 +239,12 @@ export async function applyProfile(
 	options: { cwd?: string; agentDir?: string } = {},
 ): Promise<string[]> {
 	const profileScope = ctx.root;
-	if (profileName === "minimal") {
-		await Promise.allSettled(
-			(activeProfileMounts.get(profileScope) ?? []).map((mount) => Promise.resolve(mount.dispose())),
-		);
-		activeProfileMounts.delete(profileScope);
-		(ctx as any).extensions?.syncActiveTools?.();
-		return [];
-	}
-
 	const allProfiles = loadProfilesFromYaml(options.cwd, options.agentDir);
 	const profile = allProfiles[profileName];
 	if (!profile) {
+		if (profileName === "plan") {
+			throw new Error('Profile "plan" was removed because Plan is session state. Use "picds --plan" or /plan instead.');
+		}
 		throw new Error(
 			`Unknown profile "${profileName}". Available profiles: ${Object.keys(allProfiles).sort().join(", ")}.`,
 		);
@@ -326,7 +307,7 @@ export interface ProfilesPluginConfig {
 
 export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 	const unregisterCommand = ctx.extensions.registerCommand("profile", {
-		description: "View or switch active Cordis profile (e.g. /profile default, /profile plan, /profile ptc)",
+		description: "View or switch the active Cordis capability profile (default or ptc)",
 		getArgumentCompletions: (prefix: string) => {
 			const cwd = (ctx as any).settings?.getCwd?.() ?? process.cwd();
 			const allProfiles = loadProfilesFromYaml(cwd);
@@ -345,7 +326,7 @@ export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 			const targetProfile = args.trim();
 			const availableProfiles = Object.keys(allProfiles);
 
-			if (targetProfile && allProfiles[targetProfile]) {
+			if (targetProfile) {
 				const loaded = await applyProfile(ctx, targetProfile, undefined, { cwd });
 				if (cmdCtx.hasUI) {
 					cmdCtx.ui.notify(
@@ -375,16 +356,7 @@ export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 		},
 	});
 
-	// Listen for programmatic profile switch events (e.g. from plan-mode user approval)
-	const unregisterSwitch = ctx.on("pi/profile-switch", async (targetProfile: string) => {
-		if (targetProfile) {
-			const cwd = (ctx as any).settings?.getCwd?.() ?? process.cwd();
-			await applyProfile(ctx, targetProfile, undefined, { cwd });
-		}
-	});
-
 	return () => {
-		unregisterSwitch();
 		unregisterCommand();
 	};
 }

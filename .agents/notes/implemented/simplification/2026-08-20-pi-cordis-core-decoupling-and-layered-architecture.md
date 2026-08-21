@@ -29,7 +29,7 @@ In the previous simplification milestone, auxiliary packages were converted to n
 │                        Pi-Cordis 4-Layer Architecture                  │
 ├────────────────────────────────────────────────────────────────────────┤
 │ 【Level 4: Presets & Native Plugin Ecosystem】                         │
-│   • presets/ (default, plan, ptc)                                      │
+│   • presets/ (default, ptc); Plan is cross-Profile session state       │
 │   • packages/plugins/* (safety-gate, plan-mode, subagent, todo, etc.)  │
 │   • Role: Programmed strictly against Cordis services (inject)         │
 ├────────────────────────────────────────────────────────────────────────┤

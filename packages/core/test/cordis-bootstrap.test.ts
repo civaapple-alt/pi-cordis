@@ -148,7 +148,7 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 	});
 
 	it("4.1 ToolRegistryService: post hooks transform returned results", async () => {
-		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: false });
 		ctx.on("pi/tool-result", (event) => {
 			event.result = { transformed: true, original: event.result };
 		});
@@ -165,7 +165,7 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 	});
 
 	it("4.2 ToolRegistryService: disposing shadow registrations restores the previous tool", async () => {
-		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: false });
 		const disposeFirst = ctx.tools.register({
 			name: "shadowed",
 			description: "first",
@@ -383,22 +383,28 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		// Test lifecycle event forwarding
 		let sessionStarted = false;
 		let sessionReason = "";
+		let bridgedSessionId = "";
 		let agentSettled = false;
 		let turnStarted = false;
 
-		ctx.on("pi/session-start" as any, (event: { reason?: string }) => {
+		ctx.on("pi/session-start" as any, (event: { reason?: string; sessionId?: string }) => {
 			sessionStarted = true;
 			sessionReason = event.reason ?? "";
+			bridgedSessionId = event.sessionId ?? "";
 		});
 		ctx.on("pi/agent-settled" as any, () => { agentSettled = true; });
 		ctx.on("pi/turn-start" as any, () => { turnStarted = true; });
 
-		eventHandlers["session_start"]({ reason: "startup" });
+		eventHandlers["session_start"](
+			{ reason: "startup" },
+			{ sessionManager: { getSessionId: () => "interactive-session" } },
+		);
 		eventHandlers["agent_settled"]({});
 		eventHandlers["turn_start"]({ turnIndex: 1, timestamp: Date.now() });
 
 		expect(sessionStarted).toBe(true);
 		expect(sessionReason).toBe("startup");
+		expect(bridgedSessionId).toBe("interactive-session");
 		expect(agentSettled).toBe(true);
 		expect(turnStarted).toBe(true);
 
@@ -412,22 +418,33 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		expect(providers.has("bridge-provider")).toBe(false);
 	});
 
-	it("11.0 ExtensionService: control-plane synchronization failures are observable", async () => {
-		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+	it("11.0 ExtensionService: defers action methods until Pi binds the runtime and keeps failures observable", async () => {
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: false });
 		const bridge = ctx.extensions.createBridgeExtensionFactory();
+		let sessionStart: Function | undefined;
+		let runtimeReady = false;
 		expect(() => bridge.factory({
 			registerTool: () => {},
 			registerCommand: () => {},
-			on: () => {},
+			on: (eventName: string, handler: Function) => {
+				if (eventName === "session_start") sessionStart = handler;
+			},
 			setActiveTools: () => {
+				if (!runtimeReady) {
+					throw new Error("Extension runtime not initialized");
+				}
 				throw new Error("Pi tool visibility rejected");
 			},
-		})).toThrow("Pi tool visibility rejected");
+		})).not.toThrow();
+		expect(sessionStart).toBeDefined();
+
+		runtimeReady = true;
+		expect(() => sessionStart?.({ reason: "startup" })).toThrow("Pi tool visibility rejected");
 		await ctx.fiber.dispose();
 	});
 
 	it("11.1 ExtensionService: command bridges dispatch the active reversible registration", async () => {
-		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: false });
 		const commands = new Map<string, any>();
 		ctx.extensions.createBridgeExtensionFactory().factory({
 			registerTool: () => {},
@@ -461,7 +478,7 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 	});
 
 	it("12. ExtensionService: returns Cordis tool-result transformations to Pi", async () => {
-		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: false });
 		const eventHandlers: Record<string, Function> = {};
 		ctx.on("pi/tool-result", (event) => {
 			const result = event.result as any;

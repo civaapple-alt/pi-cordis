@@ -4,7 +4,7 @@ import outputTruncatorPlugin, { truncateText } from "../src/index.js";
 
 describe("output-truncator lifecycle", () => {
 	it("transforms nested Pi text blocks and stops after disposal", async () => {
-		const ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: false });
 		const fork = ctx.plugin(outputTruncatorPlugin, {
 			maxBytes: 200,
 			maxLines: 2,

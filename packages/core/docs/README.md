@@ -23,4 +23,4 @@ Welcome to the `@pi-cordis/core` documentation hub. Serving as the microkernel c
 ### 2. Microkernel & Plugin Guides ([`cordis/`](cordis/))
 - [Cordis Microkernel Architecture](cordis/architecture.md) — IoC container, Fiber scopes, Disposer pattern, and EventBus
 - [Native Plugin Development Guide](cordis/plugin-development.md) — Writing `@pi-cordis/plugin-*` packages, explicit `inject`, and reversible effects
-- [Profiles, Presets & YAML Composition](cordis/profiles-and-presets.md) — 3 canonical presets (`default`, `plan`, `ptc`), `cordis.yml`, and live HMR
+- [Profiles, Presets & YAML Composition](cordis/profiles-and-presets.md) — `default`/`ptc` capability profiles, independent Plan state, `cordis.yml`, and live HMR
