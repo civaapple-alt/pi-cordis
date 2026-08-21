@@ -34,7 +34,8 @@
 
 - 使用 `tsdown` 为 Core 与插件工作区生成 Node 22 ESM、Source Map 和 `.d.ts`，包入口改为 `dist/` 并移除错误的上游 `npm-shrinkwrap.json`；
 - 14 个公开插件/Profile 包与 Core 通过 `publint`；新增全量 tarball 临时安装及编译后 `picds --version` 烟雾测试；
-- 新增 `pnpm release:check` 统一门禁，以及 Ubuntu、Windows、macOS 的 GitHub Actions Node 22.19 矩阵。
+- 新增 `pnpm release:check` 统一门禁，以及 Ubuntu、Windows、macOS 的 GitHub Actions Node 22.19 矩阵；
+- 迁移到 pnpm 11 `allowBuilds` 供应链策略，仅允许构建工具 `esbuild` 执行安装脚本，明确拒绝非必要依赖脚本。
 
 ### 📦 Cordis 官方 npm 包迁移
 

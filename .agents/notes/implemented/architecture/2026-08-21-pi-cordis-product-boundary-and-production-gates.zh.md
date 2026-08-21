@@ -64,6 +64,8 @@ Pi-Cordis 定位为 **Pi 数据面之上的轻量 Cordis 控制面**。
 5. `pnpm run pack:check`：打包 15 个发布单元，在全新临时项目安装后执行编译产物 `picds --version`；
 6. GitHub Actions 在 Ubuntu、Windows、macOS 的 Node 22.19 矩阵执行 `pnpm release:check`。
 
+依赖安装使用 pnpm 11 `allowBuilds` 白名单；不得通过 `dangerouslyAllowAllBuilds` 绕过未审阅的依赖脚本。当前仅允许发布构建链需要的 `esbuild`，其余被发现的非必要脚本显式拒绝。
+
 本地通过只能证明当前平台；三平台状态必须以 CI 结果为准。
 
 ## 证伪信号

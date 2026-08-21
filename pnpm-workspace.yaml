@@ -1,8 +1,7 @@
 packages:
   - 'packages/*'
   - 'packages/plugins/*'
-onlyBuiltDependencies:
-  - '@google/genai'
-  - 'canvas'
-  - 'esbuild'
-  - 'protobufjs'
+allowBuilds:
+  '@google/genai': false
+  esbuild: true
+  protobufjs: false
