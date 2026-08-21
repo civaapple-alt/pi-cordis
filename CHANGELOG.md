@@ -4,6 +4,17 @@
 
 ---
 
+## [Unreleased]
+
+### 📦 Cordis 官方 npm 包迁移
+
+- 移除仓库内置的 `vendor/` Cordis、CosmoKit、Schemastery 及辅助 Cordis 插件源码；
+- 根包与 `@pi-cordis/core` 改为直接消费 `@deepseek-ai/cordis@^4.0.1`、`@deepseek-ai/cosmokit@^1.8.2`、`@deepseek-ai/schemastery@^3.18.1`；
+- 所有 `@pi-cordis/plugin-*` 包将 Cordis peer dependency 改为公开的 `^4.0.1` semver 范围；
+- 移除 pnpm workspace 与 Vitest 中对 `vendor/*` 源码的解析和别名，保证开发、测试、发布使用相同的 npm 依赖。
+
+---
+
 ## [0.3.0] - 2026-08-20
 
 ### 🌟 终端斜杠命令与插件工具原生桥接 (Native Slash Commands & Plugin Tool Bridge)
@@ -92,7 +103,7 @@
 ### 🌟 新增特性 (Added)
 
 - **Cordis (v4.0.1) 微内核中枢体系**：
-  - 完整集成 `vendor/` 下 vendored 的 Cordis 元框架内核（`@deepseek-ai/cordis`、`@deepseek-ai/cosmokit`、`@deepseek-ai/schemastery` 等）；
+  - 集成 Cordis 元框架内核（后续在 Unreleased 版本中迁移为直接消费官方 npm 包）；
   - 实现强类型 `Context` 声明合并与生命周期事件映射（`pi/session-start`、`pi/session-before`、`pi/session-after`、`pi/tool-call`、`pi/tool-result`、`pi/model-change`、`pi/prompt-transform`）。
 - **“Everything is a plugin” 服务解耦与重构**：
   - 将 Settings, Auth, AI, Tools, Session, Skills, Prompts, Extensions, PackageManager, Agent 封装为 Cordis 服务。
@@ -105,7 +116,7 @@
 ### 🏗️ 架构与规范 (Architecture)
 
 - **100% 保持 Pi 的功能与 TUI 体验**：保留终端渲染、分支树选择器、Diff 对比、Markdown 流式高亮、快捷键与 Slash Commands 纯正体验；
-- **严格依赖隔离**：零依赖 `deepseek-harness` 专属插件，底层仅依赖 `vendor/` 内核；
+- **严格依赖隔离**：零依赖 `deepseek-harness` 专属业务插件，底层仅依赖通用 Cordis 框架；
 - **完整生态支持**：全面支持 `https://pi.dev/packages` 原生插件生态；
 - **架构决策记录 (Agent Notes)**：建立 `.agents/notes/` 目录规范，收录架构与演进中英文 ADR 决策；
 - **TUI 微内核状态呈现**：在全屏交互式 TUI 欢迎界面呈现 `[Cordis Microkernel]` 10 大核心服务与插件状态；

@@ -8,7 +8,7 @@ Created: 2026-08-19
 ## 摘要 (Executive Summary)
 
 本篇架构决策记录（ADR）记录了对 `pi-cordis` 仓库进行的**重大架构精简（Repository Simplification）**。
-通过将未经修改的通用子包（`packages/ai`, `packages/agent`, `packages/tui`, `packages/client`, `packages/server`, `packages/protocol`, `packages/telemetry`, `packages/evals`, `packages/session-backends`）移除，并转为直接消费 npm 官方发布的 `@earendil-works/pi-*` 依赖，使 `pi-cordis` 聚焦于真正的核心资产：**`packages/coding-agent`（Cordis 10 大核心服务与控制面装配）+ `vendor/`（Cordis v4.0.1 元框架底座）**。
+通过将未经修改的通用子包（`packages/ai`, `packages/agent`, `packages/tui`, `packages/client`, `packages/server`, `packages/protocol`, `packages/telemetry`, `packages/evals`, `packages/session-backends`）移除，并转为直接消费 npm 官方发布的 `@earendil-works/pi-*` 与 `@deepseek-ai/*` 依赖，使 `pi-cordis` 聚焦于真正的核心资产：**`packages/core`（Cordis 10 大核心服务与控制面装配）+ `packages/plugins`（Pi-Cordis 原生能力）**。
 
 ---
 
@@ -26,9 +26,9 @@ Created: 2026-08-19
 
 ### 1. 物理精简仓库结构
 - **移除冗余克隆子包**：彻底删除 `packages/ai`、`packages/agent`、`packages/tui`、`packages/client`、`packages/server`、`packages/protocol`、`packages/telemetry`、`packages/evals` 和 `packages/session-backends/`；
-- **保留核心资产**：
-  - `packages/coding-agent/`：包含全套 CLI、TUI 交互界面与 `src/core/cordis/` 10 大核心服务矩阵；
-  - `vendor/`：包含独占审计的 Cordis v4.0.1 框架套件（`cordis`, `cosmokit`, `schemastery` 等）；
+- **保留核心项目资产**：
+  - `packages/core/`：包含 CLI 集成与 `src/core/cordis/` 10 大核心服务矩阵；
+  - `packages/plugins/`：包含 Pi-Cordis 原生能力与预设组合；
   - `.agents/notes/`：中英双语架构决策记录库。
 
 ### 2. 依赖声明与配置精简

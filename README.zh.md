@@ -5,9 +5,9 @@
 **专为开发者打造的终端 AI 编码智能体，基于 Cordis (v4.0.1) 微内核与“一切皆插件”架构重构。**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](vendor/)
+[![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](https://www.npmjs.com/package/@deepseek-ai/cordis)
 [![TypeScript: Strict](https://img.shields.io/badge/TypeScript-Strict_Mode-blue.svg?style=flat-square)](tsconfig.json)
-[![Tests: 38 Passing](https://img.shields.io/badge/Tests-38_Passing-success.svg?style=flat-square)](packages/)
+[![Tests: 40 Passing](https://img.shields.io/badge/Tests-40_Passing-success.svg?style=flat-square)](packages/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/civaapple-alt/pi-cordis/pulls)
 
 [English](README.md) | [中文说明](README.zh.md) | [架构决策记录 (ADR)](.agents/notes/README.zh.md) | [开发与贡献规范](AGENTS.md)
@@ -46,7 +46,7 @@
 
 1. **100% 保持 Pi 的功能与 TUI 体验**：保留全屏 Canvas、双缓冲 Diff 对比、分支树选择器、状态看板与流式 Markdown 高亮，零用户体验降级；
 2. **“一切皆插件”的服务化解耦**：将配置、鉴权、多模型驱动、工具注册、会话存储、技能、提示词、扩展系统、包管理器与智能体推理循环 10 大能力全面重构为 Cordis 响应式服务；
-3. **上游彻底解耦直连**：直接通过 npm 消费官方 `@earendil-works/pi-coding-agent: ^0.84.2`，清空本地冗余克隆源码，一条 `pnpm update` 即可无感升级上游能力；
+3. **上游彻底解耦直连**：直接通过 npm 消费官方 `@earendil-works/pi-coding-agent: ^0.84.2` 与 `@deepseek-ai/cordis: ^4.0.1`，仓库不再保留上游框架源码副本；
 4. **“Default is Best” 极简哲学**：无需复杂配置，默认启动即具备完整安全拦截、Git 检查点、规则自动注入与待办追踪；
 5. **PTC 编程化调用 (Code Mode)**：将 5~10 轮串行网络交互坍缩为 1 轮本地程序化执行（在独立 Node.js Worker 线程中执行强类型 TypeScript SDK），节省 90%+ 上下文；
 6. **命令行与用户数据物理隔离**：独立注册 `picds`/`picordis` CLI 命令与 `~/.picds/agent/` 用户空间，防止与本地全局安装的原生 Pi 发生冲突；
@@ -212,11 +212,6 @@ pnpm picds
 
 ```text
 pi-cordis/
-├── vendor/                           # Vendored Cordis (v4.0.1) 微内核源码
-│   ├── cordis/                       # @deepseek-ai/cordis
-│   ├── cosmokit/                     # @deepseek-ai/cosmokit
-│   └── schemastery/                  # @deepseek-ai/schemastery
-│
 ├── presets/                          # 🌟 3 大场景化 Agent 运行预设
 │   ├── default/                      # preset.yml + cordis.yml (默认即最佳)
 │   ├── plan/                         # preset.yml + cordis.yml (规划与审计)
@@ -235,6 +230,7 @@ pi-cordis/
 │   └── README.zh.md                  # 中文决策索引与演进方法论
 │
 ├── CHANGELOG.md                      # 中文更新日志 (Keep a Changelog)
+├── package.json                      # Cordis 与 Pi 官方 npm 依赖
 ├── pnpm-workspace.yaml               # pnpm 工作区关联
 └── tsconfig.json                     # 统一 TypeScript 路径映射配置
 ```

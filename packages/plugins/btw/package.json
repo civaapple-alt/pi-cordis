@@ -9,6 +9,6 @@
 		"@earendil-works/pi-ai": "^0.84.2"
 	},
 	"peerDependencies": {
-		"@deepseek-ai/cordis": "workspace:*"
+		"@deepseek-ai/cordis": "^4.0.1"
 	}
 }

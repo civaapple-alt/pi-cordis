@@ -1,5 +1,4 @@
 packages:
-  - 'vendor/*'
   - 'packages/*'
   - 'packages/plugins/*'
 onlyBuiltDependencies:

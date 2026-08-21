@@ -20,13 +20,13 @@ This Architecture Decision Record (ADR) documents the **design trade-offs regard
 
 During the architectural evolution, two core questions were investigated:
 
-### Question 1: Why extract 10 core Services without using `vendor/loader` as the primary entry point?
+### Question 1: Why extract 10 core Services without using `@deepseek-ai/cordis-plugin-loader` as the primary entry point?
 - **Analysis**:
   1. **In-memory Runtime Objects**: Pi is a terminal coding agent requiring non-YAML-serializable options (e.g. `signal: AbortSignal` for Ctrl+C interruption, complex `toolsOptions` callbacks). Loading purely through static YAML requires intrusive global state or context patching;
-  2. **Sub-50ms Cold-Start Constraint**: `vendor/loader` is tailored for long-running daemon servers (like Koishi/DSH), computing dependency graphs and scanning module trees. Terminal one-shot commands (`pi -p "..."`) demand instant startup;
-  3. **Avoiding Unintended Write-Backs**: `vendor/loader`'s `EntryTree` persists state mutations back to disk, whereas `presets/` are treated as immutable templates.
+  2. **Sub-50ms Cold-Start Constraint**: the Cordis loader is tailored for long-running daemon servers (like Koishi/DSH), computing dependency graphs and scanning module trees. Terminal one-shot commands (`pi -p "..."`) demand instant startup;
+  3. **Avoiding Unintended Write-Backs**: the loader's `EntryTree` persists state mutations back to disk, whereas `presets/` are treated as immutable templates.
 
-### Question 2: Does the absence of `vendor/loader` prevent plugin HMR?
+### Question 2: Does the absence of the Cordis loader prevent plugin HMR?
 - **Analysis**:
   - **Config-level Reloading**: Supported natively by Cordis reversible effects (`ctx.effect` / `ctx.on`) via fork disposal;
   - **Code-level Module HMR**: Node.js native `import()` enforces persistent module caching.

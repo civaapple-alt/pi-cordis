@@ -28,7 +28,7 @@ packages/plugins/my-plugin/
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:*"
+    "@deepseek-ai/cordis": "^4.0.1"
   }
 }
 ```
@@ -90,4 +90,3 @@ export function apply(ctx: Context) {
   };
 }
 ```
-

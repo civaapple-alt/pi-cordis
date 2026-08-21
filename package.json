@@ -14,9 +14,9 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "workspace:*",
-    "@deepseek-ai/cosmokit": "workspace:*",
-    "@deepseek-ai/schemastery": "workspace:*"
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/cosmokit": "^1.8.2",
+    "@deepseek-ai/schemastery": "^3.18.1"
   },
   "devDependencies": {
     "@types/node": "22.19.19",

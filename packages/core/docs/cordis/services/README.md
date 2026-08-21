@@ -6,6 +6,12 @@ This documentation provides complete architectural specifications, API contracts
 
 ---
 
+## Runtime Foundation
+
+The services import Cordis from the official npm packages: `@deepseek-ai/cordis@^4.0.1`, `@deepseek-ai/cosmokit@^1.8.2`, and `@deepseek-ai/schemastery@^3.18.1`. The repository does not carry a local framework source copy, and tests resolve the same published packages used in production.
+
+---
+
 ## The 5 Pillars of Core Services
 
 Each Core Service is designed according to DSH (DeepSeek Harness) standards:

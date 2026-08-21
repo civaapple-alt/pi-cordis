@@ -20,13 +20,13 @@ Created: 2026-08-20
 
 在系统的演进过程中，我们针对以下两个关键架构问题进行了深入探讨与权衡：
 
-### 问题 1：为什么提取了 10 大 Service，却没有直接使用 `vendor/loader` 作为总入口？
+### 问题 1：为什么提取了 10 大 Service，却没有直接使用 `@deepseek-ai/cordis-plugin-loader` 作为总入口？
 - **原因剖析**：
   1. **复杂内存对象传递**：Pi 作为终端 CLI 智能体，启动时依赖不可序列化为 YAML 的运行时对象（如 `signal: AbortSignal` 用于 Ctrl+C 中断、复杂的 `toolsOptions` 等）。若完全由 Loader 通过静态 YAML 引导，需引入侵入性的全局变量或上下文修补器；
-  2. **终端极速冷启动诉求**：`vendor/loader` 专为长驻后台 Daemon（如 Koishi/DSH）设计，内置了模块路径探测与依赖图演算。CLI 单次执行（`pi -p "..."`）追求极致的冷启动速度；
-  3. **避免状态反向回写**：`vendor/loader` 的 `EntryTree` 会将运行时状态持久化回写覆盖磁盘 YAML，而 `presets/` 目录被定义为只读预设模板，无需双向污染。
+  2. **终端极速冷启动诉求**：Cordis Loader 专为长驻后台 Daemon（如 Koishi/DSH）设计，内置了模块路径探测与依赖图演算。CLI 单次执行（`pi -p "..."`）追求极致的冷启动速度；
+  3. **避免状态反向回写**：Loader 的 `EntryTree` 会将运行时状态持久化回写覆盖磁盘 YAML，而 `presets/` 目录被定义为只读预设模板，无需双向污染。
 
-### 问题 2：没有使用 `vendor/loader`，是否意味着无法实现插件的 HMR？
+### 问题 2：没有使用 Cordis Loader，是否意味着无法实现插件的 HMR？
 - **层级分析**：
   - **配置级热重载（Config Reloading）**：得益于 Cordis 的可逆副作用（`ctx.effect` / `ctx.on`），原本即可通过注销 Fork 实现；
   - **代码级模块 HMR（Code-level Module HMR）**：由于 Node.js ESM 原生 `import()` 具有强缓存，直接重新 `import()` 会读取旧缓存。

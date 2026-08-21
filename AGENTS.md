@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Pi-Cordis is a plugin-based terminal coding agent harness on vendored Cordis: **everything is a plugin**. Read [Architecture Notes](.agents/notes/README.md) before changing `packages/` or `presets/`.
+Pi-Cordis is a plugin-based terminal coding agent harness on the official Cordis npm packages: **everything is a plugin**. Read [Architecture Notes](.agents/notes/README.md) before changing `packages/` or `presets/`.
 
 ---
 
@@ -20,10 +20,6 @@ Level 1: Generic Agent Core  — @earendil-works/pi-agent-core (LLM adapters, to
 ## Repository layout
 
 ```
-vendor/      Vendored Cordis microkernel (v4.0.1) source
-  cordis/      @deepseek-ai/cordis (IoC container, Fiber lifecycle, EventBus)
-  cosmokit/    @deepseek-ai/cosmokit (utility types, collections, time)
-  schemastery/ @deepseek-ai/schemastery (schema validation & typing)
 presets/     Scenario-driven capability presets (preset.yml + cordis.yml)
   default/     Default is Best standard development mode
   plan/        Strict read-only planning and audit mode
@@ -60,7 +56,7 @@ CHANGELOG.md Progressively updated changelog (Keep a Changelog)
 
 ```sh
 pnpm install            # pnpm workspaces, node >=22.19
-pnpm test               # vitest unit tests across core and plugins (38 tests)
+pnpm test               # vitest unit tests across core and plugins (40 tests)
 pnpm run check          # TypeScript strict typecheck (tsc --noEmit)
 pnpm picds              # launch interactive terminal (Default is Best mode)
 pnpm picds --profile plan # launch in read-only plan mode
@@ -78,8 +74,8 @@ Real-API runs read `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`, and root `.
 
 ## Conventions
 
-- **Package Naming**: Every published package is `@pi-cordis/<name>`; vendored microkernel packages are `@deepseek-ai/*` in `vendor/`.
-- **Direct Upstream Ingestion**: Upstream `@earendil-works/pi-*` packages (`pi-coding-agent`, `pi-agent-core`, `pi-ai`, `pi-tui`) are consumed directly from npm (`^0.84.2`). Never clone or fork upstream code into `packages/core`.
+- **Package Naming**: Every published project package is `@pi-cordis/<name>`; the microkernel remains owned and published by DeepSeek as `@deepseek-ai/*`.
+- **Direct Upstream Ingestion**: Upstream `@earendil-works/pi-*` packages (`pi-coding-agent`, `pi-agent-core`, `pi-ai`, `pi-tui`) and `@deepseek-ai/cordis`, `@deepseek-ai/cosmokit`, and `@deepseek-ai/schemastery` are consumed directly from npm. Never clone or vendor upstream source into this repository.
 - **Registrations are Effects**: Every dynamic registration (tools, skills, prompts, providers) goes through `ctx.effect()` / `ctx.on()`; registration methods MUST return a `Disposer` function for clean Fiber teardown.
 - **Explicit Dependency Injection (`inject`)**: Plugins declare `export const inject = ['tools', 'settings']`; services declare `static provide = 'serviceName'`.
 - **10 Core Services Seams**:
@@ -165,6 +161,6 @@ When developing, verifying features, or debugging issues, follow this index to n
 
 ---
 
-## Vendoring policy
+## Upstream dependency policy
 
-`vendor/` packages are pinned source copies (`cordis`, `cosmokit`, `schemastery`). Updates follow upstream releases; re-apply any local modifications and verify via `pnpm test && pnpm run check`.
+Cordis, CosmoKit, and Schemastery are public npm dependencies. Keep their semver ranges explicit, update them through pnpm, and verify every upgrade via `pnpm test && pnpm run check`. Do not recreate a local `vendor/` source tree.

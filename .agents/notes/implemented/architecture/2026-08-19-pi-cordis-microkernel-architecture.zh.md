@@ -9,14 +9,14 @@ Status: implemented
 2. 缺乏标准化的服务声明与动态依赖注入体系；
 3. 核心能力与外部扩展之间边界不清晰，容易产生巨型参数传递。
 
-同时，我们明确要求该工程不得直接依赖 DeepSeek Harness（`@deepseek-ai/dsh-*`）专属业务插件，必须纯净地基于 `vendor/` 下的通用 Cordis 元框架内核，并在保持微内核插件化重构的同时，100% 还原 Pi 的原生 CLI 参数、指令与交互式终端 UI（Canvas、差异化渲染、分支树选择器、Diff 对比等）。
+同时，我们明确要求该工程不得直接依赖 DeepSeek Harness（`@deepseek-ai/dsh-*`）专属业务插件，必须纯净地基于官方发布的通用 Cordis npm 包，并在保持微内核插件化重构的同时，100% 还原 Pi 的原生 CLI 参数、指令与交互式终端 UI（Canvas、差异化渲染、分支树选择器、Diff 对比等）。
 
 ## Decision
 
 我们将 Pi 智能体全面重构为 **Pi-Cordis**，基于 **Cordis (v4.0.1)** 践行 **“Everything is a plugin”** 的设计哲学：
 
-1. **仅依赖 Vendored Cordis 作为元框架内核**：
-   - 工作区直接链接 `vendor/cordis`、`vendor/cosmokit`、`vendor/schemastery` 等底层基础库；
+1. **仅依赖官方 Cordis npm 包作为元框架内核**：
+   - 工作区直接消费 `@deepseek-ai/cordis`、`@deepseek-ai/cosmokit`、`@deepseek-ai/schemastery`；
    - 零引入 `@deepseek-ai/dsh-*` 专属插件。
 2. **强类型 Context 声明合并与生命周期事件总线**：
    - 通过 TypeScript 声明合并对 Cordis `Context` 进行类型扩充（`ctx.settings`, `ctx.auth`, `ctx.ai`, `ctx.tools`, `ctx.session`, `ctx.skills`, `ctx.prompts`, `ctx.extensions`, `ctx.packageManager`, `ctx.agent`）；
@@ -29,7 +29,7 @@ Status: implemented
 
 ```mermaid
 graph TD
-    subgraph "Cordis Microkernel (vendor/)"
+    subgraph "Cordis Microkernel (官方 npm 包)"
         Ctx[Context / IoC Container]
         Events[Event Bus & Lifecycle]
         Fiber[Fiber & Disposers]

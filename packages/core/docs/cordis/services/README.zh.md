@@ -6,6 +6,12 @@
 
 ---
 
+## 运行时基础
+
+核心服务直接导入官方 npm 包：`@deepseek-ai/cordis@^4.0.1`、`@deepseek-ai/cosmokit@^1.8.2` 与 `@deepseek-ai/schemastery@^3.18.1`。仓库不保留本地框架源码副本，测试与生产运行时解析同一组公开包。
+
+---
+
 ## 核心服务的 5 大设计准则 (The 5 Pillars)
 
 每个核心服务均严格对齐 DSH（DeepSeek Harness）标准：

@@ -8,7 +8,7 @@ English | [中文](2026-08-19-pi-cordis-repository-simplification.zh.md)
 ## Executive Summary
 
 This Architecture Decision Record (ADR) documents the **major repository simplification** executed on `pi-cordis`.
-By pruning unmodified upstream subpackages (`packages/ai`, `packages/agent`, `packages/tui`, `packages/client`, `packages/server`, `packages/protocol`, `packages/telemetry`, `packages/evals`, `packages/session-backends`) and transitioning to direct consumption of official `@earendil-works/pi-*` packages from the npm registry, `pi-cordis` focuses entirely on its core value: **`packages/coding-agent` (10 core Cordis services and control-plane bootstrap) + `vendor/` (Cordis v4.0.1 microkernel foundation)**.
+By pruning unmodified upstream subpackages (`packages/ai`, `packages/agent`, `packages/tui`, `packages/client`, `packages/server`, `packages/protocol`, `packages/telemetry`, `packages/evals`, `packages/session-backends`) and transitioning to direct consumption of official `@earendil-works/pi-*` and `@deepseek-ai/*` packages from the npm registry, `pi-cordis` focuses entirely on its core value: **`packages/core` (10 core Cordis services and control-plane bootstrap) + `packages/plugins` (native Pi-Cordis capabilities)**.
 
 ---
 
@@ -26,9 +26,9 @@ A comprehensive cross-package audit confirmed that:
 
 ### 1. Physical Repository Pruning
 - **Removed Duplicate Subpackages**: Deleted `packages/ai`, `packages/agent`, `packages/tui`, `packages/client`, `packages/server`, `packages/protocol`, `packages/telemetry`, `packages/evals`, and `packages/session-backends/`;
-- **Retained Core Proprietary Assets**:
-  - `packages/coding-agent/`: Complete CLI, TUI, and the `src/core/cordis/` 10 core service matrix;
-  - `vendor/`: The audited Cordis v4.0.1 framework suite (`cordis`, `cosmokit`, `schemastery`);
+- **Retained Core Project Assets**:
+  - `packages/core/`: CLI integration and the `src/core/cordis/` 10 core service matrix;
+  - `packages/plugins/`: Pi-Cordis-native capabilities and profile composition;
   - `.agents/notes/`: Bi-lingual architecture decision records library.
 
 ### 2. Dependency & Configuration Simplification

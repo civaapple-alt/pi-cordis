@@ -9,14 +9,14 @@ The original [`earendil-works/pi`](https://github.com/earendil-works/pi) codebas
 2. Standardized service declaration and dynamic dependency injection.
 3. Clean boundaries between core capabilities and external extensibility without monolithic parameter passing.
 
-At the same time, we required that the project must not take dependencies on DeepSeek Harness (`@deepseek-ai/dsh-*`) domain-specific plugins, but must strictly build on the generic Cordis meta-framework kernel under `vendor/` while preserving 100% of Pi's native CLI usage, commands, and interactive terminal UI (Canvas, diff viewer, selectors, etc.).
+At the same time, we required that the project must not take dependencies on DeepSeek Harness (`@deepseek-ai/dsh-*`) domain-specific plugins, but must strictly build on the official generic Cordis npm packages while preserving 100% of Pi's native CLI usage, commands, and interactive terminal UI (Canvas, diff viewer, selectors, etc.).
 
 ## Decision
 
 We restructured the Pi coding agent into **Pi-Cordis** based on **Cordis (v4.0.1)**, adopting the **"Everything is a plugin"** design philosophy:
 
-1. **Vendored Cordis as Sole Meta-Framework Kernel**:
-   - The workspace links directly to `vendor/cordis`, `vendor/cosmokit`, `vendor/schemastery`, and other foundation modules under `vendor/`.
+1. **Official Cordis Packages as the Sole Meta-Framework Kernel**:
+   - The workspace consumes `@deepseek-ai/cordis`, `@deepseek-ai/cosmokit`, and `@deepseek-ai/schemastery` directly from npm.
    - Zero dependency on `@deepseek-ai/dsh-*` packages.
 2. **Typed Context Augmentation & Declaration Merging**:
    - Augmented Cordis `Context` with strongly-typed service accessors (`ctx.settings`, `ctx.auth`, `ctx.ai`, `ctx.tools`, `ctx.session`, `ctx.skills`, `ctx.prompts`, `ctx.extensions`, `ctx.packageManager`, `ctx.agent`).
@@ -29,7 +29,7 @@ We restructured the Pi coding agent into **Pi-Cordis** based on **Cordis (v4.0.1
 
 ```mermaid
 graph TD
-    subgraph "Cordis Microkernel (vendor/)"
+    subgraph "Cordis Microkernel (official npm packages)"
         Ctx[Context / IoC Container]
         Events[Event Bus & Lifecycle]
         Fiber[Fiber & Disposers]

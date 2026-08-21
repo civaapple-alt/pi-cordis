@@ -5,9 +5,9 @@
 **The Developer-First Terminal Coding Agent, Rebuilt on the Cordis (v4.0.1) Microkernel with an "Everything is a Plugin" Architecture.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](vendor/)
+[![Cordis: v4.0.1](https://img.shields.io/badge/Cordis-v4.0.1-brightgreen.svg?style=flat-square)](https://www.npmjs.com/package/@deepseek-ai/cordis)
 [![TypeScript: Strict](https://img.shields.io/badge/TypeScript-Strict_Mode-blue.svg?style=flat-square)](tsconfig.json)
-[![Tests: 38 Passing](https://img.shields.io/badge/Tests-38_Passing-success.svg?style=flat-square)](packages/)
+[![Tests: 40 Passing](https://img.shields.io/badge/Tests-40_Passing-success.svg?style=flat-square)](packages/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/civaapple-alt/pi-cordis/pulls)
 
 [English](README.md) | [中文说明](README.zh.md) | [Architecture Notes](.agents/notes/README.md) | [Contributing Guide](AGENTS.md)
@@ -46,7 +46,7 @@
 
 1. **100% Pi Parity**: Retains the full-screen interactive TUI, diff viewer, session branching tree, and prompt templates with zero regressions;
 2. **"Everything is a Plugin"**: All 10 core capabilities are decoupled into reactive Cordis services;
-3. **Clean Upstream Decoupling**: Direct npm ingestion of `@earendil-works/pi-coding-agent: ^0.84.2`, tracking upstream updates seamlessly via `pnpm update`;
+3. **Clean Upstream Decoupling**: Direct npm ingestion of `@earendil-works/pi-coding-agent: ^0.84.2` and the official `@deepseek-ai/cordis: ^4.0.1` package, with no cloned upstream framework source;
 4. **"Default is Best" Philosophy**: Out of the box, standard runs activate destructive command interception, git checkpoints, prompt rules injection, and task tracking with zero manual configuration;
 5. **PTC (Programmatic Tool Calling / Code Mode)**: Collapses 5~10 multi-turn network round-trips into a single local TypeScript execution in an isolated Node.js Worker thread;
 6. **Isolated User Space**: Dedicated `~/.picds/agent/` user directory and `picds`/`picordis` CLI binaries, preventing collision with globally installed native Pi;
@@ -212,11 +212,6 @@ All native plugins are located in `packages/plugins/*`:
 
 ```text
 pi-cordis/
-├── vendor/                           # Vendored Cordis (v4.0.1) framework packages
-│   ├── cordis/                       # @deepseek-ai/cordis
-│   ├── cosmokit/                     # @deepseek-ai/cosmokit
-│   └── schemastery/                  # @deepseek-ai/schemastery
-│
 ├── presets/                          # 🌟 3 Canonical Agent capability presets
 │   ├── default/                      # preset.yml + cordis.yml (Default is Best)
 │   ├── plan/                         # preset.yml + cordis.yml (Planning / Review)
@@ -235,6 +230,7 @@ pi-cordis/
 │   └── README.md                     # ADR index & progressive methodology
 │
 ├── CHANGELOG.md                      # Changelog (Keep a Changelog)
+├── package.json                      # Official Cordis and Pi npm dependencies
 ├── pnpm-workspace.yaml               # pnpm workspace configuration
 └── tsconfig.json                     # TypeScript unified path aliases
 ```

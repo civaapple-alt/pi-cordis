@@ -15,9 +15,6 @@ export default mergeConfig(
 		},
 		resolve: {
 			alias: [
-				{ find: /^@deepseek-ai\/cordis$/, replacement: workspaceSourcePaths.cordisIndex },
-				{ find: /^@deepseek-ai\/cosmokit$/, replacement: workspaceSourcePaths.cosmokitIndex },
-				{ find: /^@deepseek-ai\/schemastery$/, replacement: workspaceSourcePaths.schemasteryIndex },
 				{ find: /^@pi-cordis\/profiles$/, replacement: workspaceSourcePaths.profilesIndex },
 				{ find: /^@pi-cordis\/plugin-safety-gate$/, replacement: workspaceSourcePaths.safetyGateIndex },
 				{ find: /^@pi-cordis\/plugin-git-guard$/, replacement: workspaceSourcePaths.gitGuardIndex },
