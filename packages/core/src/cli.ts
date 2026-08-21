@@ -21,10 +21,21 @@ async function runCli() {
 
 	const rawArgs = process.argv.slice(2);
 	let profileName = "default";
-	const profileIdx = rawArgs.indexOf("--profile");
-	if (profileIdx !== -1 && rawArgs[profileIdx + 1]) {
-		profileName = rawArgs[profileIdx + 1];
-		rawArgs.splice(profileIdx, 2);
+	const cleanArgs: string[] = [];
+
+	for (let i = 0; i < rawArgs.length; i++) {
+		const arg = rawArgs[i];
+		if (arg === "--profile" || arg === "-P") {
+			if (i + 1 < rawArgs.length) {
+				profileName = rawArgs[++i];
+			}
+		} else if (arg.startsWith("--profile=")) {
+			profileName = arg.slice("--profile=".length);
+		} else if (arg.startsWith("-P=")) {
+			profileName = arg.slice("-P=".length);
+		} else {
+			cleanArgs.push(arg);
+		}
 	}
 
 	// 1. Boot Cordis Microkernel & Core Services + Active Profile
@@ -34,7 +45,7 @@ async function runCli() {
 	});
 
 	// 2. Hand over to upstream main with dynamic Cordis bridge extension factory
-	await main(rawArgs, {
+	await main(cleanArgs, {
 		extensionFactories: [
 			cordisCtx.extensions.createBridgeExtensionFactory(),
 		],

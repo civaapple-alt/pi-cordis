@@ -190,7 +190,8 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 	const cwd = config.cwd ?? process.cwd();
 	const basePlansDir = path.join(cwd, ".pi", "plans");
 
-	const plans: Map<string, PlanDocument> = ((ctx as any)._planModePlans ??= new Map<string, PlanDocument>());
+	const rootCtx = (ctx.root ?? ctx) as any;
+	const plans: Map<string, PlanDocument> = (rootCtx._planModePlans ??= new Map<string, PlanDocument>());
 	let activeSessionId = "default";
 
 	let isPlanModeActive = true;

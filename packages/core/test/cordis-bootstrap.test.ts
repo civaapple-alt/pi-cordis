@@ -214,5 +214,57 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		const resultLines = resultComp.render(80);
 		expect(resultLines.join("\n")).toContain("Result is 84");
 	});
+
+	it("11. ExtensionService: bridges before_agent_start prompt transformation and session lifecycle events", async () => {
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false });
+		const eventHandlers: Record<string, Function> = {};
+
+		const mockPi: any = {
+			registerTool: () => {},
+			registerCommand: () => {},
+			on: (eventName: string, handler: Function) => {
+				eventHandlers[eventName] = handler;
+			},
+		};
+
+		const bridge = ctx.extensions.createBridgeExtensionFactory();
+		bridge.factory(mockPi);
+
+		expect(eventHandlers["before_agent_start"]).toBeDefined();
+		expect(eventHandlers["session_start"]).toBeDefined();
+		expect(eventHandlers["agent_settled"]).toBeDefined();
+		expect(eventHandlers["turn_start"]).toBeDefined();
+
+		// Test prompt transform hook
+		ctx.on("pi/prompt-transform" as any, async (evt: { prompt: string }) => {
+			evt.prompt += "\n[INJECTED_SYSTEM_GUIDELINE]";
+		});
+
+		const transformResult = await eventHandlers["before_agent_start"]({
+			systemPrompt: "Base system prompt",
+			prompt: "User query",
+		});
+
+		expect(transformResult).toBeDefined();
+		expect(transformResult.systemPrompt).toContain("Base system prompt");
+		expect(transformResult.systemPrompt).toContain("[INJECTED_SYSTEM_GUIDELINE]");
+
+		// Test lifecycle event forwarding
+		let sessionStarted = false;
+		let agentSettled = false;
+		let turnStarted = false;
+
+		ctx.on("pi/session-start" as any, () => { sessionStarted = true; });
+		ctx.on("pi/agent-settled" as any, () => { agentSettled = true; });
+		ctx.on("pi/turn-start" as any, () => { turnStarted = true; });
+
+		eventHandlers["session_start"]({ reason: "startup" });
+		eventHandlers["agent_settled"]({});
+		eventHandlers["turn_start"]({ turnIndex: 1, timestamp: Date.now() });
+
+		expect(sessionStarted).toBe(true);
+		expect(agentSettled).toBe(true);
+		expect(turnStarted).toBe(true);
+	});
 });
 

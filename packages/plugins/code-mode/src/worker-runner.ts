@@ -149,7 +149,16 @@ export async function executeInWorkerThread(options: RunWorkerOptions): Promise<
 			} else if (msg.type === "tool_call") {
 				try {
 					const result = await options.callTool(msg.toolName, msg.args);
-					worker.postMessage({ type: "tool_response", callId: msg.callId, result });
+					try {
+						worker.postMessage({ type: "tool_response", callId: msg.callId, result });
+					} catch {
+						try {
+							const safeResult = JSON.parse(JSON.stringify(result));
+							worker.postMessage({ type: "tool_response", callId: msg.callId, result: safeResult });
+						} catch {
+							worker.postMessage({ type: "tool_response", callId: msg.callId, result: String(result) });
+						}
+					}
 				} catch (err: any) {
 					worker.postMessage({ type: "tool_response", callId: msg.callId, error: err?.message || String(err) });
 				}

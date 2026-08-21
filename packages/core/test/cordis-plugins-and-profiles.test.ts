@@ -337,5 +337,47 @@ profiles:
 		expect(activeToolsInPi).toContain("bash");
 		expect(activeToolsInPi).not.toContain("run_code");
 	});
+
+	it("should support seamless plan formulation in plan mode and execution in ptc / default modes", async () => {
+		const ctx = await createPiContext({ profile: "plan" });
+
+		const tool = ctx.tools.get("plan_step");
+		expect(tool).toBeDefined();
+
+		// Formulate plan in plan mode
+		await tool!.execute({
+			action: "set_plan",
+			title: "Refactor Database Module",
+			overview: "Upgrade schema and add transactions",
+		});
+		await tool!.execute({ action: "add", title: "Write transaction wrapper" });
+
+		// Verify plan created in plan mode
+		const viewResPlan = await tool!.execute({ action: "view" });
+		expect(viewResPlan.planTitle).toBe("Refactor Database Module");
+		expect(viewResPlan.totalSteps).toBe(1);
+
+		// Switch to ptc mode
+		const profileDef = ctx.extensions.getRegisteredCommands().get("profile");
+		await profileDef!.handler("ptc", { hasUI: false });
+
+		// Verify plan is preserved in ptc mode
+		const viewResPtc = await ctx.tools.get("plan_step")!.execute({ action: "view" });
+		expect(viewResPtc.planTitle).toBe("Refactor Database Module");
+		expect(viewResPtc.totalSteps).toBe(1);
+
+		// Switch to default mode
+		await profileDef!.handler("default", { hasUI: false });
+
+		// Verify plan is preserved in default mode
+		const viewResDefault = await ctx.tools.get("plan_step")!.execute({ action: "view" });
+		expect(viewResDefault.planTitle).toBe("Refactor Database Module");
+		expect(viewResDefault.totalSteps).toBe(1);
+
+		// Update step in default mode
+		await ctx.tools.get("plan_step")!.execute({ action: "update", id: 1, status: "completed" });
+		const viewUpdated = await ctx.tools.get("plan_step")!.execute({ action: "view" });
+		expect(viewUpdated.percentage).toBe(100);
+	});
 });
 

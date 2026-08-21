@@ -202,7 +202,53 @@ export class ExtensionService extends Service {
 				// 4. Synchronize active tools according to active filters (e.g. PTC code-mode)
 				this.syncActiveTools();
 
-				// 5. Forward tool_call and tool_result events to Cordis EventBus
+				// 5. Connect prompt transformation bridge (rules-injector, todo-tracker, plan-mode, code-mode)
+				pi.on?.("before_agent_start", async (event: any) => {
+					const promptEvent = {
+						prompt: event.systemPrompt ?? "",
+						userPrompt: event.prompt ?? "",
+					};
+					try {
+						await this.ctx.parallel("pi/prompt-transform", promptEvent);
+						if (promptEvent.prompt && promptEvent.prompt !== event.systemPrompt) {
+							return { systemPrompt: promptEvent.prompt };
+						}
+					} catch {
+						// Fail-safe: keep original prompt on error
+					}
+				});
+
+				// 6. Connect session lifecycle events
+				pi.on?.("session_start", (event: any) => {
+					this.ctx.emit("pi/session-start", event);
+				});
+
+				pi.on?.("session_shutdown", (event: any) => {
+					this.ctx.emit("pi/session-shutdown", event);
+				});
+
+				// 7. Connect agent run lifecycle events
+				pi.on?.("agent_start", (event: any) => {
+					this.ctx.emit("pi/agent-start", event);
+				});
+
+				pi.on?.("agent_end", (event: any) => {
+					this.ctx.emit("pi/agent-end", event);
+				});
+
+				pi.on?.("agent_settled", (event: any) => {
+					this.ctx.emit("pi/agent-settled", event);
+				});
+
+				pi.on?.("turn_start", (event: any) => {
+					this.ctx.emit("pi/turn-start", event);
+				});
+
+				pi.on?.("turn_end", (event: any) => {
+					this.ctx.emit("pi/turn-end", event);
+				});
+
+				// 8. Forward tool_call and tool_result events to Cordis EventBus
 				pi.on?.("tool_call", async (event: any) => {
 					await this.ctx.parallel("pi/tool-call", {
 						toolName: event.toolName,
