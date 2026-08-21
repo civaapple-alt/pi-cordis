@@ -2,39 +2,39 @@
 
 [English](README.md) | 中文
 
-Pi-Cordis 核心控制面与 Cordis 微内核服务网格。它直接消费 npm 官方 `@earendil-works/pi-coding-agent` 依赖，将其封装为 10 大响应式 Cordis 服务，并提供零冲突的 `picds` 命令行入口与 `~/.picds` 独立用户隔离目录。
+Pi-Cordis 控制面、Cordis 服务接缝、Pi 扩展桥接，以及 `picds` / `picordis` CLI。
 
-## 架构拓扑 (4-Layer Architecture)
+CLI 先启动 Cordis 并挂载当前 Profile，再把真正的终端编程智能体循环交给 `@earendil-works/pi-coding-agent`。Core 不复制或替换 Pi 的 TUI、模型传输、会话和基础工具实现。
 
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│ Level 4: 场景预设与原生插件生态 (presets/*, packages/plugins/*)        │
-├────────────────────────────────────────────────────────────────────────┤
-│ Level 3: Cordis 微内核控制面与服务网格 (@pi-cordis/core)               │
-│   ├── 10 大核心响应式服务 (Settings, Auth, AI, Tools, Session...)      │
-│   ├── 统一中央事件总线 (Central EventBus -> pi/* 响应式事件流)         │
-│   └── 两阶段微内核 CLI 启动器 (picds, picordis)                        │
-├────────────────────────────────────────────────────────────────────────┤
-│ Level 2: 上游 Coding 场景特化层 (@earendil-works/pi-coding-agent)      │
-├────────────────────────────────────────────────────────────────────────┤
-│ Level 1: 上游通用 Agent 底座内核 (@earendil-works/pi-agent-core)       │
-└────────────────────────────────────────────────────────────────────────┘
+## 服务接缝
+
+- `ctx.settings`：项目与用户设置访问；
+- `ctx.auth`：凭据门面与更新事件；
+- `ctx.ai`：Pi `ModelRuntime` 与可逆 Provider 注册；
+- `ctx.tools`：内置/自定义工具、可见性过滤和串行执行拦截；
+- `ctx.session`：持久化与内存 `SessionManager` 工厂；
+- `ctx.skills`：Skill 发现与动态注册；
+- `ctx.prompts`：提示词发现与动态注册；
+- `ctx.extensions`：Pi 扩展发现及命令、工具、事件桥接；
+- `ctx.packageManager`：Pi `DefaultPackageManager` 的薄封装；
+- `ctx.agent`：SDK 侧 `AgentSession` 创建与事件桥接。交互式 CLI 仍由上游 Pi `main()` 驱动。
+
+所有动态注册都必须返回归属 Cordis 的 Disposer。工具结果监听器可以替换 `event.result`，替换值会回传给 Pi。
+
+## CLI 隔离
+
+- 命令：`picds`、`picordis`；不注册 `pi`；
+- 用户目录：`~/.picds/agent/`；
+- Pi-Cordis 控制面项目文件使用 `.picds/`，仅在明确说明处兼容 `.pi/`；Pi 所有的资源继续使用上游路径。
+
+## 包核验
+
+npm 包只使用 `dist/` 下编译后的 ESM 与类型声明。可在仓库根目录执行：
+
+```bash
+pnpm run build
+pnpm --filter @pi-cordis/core run publint
+pnpm run pack:check
 ```
 
-## 10 大核心 Cordis 服务
-
-1. **`ctx.settings` (`SettingsService`)**：分层配置管理与 `pi/settings-updated` 响应式事件；
-2. **`ctx.auth` (`AuthService`)**：独立凭据管理与 `pi/auth-updated` 事件；
-3. **`ctx.ai` (`AIService`)**：模型运行时、动态 Provider 注册与可逆销毁；
-4. **`ctx.tools` (`ToolRegistryService`)**：编程工具注册、Code Mode 过滤器与生命周期拦截；
-5. **`ctx.session` (`SessionService`)**：持久化/内存会话树派生（`/fork`, `/resume`, `inMemory`）；
-6. **`ctx.skills` (`SkillsService`)**：动态 Markdown 技能注入与生命周期管理；
-7. **`ctx.prompts` (`PromptsService`)**：提示词模板加载与动态注册；
-8. **`ctx.extensions` (`ExtensionService`)**：TypeScript 扩展扫描与运行时桥接；
-9. **`ctx.packageManager` (`PackageManagerService`)**：包管理安装/卸载与进度通知；
-10. **`ctx.agent` (`AgentService`)**：Agent 运行循环调度与多轮事件转发。
-
-## 命令行与用户隔离
-
-- **可执行命令**：`picds`（首选极简命令）与 `picordis`（全称），彻底废除 `pi` 命令以防止与本地全局安装的原生 Pi 发生 PATH 抢占冲突；
-- **配置目录**：全局使用 `~/.picds/agent/`，项目级优先读取 `<cwd>/.picds/` 并自动向下兼容 `<cwd>/.pi/`。
+详细契约见 [docs/cordis/services](docs/cordis/services/README.zh.md)。

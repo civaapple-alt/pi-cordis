@@ -2,19 +2,8 @@
 
 [English](README.md) | 中文
 
-原生 Cordis 项目规则与指令自动注入插件。自动扫描并聚合根目录及子目录下的 `AGENTS.md`、`CLAUDE.md`、`.clauderules`、`.cursorrules`、`.claude/rules/` 与 `.agents/rules/`，利用 SHA-256 哈希缓存保持提示词前缀绝对稳定，最大化大模型 KV-Cache 复用率。
+把补充性的项目规则格式加入 Cordis 提示词变换管线。默认读取根目录 `.clauderules`、`.cursorrules`，以及 `.claude/rules/`、`.agents/rules/` 下的 Markdown 文件。
 
-## 配置选项
+Pi 已经发现 `AGENTS.override.md`、`AGENTS.md` 与 `CLAUDE.md`，因此本插件默认不重复注入。只有在明确关闭上游 Pi 上下文文件加载时，才应设置 `includePiContextFiles: true` 或提供显式 `ruleFiles`。
 
-- `ruleFiles` (string[], 可选)：扫描的根目录规则文件清单（默认：`["AGENTS.md", "CLAUDE.md", ".clauderules", ".cursorrules"]`）。
-- `scanClaudeRules` (boolean, 默认 `true`)：是否扫描 `.claude/rules/*.md`。
-- `scanAgentRules` (boolean, 默认 `true`)：是否扫描 `.agents/rules/*.md`。
-
-## KV-Cache 友好型哈希缓存
-
-1. **层级化规则聚合**：递归汇总根目录与子目录中的所有项目规范与准则。
-2. **SHA-256 增量哈希**：对合并后的规则内容计算哈希；在文件未发生变更的多轮对话中直接复用内存缓存块，确保提示词前缀完全一致，最大化模型推理端的 KV-Cache 命中率。
-
-## 模型体验
-- **严格遵循规范**：在每轮会话开始前将当前项目的架构规范与工程约束准确注入上下文；
-- **零额外开销**：通过内存缓存极大降低磁盘 I/O 开销与推理时延。
+目录遍历顺序确定，文件不可读时明确失败，`maxTotalBytes` 默认 128 KiB。SHA-256 内容哈希用于在内容未变时复用已格式化文本块；它不会省去检测变更所需的文件读取，也不保证 Provider 侧 KV Cache 行为。

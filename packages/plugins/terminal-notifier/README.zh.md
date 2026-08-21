@@ -2,11 +2,12 @@
 
 [English](README.md) | 中文
 
-`@pi-cordis/plugin-terminal-notifier` 是 Pi-Cordis 的终端系统通知插件。
+`@pi-cordis/plugin-terminal-notifier` 在 stdout 为 TTY 时写入 OSC 777 通知序列。
 
 ---
 
 ## 核心机制
 
-- 监听 `pi/tool-call`（当调用 `ask_question` 等待用户输入时）与 `pi/session-turn-end`（单轮推理结束时）；
-- 通过标准 TTY 向 Warp、Ghostty、iTerm2 等现代终端发射 `OSC 777` 转义序列，触发操作系统的原生桌面弹窗通知。
+- 监听 `ask_question` 的 `pi/tool-call` 与 `pi/turn-end`；
+- 写入 OSC 777 序列，实际展示取决于终端支持与通知设置；
+- stdout 不是 TTY 时不执行，也不调用平台专用通知 API。

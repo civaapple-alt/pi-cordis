@@ -2,7 +2,7 @@
 
 English | [中文](auth-service.zh.md)
 
-`AuthService` is the credential and API key management service in Pi-Cordis. It securely reads, writes, and manages model provider credentials stored in `~/.picds/agent/auth.json`, supports in-memory credential overrides, and emits `pi/auth-updated` events on the Cordis EventBus.
+`AuthService` is the credential and API key management seam in Pi-Cordis. It reads and writes model provider credentials stored in `~/.picds/agent/auth.json`, keeps successful writes in memory, and emits `pi/auth-updated` events on the Cordis EventBus.
 
 ---
 
@@ -10,14 +10,19 @@ English | [中文](auth-service.zh.md)
 
 - **Storage Path**: `~/.picds/agent/auth.json` (isolated from native `~/.pi/agent/auth.json`);
 - **Format**: JSON key-value pairs where the key is the provider identifier (e.g., `"deepseek"`, `"openai"`, `"anthropic"`) and the value contains `apiKey` and credential metadata;
-- **In-Memory Precedence**: In-memory credentials take precedence over disk files.
+- **Write safety**: mutations are serialized within the process, written through a temporary file, and atomically renamed;
+- **Permissions**: newly written credential files use owner-only mode (`0600`) on platforms that enforce POSIX modes;
+- **Failure semantics**: malformed JSON and persistence errors reject the operation instead of silently replacing or losing credentials;
+- **In-Memory Precedence**: successfully written credentials are cached in memory and take precedence over disk files.
+
+This service prevents torn writes and same-process lost updates. It is not a multi-process credential database; avoid running concurrent credential-mutating Picds processes against the same file.
 
 ---
 
 ## API Reference
 
 ### 1. `ctx.auth.getApiKey(provider: string): Promise<string | undefined>`
-Retrieves the effective API key for a specified provider. Checks in-memory overrides, disk `auth.json`, and environment variables (e.g., `DEEPSEEK_API_KEY`).
+Retrieves the stored API key for a specified provider. It checks the successful in-memory write cache first, then `auth.json`. Environment-based provider resolution remains owned by the upstream Pi runtime.
 ```typescript
 const apiKey = await ctx.auth.getApiKey("deepseek");
 ```

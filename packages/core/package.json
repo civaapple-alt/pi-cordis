@@ -1,6 +1,6 @@
 {
 	"name": "@pi-cordis/core",
-	"version": "0.2.0",
+	"version": "0.4.0",
 	"description": "Cordis microkernel control plane and native plugin harness for Pi Coding Agent",
 	"type": "module",
 	"piConfig": {
@@ -8,43 +8,52 @@
 		"configDir": ".picds"
 	},
 	"bin": {
-		"picds": "./src/cli.ts",
-		"picordis": "./src/cli.ts"
+		"picds": "./dist/cli.js",
+		"picordis": "./dist/cli.js"
 	},
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"types": "./src/index.ts",
-			"import": "./src/index.ts"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
 		}
 	},
+	"files": [
+		"dist",
+		"docs",
+		"README.md",
+		"README.zh.md"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
-		"build": "tsc --noEmit",
-		"test": "vitest --run"
+		"build": "tsdown",
+		"test": "vitest --run",
+		"publint": "publint"
 	},
 	"dependencies": {
 		"@deepseek-ai/cordis": "^4.0.1",
-		"@deepseek-ai/cosmokit": "^1.8.2",
-		"@deepseek-ai/schemastery": "^3.18.1",
 		"@pi-cordis/profiles": "workspace:*",
-		"@pi-cordis/plugin-btw": "workspace:*",
 		"@pi-cordis/plugin-terminal-notifier": "workspace:*",
 		"@earendil-works/pi-coding-agent": "^0.84.2",
-		"@earendil-works/pi-agent-core": "^0.84.2",
 		"@earendil-works/pi-ai": "^0.84.2",
-		"@earendil-works/pi-client": "^0.84.2",
-		"@earendil-works/pi-protocol": "^0.84.2",
-		"@earendil-works/pi-tui": "^0.84.2",
-		"chalk": "^5.4.1",
-		"yaml": "^2.7.0"
+		"@earendil-works/pi-tui": "^0.84.2"
 	},
 	"devDependencies": {
+		"@pi-cordis/plugin-btw": "workspace:*",
 		"@types/node": "22.19.19",
 		"typescript": "5.9.3",
 		"vitest": "4.1.9"
 	},
 	"engines": {
 		"node": ">=22.19.0"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/civaapple-alt/pi-cordis.git",
+		"directory": "packages/core"
 	}
 }

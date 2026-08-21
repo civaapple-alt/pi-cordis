@@ -1,48 +1,19 @@
-# presets/ — Agent Capability Presets & Profile Configurations
+# presets/ — Canonical Pi-Cordis Profiles
 
 English | [中文](README.zh.md)
 
-The `presets/` directory contains all scenario-driven Agent Mode configurations for **Pi-Cordis**. In accordance with the **"Default is Best" Minimalist Philosophy**, the system consolidates internal plugin permutations into **3 canonical, high-leverage scenario presets**.
+Pi-Cordis keeps three profiles whose behavior is materially different. Each directory contains display metadata in `preset.yml` and an ordered Cordis plugin list in `cordis.yml`.
 
-Each preset is a dedicated directory containing two declarative YAML configuration files:
-1. **`preset.yml`**: Display name, description, and UI ordering metadata;
-2. **`cordis.yml`**: The list of native Cordis plugins and validated configs mounted upon activation.
+| Profile | Composition | Purpose |
+|---|---|---|
+| `default` | `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `btw`, `terminal-notifier` | Daily development with a small set of verified controls. |
+| `plan` | `plan-mode`, read-only `safety-gate`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question` | Read-only planning and review. |
+| `ptc` | `code-mode`, `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question` | Programmatic batching through `run_code`. |
 
----
+Start with `pnpm picds`, `pnpm picds --profile plan`, or `pnpm picds --profile ptc`. In the TUI, use `/profile <name>`.
 
-## The 3 Canonical Presets
+Project configuration prefers `<cwd>/.picds/` and falls back to `<cwd>/.pi/` only when `.picds/` is absent. User configuration lives under `~/.picds/agent/`. Unknown profiles and unknown plugin names fail explicitly.
 
-| Preset Key | Display Name | Directory | Active Plugins & Capabilities | Best For |
-|---|---|---|---|---|
-| **`default`** | Standard Coding Mode (Default is Best) | [`presets/default/`](default/) | `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `context-compactor`, `subagent`, `git-automation`, `session-handoff`, `ssh-delegator`, `tools-manager` | **Default is Best**. Out-of-the-box standard engineering mode with full safety, task tracking, rules injection, and multi-agent delegation. |
-| **`plan`** | Planning & Audit Mode (Plan / Review) | [`presets/plan/`](plan/) | `plan-mode`, `safety-gate` (`readOnly: true`), `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `context-compactor` | Complex refactoring, architecture exploration, and proposal design. Mutating tools are strictly intercepted until plans are approved. |
-| **`ptc`** | Programmatic Tool Calling (PTC / Code Mode) | [`presets/ptc/`](ptc/) | `code-mode` (`worker_threads`), `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `context-compactor` | Batch operations and complex data filtering. Exposes tools via a strong-typed TypeScript SDK, collapsing multi-turn workflows into 1 local execution. |
+PTC uses a Worker for timeout and failure isolation. It is not a permission sandbox: generated code runs with the Picds process user's authority. The safety gate remains a defense-in-depth guardrail for calls made through the `pi.*` tool SDK.
 
----
-
-## How to Switch Presets
-
-- **CLI Flag**: `pnpm pi --profile plan` or `pnpm pi --profile ptc`
-- **Interactive TUI**: Type `/profile plan` or `/profile ptc` in the terminal prompt.
-- **Default Startup**: `pnpm pi` (automatically loads `default` with full capabilities and zero configuration).
-
----
-
-## Adding Custom Presets
-
-To add a custom preset, create a new subfolder in `presets/<name>/` (or `.pi/presets/<name>/` / `~/.pi/presets/<name>/`):
-
-1. **`preset.yml`**:
-   ```yaml
-   name: Reviewer Mode
-   description: Specialized preset for code quality and architectural review
-   order: 4
-   ```
-
-2. **`cordis.yml`**:
-   ```yaml
-   - name: '@pi-cordis/plugin-safety-gate'
-     config:
-       readOnly: true
-   - name: '@pi-cordis/plugin-rules-injector'
-   ```
+Private prototype packages (`subagent`, `ssh-delegator`, and `context-compactor`) are intentionally absent from all profiles.

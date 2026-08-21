@@ -136,7 +136,7 @@ ${[...toolMethodDefs, fsNamespace, bashNamespace].filter(Boolean).join("\n\n")}
   }
 }
 
-/** Global SDK Instance available in Code Mode sandbox */
+/** Global SDK instance available in the Code Mode execution context. */
 declare const pi: pi.PiSDK;
 `;
 }

@@ -1,36 +1,35 @@
-# plugins/ — Pi 原生 Cordis 插件生态
+# Pi-Cordis 插件
 
-[English](README.md) | 中文
+原生插件通过 Cordis 服务扩展 Pi 数据面。所有动态注册都必须归属 Fiber，并可通过 Disposer 逆转。
 
-Pi 的原生 Cordis 插件与预设系统。所有插件均遵循 **"一切皆插件"（Everything is a Plugin）** 与 **"注册即副作用"（Registration as Effect）** 架构，提供高度正交隔离的能力、工具注册、事件拦截与提示词注入，且 100% 支持通过 Cordis 释放器（Disposer）无残留干净回滚。
+## 可发布包
 
-## 插件目录清单
+| 插件 | 注入服务 | 实际状态 |
+| --- | --- | --- |
+| `ask-question` | `tools` | Pi TUI 交互式提问工具，支持非交互回退。 |
+| `btw` | `extensions`, `ai` | 单轮、无主会话污染的旁路问答命令。 |
+| `code-mode` | `tools` | Worker PTC；内部工具调用仍经过 Cordis 拦截。 |
+| `git-automation` | `tools` | 根据显式输入格式化 Conventional Commit，不执行提交。 |
+| `git-guard` | `settings`, `tools` | 基于 `git stash create` 的轻量检查点。 |
+| `output-truncator` | `settings` | 递归文本截断与 `.picds/spill` 转存。 |
+| `plan-mode` | `tools`, `settings` | 计划状态、评审流程与只读写阻断。 |
+| `profiles` | `extensions`, `settings`, `tools` | 内置 Profile 组合与开发期 HMR。 |
+| `rules-injector` | `settings` | 项目规则发现与提示词注入。 |
+| `safety-gate` | 无 | 串行危险命令和受保护路径拦截。 |
+| `session-handoff` | `tools` | 结构化交接信封生成与事件广播。 |
+| `terminal-notifier` | 无 | 提问等待与 Pi 轮次完成时发送 OSC 777。 |
+| `todo-tracker` | `tools` | 四态 Todo 图与依赖环检测。 |
+| `tools-manager` | `tools` | 运行时模型侧工具可见性过滤。 |
 
-| 插件目录 | 职责与定位 | 核心工具 / 拦截能力 | `inject` 依赖 |
-|---|---|---|---|
-| [`profiles/`](profiles/README.zh.md) | 预设配置解析器、YAML 目录扫描器及双轨热重载（HMR）管理器。 | 预设切换、`/profile` 命令扩展 | `[]` |
-| [`subagent/`](subagent/README.zh.md) | 在独立的 `ctx.extend()` 作用域中派生子智能体执行子任务。 | `subagent` | `["tools"]` |
-| [`plan-mode/`](plan-mode/README.zh.md) | 结构化规划模式、步骤追踪与写操作拦截。 | `plan_step` | `["tools"]` |
-| [`code-mode/`](code-mode/README.zh.md) | 编程化工具调用（PTC），在 V8 沙箱中执行 JS/TS 并调用 `pi.*` SDK。 | `run_code` | `["tools"]` |
-| [`ask-question/`](ask-question/README.zh.md) | 交互式澄清问题工具，支持多选与自定义输入。 | `ask_question` | `["tools"]` |
-| [`output-truncator/`](output-truncator/README.zh.md) | 超长工具输出截断防爆窗（>50KB / >2000 行）。 | 事件拦截器 (`pi/tool-result`) | `[]` |
-| [`context-compactor/`](context-compactor/README.zh.md) | 手动或阈值触发的长会话分段压缩。 | `trigger_compact` | `["tools"]` |
-| [`tools-manager/`](tools-manager/README.zh.md) | 运行时动态查看、启用与禁用特定工具。 | `manage_tools` | `["tools"]` |
-| [`session-handoff/`](session-handoff/README.zh.md) | 打包会话里程碑与目标，实现平滑会话交接。 | `session_handoff` | `["tools"]` |
-| [`git-automation/`](git-automation/README.zh.md) | 依据 Conventional Commits 规范生成提交信息与关联 Issue。 | `git_smart_commit` | `["tools"]` |
-| [`ssh-delegator/`](ssh-delegator/README.zh.md) | 将 Shell 命令与文件操作代理至远程 SSH 主机或 Docker 容器。 | `ssh_exec` | `["tools"]` |
-| [`safety-gate/`](safety-gate/README.zh.md) | 安全网关，阻断高危 Shell 命令与敏感文件修改。 | 事件拦截器 (`pi/tool-call`) | `[]` |
-| [`git-guard/`](git-guard/README.zh.md) | 会话启动脏状态检查与风险操作前的 Git Stash 检查点备份。 | 事件拦截器 | `["settings"]` |
-| [`todo-tracker/`](todo-tracker/README.zh.md) | 会话内任务清单管理与提示词自动注入。 | `todo_write`, `todo_read` | `["tools"]` |
-| [`rules-injector/`](rules-injector/README.zh.md) | 自动扫描并注入 `AGENTS.md`、`CLAUDE.md`、`.cursorrules` 等规则。 | 提示词转换钩子 | `["settings"]` |
+## 私有原型
 
-## 预设与配置档案
+`subagent`、`ssh-delegator`、`context-compactor` 是私有工作区。此前实现并未真正执行名称所暗示的工作，因此已从 `@pi-cordis/profiles` 和发布依赖图移除。
 
-所有插件组合收敛为精选预设：
-- **`default` (Default is Best)**：开箱即用最优组合（`safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`）。
-- **`safe`**：只读安全模式与受保护文件边界。
-- **`strict`**：严格命令审计与 Git 脏状态强校验。
-- **`plan`**：交互式规划模式与文件修改拦截。
-- **`ptc`**：编程化工具调用模式（PTC Sandbox）。
-- **`full`**：全能极客模式，同时激活全部 14 大原生插件。
-- **`minimal`**：纯粹极简微内核，零额外插件。
+## Profile
+
+- `default`：八项经过核验的日常开发增强；
+- `plan`：只读规划与评审控制；
+- `ptc`：使用同一安全管线的编程化工具调用；
+- `minimal`：仅供内部和测试使用，不挂载能力插件。
+
+精确组合与发布门禁见[根 README](../../README.zh.md)。

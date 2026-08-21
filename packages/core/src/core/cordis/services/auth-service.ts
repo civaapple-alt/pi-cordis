@@ -1,7 +1,16 @@
 import { Service, type Context } from "@deepseek-ai/cordis";
-import { readStoredCredential, getAgentDir } from "@earendil-works/pi-coding-agent";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	renameSync,
+	unlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { join, dirname } from "node:path";
+import { randomUUID } from "node:crypto";
 import type { Credential, CredentialInfo } from "@earendil-works/pi-ai";
 
 export interface AuthServiceConfig {
@@ -12,7 +21,8 @@ export interface AuthServiceConfig {
 export class AuthService extends Service {
 	static provide = "auth";
 	public authPath: string;
-	private inMemoryCredentials: Map<string, any> = new Map();
+	private readonly inMemoryCredentials = new Map<string, Credential>();
+	private mutationQueue: Promise<void> = Promise.resolve();
 
 	constructor(ctx: Context, config?: AuthServiceConfig) {
 		super(ctx, "auth");
@@ -24,44 +34,35 @@ export class AuthService extends Service {
 		if (this.inMemoryCredentials.has(provider)) {
 			return this.inMemoryCredentials.get(provider);
 		}
-		return readStoredCredential(provider, this.authPath) as Credential | undefined;
+		return this.readDiskCredentials()[provider];
 	}
 
 	public async getApiKey(provider: string): Promise<string | undefined> {
 		const cred = await this.read(provider);
 		if (!cred) return undefined;
 		if (cred.type === "api_key") return cred.key;
-		return (cred as any).apiKey;
+		return undefined;
 	}
 
 	public async setApiKey(provider: string, apiKey: string): Promise<void> {
-		this.inMemoryCredentials.set(provider, { type: "api_key", key: apiKey });
-		try {
-			let data: Record<string, any> = {};
-			if (existsSync(this.authPath)) {
-				try {
-					data = JSON.parse(readFileSync(this.authPath, "utf-8"));
-				} catch {}
-			}
-			data[provider] = { type: "api_key", key: apiKey };
-			mkdirSync(dirname(this.authPath), { recursive: true });
-			writeFileSync(this.authPath, JSON.stringify(data, null, 2), "utf-8");
-		} catch {
-			// In test or restricted environment, in-memory credential is preserved
-		}
-		this.ctx.emit("pi/auth-updated", { provider });
+		const credential: Credential = { type: "api_key", key: apiKey };
+		await this.enqueueMutation(() => {
+			const data = this.readDiskCredentials();
+			data[provider] = credential;
+			this.writeDiskCredentials(data);
+			this.inMemoryCredentials.set(provider, credential);
+			this.ctx.emit("pi/auth-updated", { provider });
+		});
 	}
 
 	public async remove(provider: string): Promise<void> {
-		this.inMemoryCredentials.delete(provider);
-		try {
-			if (existsSync(this.authPath)) {
-				const data = JSON.parse(readFileSync(this.authPath, "utf-8"));
-				delete data[provider];
-				writeFileSync(this.authPath, JSON.stringify(data, null, 2), "utf-8");
-			}
-		} catch {}
-		this.ctx.emit("pi/auth-updated", { provider });
+		await this.enqueueMutation(() => {
+			const data = this.readDiskCredentials();
+			delete data[provider];
+			this.writeDiskCredentials(data);
+			this.inMemoryCredentials.delete(provider);
+			this.ctx.emit("pi/auth-updated", { provider });
+		});
 	}
 
 	public async has(provider: string): Promise<boolean> {
@@ -70,21 +71,55 @@ export class AuthService extends Service {
 	}
 
 	public async list(): Promise<readonly CredentialInfo[]> {
-		const items: CredentialInfo[] = [];
-		try {
-			if (existsSync(this.authPath)) {
-				const data = JSON.parse(readFileSync(this.authPath, "utf-8"));
-				for (const [provider, cred] of Object.entries(data)) {
-					items.push({ providerId: provider, provider, type: (cred as any).type ?? "api_key" } as unknown as CredentialInfo);
-				}
-			}
-		} catch {}
+		const items: CredentialInfo[] = Object.entries(this.readDiskCredentials()).map(
+			([providerId, credential]) => ({ providerId, type: credential.type }),
+		);
 		for (const [provider, cred] of this.inMemoryCredentials.entries()) {
-			if (!items.find((i) => (i as any).provider === provider || i.providerId === provider)) {
-				items.push({ providerId: provider, provider, type: (cred as any).type ?? "api_key" } as unknown as CredentialInfo);
+			if (!items.some((item) => item.providerId === provider)) {
+				items.push({ providerId: provider, type: cred.type });
 			}
 		}
 		return items;
+	}
+
+	private readDiskCredentials(): Record<string, Credential> {
+		if (!existsSync(this.authPath)) return {};
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(readFileSync(this.authPath, "utf8"));
+		} catch (error) {
+			throw new Error(
+				`Failed to read auth.json: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error },
+			);
+		}
+		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+			throw new Error("Invalid auth.json: expected an object");
+		}
+		return parsed as Record<string, Credential>;
+	}
+
+	private writeDiskCredentials(data: Record<string, Credential>): void {
+		const parentDir = dirname(this.authPath);
+		mkdirSync(parentDir, { recursive: true, mode: 0o700 });
+		const temporaryPath = join(parentDir, `.auth-${process.pid}-${randomUUID()}.tmp`);
+		try {
+			writeFileSync(temporaryPath, `${JSON.stringify(data, null, 2)}\n`, {
+				encoding: "utf8",
+				flag: "wx",
+				mode: 0o600,
+			});
+			renameSync(temporaryPath, this.authPath);
+			chmodSync(this.authPath, 0o600);
+		} finally {
+			if (existsSync(temporaryPath)) unlinkSync(temporaryPath);
+		}
+	}
+
+	private enqueueMutation(operation: () => void): Promise<void> {
+		const result = this.mutationQueue.then(operation);
+		this.mutationQueue = result.catch(() => {});
+		return result;
 	}
 }
 

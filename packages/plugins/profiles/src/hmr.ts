@@ -22,8 +22,8 @@ export interface HmrOptions {
 export interface HmrManager {
 	currentProfileName: string;
 	activeForks: Map<string, any>;
-	stop: () => void;
-	reloadCurrentProfile: () => void;
+	stop: () => Promise<void>;
+	reloadCurrentProfile: () => Promise<void>;
 	hotReloadPluginCode: (pluginName: string, filePath: string) => Promise<boolean>;
 }
 
@@ -40,38 +40,36 @@ export function setupPluginHmr(
 	const activeForks = new Map<string, any>();
 	let currentProfileName = initialProfile;
 	const watchers: fs.FSWatcher[] = [];
+	const debounceTimers = new Set<NodeJS.Timeout>();
+	let reloadPromise: Promise<void> | undefined;
 
 	// Helper to reload current active profile
-	const reloadCurrentProfile = () => {
-		const allProfiles = loadProfilesFromYaml(cwd, options.agentDir);
-		const profile = allProfiles[currentProfileName] ?? allProfiles.default;
+	const reloadCurrentProfile = async (): Promise<void> => {
+		if (reloadPromise) return reloadPromise;
+		reloadPromise = (async () => {
+			const allProfiles = loadProfilesFromYaml(cwd, options.agentDir);
+			const profile = allProfiles[currentProfileName];
+			if (!profile) throw new Error(`Cannot reload unknown profile "${currentProfileName}".`);
 
-		// 1. Dispose all current active forks
-		for (const [name, fork] of activeForks.entries()) {
-			try {
-				fork.dispose();
-			} catch {}
-		}
-		activeForks.clear();
+			await Promise.allSettled(
+				Array.from(activeForks.values(), (fork) => Promise.resolve(fork.dispose())),
+			);
+			activeForks.clear();
 
-		// 2. Re-apply plugins with new config
-		for (const [pluginKey, config] of Object.entries(profile.plugins)) {
-			if (!config) continue;
-			// Pass to cordis context
-			try {
-				const loaded = applyProfile(ctx, currentProfileName, undefined, {
-					cwd,
-					agentDir: options.agentDir,
-				});
-			} catch {}
-		}
+			await applyProfile(ctx, currentProfileName, undefined, {
+				cwd,
+				agentDir: options.agentDir,
+			});
 
-		ctx.emit("pi/hmr-preset-update" as any, {
-			profileName: currentProfileName,
-			profile,
+			ctx.emit("pi/hmr-preset-update", {
+				profileName: currentProfileName,
+				profile,
+			});
+			options.onReload?.("preset", currentProfileName);
+		})().finally(() => {
+			reloadPromise = undefined;
 		});
-
-		options.onReload?.("preset", currentProfileName);
+		return reloadPromise;
 	};
 
 	// Helper to hot reload a specific plugin's source code
@@ -82,28 +80,24 @@ export function setupPluginHmr(
 			const newModule = await import(fileUrl);
 			const plugin = newModule.default ?? newModule;
 
-			// Dispose existing fork if present
-			const oldFork = activeForks.get(pluginName);
-			if (oldFork) {
-				try {
-					oldFork.dispose();
-				} catch {}
-				activeForks.delete(pluginName);
-			}
-
 			// Get active config for this plugin
 			const allProfiles = loadProfilesFromYaml(cwd, options.agentDir);
-			const currentProfile = allProfiles[currentProfileName] ?? allProfiles.default;
+			const currentProfile = allProfiles[currentProfileName];
+			if (!currentProfile) throw new Error(`Cannot reload plugin for unknown profile "${currentProfileName}".`);
 			const config = currentProfile.plugins[pluginName as BuiltinPluginName];
+			if (!config) return false;
 			const pluginConfig = typeof config === "object" ? config : {};
 
-			// Re-mount on Cordis context
+			// Mount first; reversible registration stacks keep the old implementation
+			// live if the replacement cannot be created.
+			const oldFork = activeForks.get(pluginName);
 			const newFork = ctx.plugin(plugin, pluginConfig);
 			if (newFork) {
 				activeForks.set(pluginName, newFork);
 			}
+			if (oldFork) await oldFork.dispose();
 
-			ctx.emit("pi/hmr-plugin-update" as any, {
+			ctx.emit("pi/hmr-plugin-update", {
 				pluginName,
 				filePath,
 			});
@@ -116,22 +110,32 @@ export function setupPluginHmr(
 		}
 	};
 
-	// 1. Watch Presets Directory (`presets/` and `.pi/presets/`)
+	// 1. Watch built-in presets plus `.picds/presets/` (`.pi/` compatibility fallback).
 	if (options.watchPresets !== false) {
+		const picdsPresetDir = path.join(cwd, ".picds", "presets");
+		const legacyPresetDir = path.join(cwd, ".pi", "presets");
 		const presetDirs = [
 			path.join(cwd, "presets"),
-			path.join(cwd, ".pi", "presets"),
-		].filter((p) => fs.existsSync(p));
+			options.agentDir ? path.join(options.agentDir, "presets") : null,
+			fs.existsSync(picdsPresetDir) ? picdsPresetDir : legacyPresetDir,
+		].filter((p): p is string => Boolean(p && fs.existsSync(p)));
 
 		for (const pDir of presetDirs) {
 			let debounceTimer: NodeJS.Timeout | undefined;
 			try {
 				const watcher = fs.watch(pDir, { recursive: true }, (eventType, filename) => {
 					if (!filename || (!filename.endsWith(".yml") && !filename.endsWith(".yaml"))) return;
-					clearTimeout(debounceTimer);
+					if (debounceTimer) {
+						clearTimeout(debounceTimer);
+						debounceTimers.delete(debounceTimer);
+					}
 					debounceTimer = setTimeout(() => {
-						reloadCurrentProfile();
+						if (debounceTimer) debounceTimers.delete(debounceTimer);
+						void reloadCurrentProfile().catch((error) => {
+							console.error("[HMR] Failed to reload profile:", error);
+						});
 					}, debounceMs);
+					debounceTimers.add(debounceTimer);
 				});
 				watchers.push(watcher);
 			} catch {}
@@ -146,25 +150,30 @@ export function setupPluginHmr(
 			try {
 				const watcher = fs.watch(pluginsDir, { recursive: true }, (eventType, filename) => {
 					if (!filename || (!filename.endsWith(".ts") && !filename.endsWith(".js"))) return;
-					clearTimeout(debounceTimer);
+					if (debounceTimer) {
+						clearTimeout(debounceTimer);
+						debounceTimers.delete(debounceTimer);
+					}
 					debounceTimer = setTimeout(() => {
+						if (debounceTimer) debounceTimers.delete(debounceTimer);
 						// Extract plugin name from path (e.g. safety-gate/src/index.ts -> safety-gate)
 						const parts = filename.split(path.sep);
 						const pluginDirName = parts[0];
 						if (pluginDirName && pluginDirName !== "profiles") {
 							const entryFile = path.join(pluginsDir, pluginDirName, "src", "index.ts");
 							if (fs.existsSync(entryFile)) {
-								hotReloadPluginCode(pluginDirName, entryFile);
+								void hotReloadPluginCode(pluginDirName, entryFile);
 							}
 						}
 					}, debounceMs);
+					debounceTimers.add(debounceTimer);
 				});
 				watchers.push(watcher);
 			} catch {}
 		}
 	}
 
-	return {
+	const manager: HmrManager = {
 		get currentProfileName() {
 			return currentProfileName;
 		},
@@ -174,13 +183,23 @@ export function setupPluginHmr(
 		activeForks,
 		reloadCurrentProfile,
 		hotReloadPluginCode,
-		stop: () => {
+		stop: async () => {
+			for (const timer of debounceTimers) clearTimeout(timer);
+			debounceTimers.clear();
 			for (const w of watchers) {
 				try {
 					w.close();
 				} catch {}
 			}
 			watchers.length = 0;
+			if (reloadPromise) await reloadPromise;
+			await Promise.allSettled(
+				Array.from(activeForks.values(), (fork) => Promise.resolve(fork.dispose())),
+			);
+			activeForks.clear();
 		},
 	};
+
+	ctx.effect(() => () => manager.stop());
+	return manager;
 }

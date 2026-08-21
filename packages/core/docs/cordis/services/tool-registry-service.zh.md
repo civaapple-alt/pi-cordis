@@ -8,12 +8,12 @@
 
 ## 核心机制
 
-1. **统一工具注册池**：聚合原生内置工具与第三方插件贡献的动态工具；
+1. **统一工具注册池**：聚合原生内置工具与第三方插件贡献的动态工具；同名注册采用栈语义，销毁最新注册后会恢复仍然存活的前一项；
 2. **表现层工具遮蔽 (Tool Masking)**：
    - 允许插件（如 `@pi-cordis/plugin-code-mode` 或 `@pi-cordis/plugin-plan-mode`）通过 `ctx.tools.addFilter()` 动态隐藏特定工具，使大模型仅能感知并调用符合当前场景的受控工具集；
 3. **带拦截钩子的执行管道 (Execution Pipeline)**：
    - 工具执行前：触发 `pi/tool-call` 串行前置事件，支持安全拦截插件（如 `@pi-cordis/plugin-safety-gate`）阻断高危命令；
-   - 工具执行后：触发 `pi/tool-result` 并行后置事件，支持输出防爆插件（如 `@pi-cordis/plugin-output-truncator`）对海量输出进行双端截断与溢出转存。
+   - 工具执行后：执行可变的 `pi/tool-result` 串行变换链；最终 `event.result` 会真实返回给 Pi。
 
 ---
 
@@ -50,15 +50,15 @@ const removeFilter = ctx.tools.addFilter((tool) => {
 ### 3. `ctx.tools.getExportedToolDefinitions(cwd?: string): ToolDef[]`
 获取经过当前所有活跃过滤器过滤后、真正暴露给大模型的工具定义清单。
 
-### 4. `ctx.tools.getTool(name: string, cwd?: string): ToolDef | undefined`
+### 4. `ctx.tools.get(name: string, cwd?: string): ToolDef | undefined`
 根据名称检索指定工具定义。
 
 ### 5. `ctx.tools.executeTool(toolName: string, args: Record<string, unknown>, ...rest: any[]): Promise<any>`
 通过完整的生命周期管道执行工具：
 1. 触发 `pi/tool-call` 串行事件（若监听器抛出异常或拦截，执行中断）；
 2. 执行底层工具的 `execute(args, ...)` 逻辑；
-3. 触发 `pi/tool-result` 后置事件；
-4. 返回最终结果。
+3. 触发可变的 `pi/tool-result` 后置事件；
+4. 返回可能已被变换的 `event.result`。
 
 ---
 

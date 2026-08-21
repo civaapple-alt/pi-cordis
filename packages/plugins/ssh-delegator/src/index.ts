@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: SSHDelegatorConfig = {}) {
 
 	const unregisterTool = ctx.tools.register({
 		name: "ssh_exec",
-		description: "Execute shell commands or query file statuses on a remote SSH server or Docker container environment.",
+		description: "Private unavailable prototype. No SSH transport is connected.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -61,7 +61,7 @@ export function apply(ctx: Context, config: SSHDelegatorConfig = {}) {
 			if (!theme?.fg) return `${success ? "✓" : "✗"} [${result.target}] Exit ${result.exitCode} (${result.latencyMs}ms)`;
 			return `${theme.fg(success ? "success" : "error", success ? "✓ SSH OK" : "✗ SSH Failed")} ${theme.fg("dim", `[${result.target}] Exit ${result.exitCode} (${result.latencyMs}ms)`)}`;
 		},
-		execute: async (args: { command: string; host?: string; user?: string; port?: number }): Promise<SSHExecResult> => {
+			execute: async (args: { command: string; host?: string; user?: string; port?: number }): Promise<SSHExecResult> => {
 			const startTime = Date.now();
 			const host = args.host ?? defaultHost;
 			const user = args.user ?? defaultUser;
@@ -69,11 +69,12 @@ export function apply(ctx: Context, config: SSHDelegatorConfig = {}) {
 			const target = port && port !== 22 ? `${user}@${host}:${port}` : `${user}@${host}`;
 
 			return {
-				success: true,
+				success: false,
 				target,
 				command: args.command,
-				stdout: `[SSH Proxy ${target}] Executed: ${args.command}`,
-				exitCode: 0,
+				stdout: "",
+				stderr: "SSH_TRANSPORT_UNAVAILABLE: this private prototype has no SSH transport.",
+				exitCode: -1,
 				latencyMs: Date.now() - startTime,
 			};
 		},

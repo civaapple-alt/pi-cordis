@@ -15,17 +15,18 @@ export interface ExtensionServiceConfig {
 	extensionPaths?: string[];
 }
 
-export const inject = ["tools"];
+export const inject = ["tools", "ai"];
 
 export class ExtensionService extends Service {
 	static provide = "extensions";
-	static inject = ["tools"];
+	static inject = ["tools", "ai"];
 	private cwd: string;
 	private agentDir: string;
 	private extensionPaths: string[];
 	public lastLoadedResult?: any;
-	private commands = new Map<string, ExtensionCommandDefinition>();
+	private commands = new Map<string, ExtensionCommandDefinition[]>();
 	private activePi?: any;
+	private activeCommandNames = new Set<string>();
 
 	constructor(ctx: Context, config?: ExtensionServiceConfig) {
 		super(ctx, "extensions");
@@ -36,17 +37,23 @@ export class ExtensionService extends Service {
 		// Listen for dynamically registered tools and tool changes to bridge to active Pi instance
 		this.ctx.on("pi/tool-registered" as any, (tool: any) => {
 			if (this.activePi && tool) {
-				try {
-					this.activePi.registerTool?.(this.adaptToolForPi(tool));
-				} catch {
-					// Ignore duplicate
-				}
+				this.activePi.registerTool?.(this.adaptToolForPi(tool));
 				this.syncActiveTools();
 			}
 		});
 
 		this.ctx.on("pi/tools-changed" as any, () => {
 			this.syncActiveTools();
+		});
+
+		this.ctx.on("pi/provider-registered", (event) => {
+			if (!this.activePi) return;
+			if (event.provider) this.activePi.registerProvider?.(event.provider);
+			else if (event.config) this.activePi.registerProvider?.(event.name, event.config);
+		});
+
+		this.ctx.on("pi/provider-unregistered", (name) => {
+			this.activePi?.unregisterProvider?.(name);
 		});
 	}
 
@@ -73,27 +80,49 @@ export class ExtensionService extends Service {
 	 */
 	public registerCommand(name: string, definition: ExtensionCommandDefinition): () => void {
 		return this.ctx.effect(() => {
-			this.commands.set(name, definition);
-			if (this.activePi) {
-				try {
-					this.activePi.registerCommand(name, definition);
-				} catch {
-					// Ignore if already registered
-				}
-			}
+			const registrations = this.commands.get(name) ?? [];
+			registrations.push(definition);
+			this.commands.set(name, registrations);
+			this.ensureCommandBridge(name);
 			this.ctx.emit("pi/command-registered", { name, definition });
 			return () => {
-				this.commands.delete(name);
+				const activeRegistrations = this.commands.get(name);
+				if (activeRegistrations) {
+					const index = activeRegistrations.lastIndexOf(definition);
+					if (index >= 0) activeRegistrations.splice(index, 1);
+					if (activeRegistrations.length === 0) this.commands.delete(name);
+				}
 				this.ctx.emit("pi/command-unregistered", name);
 			};
 		});
+	}
+
+	private ensureCommandBridge(name: string): void {
+		if (!this.activePi || this.activeCommandNames.has(name)) return;
+		this.activePi.registerCommand(name, {
+			description: this.commands.get(name)?.at(-1)?.description ?? `Cordis command: ${name}`,
+			getArgumentCompletions: (prefix: string) => (
+				this.commands.get(name)?.at(-1)?.getArgumentCompletions?.(prefix) ?? null
+			),
+			handler: async (args: string, commandContext: any) => {
+				const activeDefinition = this.commands.get(name)?.at(-1);
+				if (!activeDefinition) {
+					commandContext?.ui?.notify?.(`Command /${name} is unavailable in the active profile.`, "warning");
+					return;
+				}
+				await activeDefinition.handler(args, commandContext);
+			},
+		});
+		this.activeCommandNames.add(name);
 	}
 
 	/**
 	 * Get all registered slash commands
 	 */
 	public getRegisteredCommands(): ReadonlyMap<string, ExtensionCommandDefinition> {
-		return this.commands;
+		return new Map(
+			Array.from(this.commands, ([name, registrations]) => [name, registrations.at(-1)!]),
+		);
 	}
 
 	/**
@@ -164,26 +193,28 @@ export class ExtensionService extends Service {
 			hidden: true,
 			factory: (pi: any) => {
 				this.activePi = pi;
+				this.activeCommandNames.clear();
+				this.ctx.ai.setModelSwitcher((model) => (
+					typeof pi.setModel === "function" ? pi.setModel(model) : Promise.resolve(false)
+				));
+
+				for (const provider of this.ctx.ai.getRegisteredProviders()) {
+					if (provider.kind === "native") pi.registerProvider?.(provider.value);
+					else pi.registerProvider?.(provider.name, provider.value);
+				}
 
 				// 1. Register all slash commands
-				for (const [name, def] of this.commands.entries()) {
-					try {
-						pi.registerCommand?.(name, def);
-					} catch {
-						// Ignore duplicate registration
-					}
+				for (const [name, registrations] of this.commands.entries()) {
+					if (!registrations.at(-1)) continue;
+					this.ensureCommandBridge(name);
 				}
 
 				// 2. Register built-in search tools (grep, find, ls) so they are available without CLI --tools restriction
 				if (this.ctx.tools) {
 					for (const builtinName of ["grep", "find", "ls"] as const) {
-						try {
-							const toolDef = this.ctx.tools.getBuiltinToolDefinition(builtinName);
-							if (toolDef) {
-								pi.registerTool?.(this.adaptToolForPi(toolDef));
-							}
-						} catch {
-							// Ignore if already registered
+						const toolDef = this.ctx.tools.getBuiltinToolDefinition(builtinName);
+						if (toolDef) {
+							pi.registerTool?.(this.adaptToolForPi(toolDef));
 						}
 					}
 				}
@@ -191,11 +222,7 @@ export class ExtensionService extends Service {
 				// 3. Register all custom tools from ctx.tools to Pi
 				if (this.ctx.tools) {
 					for (const tool of this.ctx.tools.getCustomTools()) {
-						try {
-							pi.registerTool?.(this.adaptToolForPi(tool));
-						} catch {
-							// Ignore duplicate registration
-						}
+						pi.registerTool?.(this.adaptToolForPi(tool));
 					}
 				}
 
@@ -204,17 +231,17 @@ export class ExtensionService extends Service {
 
 				// 5. Connect prompt transformation bridge (rules-injector, todo-tracker, plan-mode, code-mode)
 				pi.on?.("before_agent_start", async (event: any) => {
+					await this.ctx.serial("pi/session-before", {
+						session: event.session,
+						prompt: event.prompt ?? "",
+					});
 					const promptEvent = {
 						prompt: event.systemPrompt ?? "",
 						userPrompt: event.prompt ?? "",
 					};
-					try {
-						await this.ctx.parallel("pi/prompt-transform", promptEvent);
-						if (promptEvent.prompt && promptEvent.prompt !== event.systemPrompt) {
-							return { systemPrompt: promptEvent.prompt };
-						}
-					} catch {
-						// Fail-safe: keep original prompt on error
+					await this.ctx.serial("pi/prompt-transform", promptEvent);
+					if (promptEvent.prompt && promptEvent.prompt !== event.systemPrompt) {
+						return { systemPrompt: promptEvent.prompt };
 					}
 				});
 
@@ -248,9 +275,15 @@ export class ExtensionService extends Service {
 					this.ctx.emit("pi/turn-end", event);
 				});
 
+				pi.on?.("model_select", (event: any) => {
+					if (!event?.model) return;
+					this.ctx.ai.activeModel = event.model;
+					this.ctx.emit("pi/model-change", event.model);
+				});
+
 				// 8. Forward tool_call and tool_result events to Cordis EventBus
 				pi.on?.("tool_call", async (event: any) => {
-					await this.ctx.parallel("pi/tool-call", {
+					await this.ctx.serial("pi/tool-call", {
 						toolName: event.toolName,
 						name: event.toolName,
 						args: event.input ?? {},
@@ -258,12 +291,27 @@ export class ExtensionService extends Service {
 				});
 
 				pi.on?.("tool_result", async (event: any) => {
-					await this.ctx.parallel("pi/tool-result", {
+					const resultEvent = {
 						toolName: event.toolName,
 						name: event.toolName,
 						args: event.input ?? {},
-						result: event.content ?? event.details,
-					});
+						result: {
+							content: event.content,
+							details: event.details,
+							isError: event.isError,
+							usage: event.usage,
+						},
+					};
+					await this.ctx.serial("pi/tool-result", resultEvent);
+
+					const result = resultEvent.result as any;
+					if (!result || typeof result !== "object") return undefined;
+					return {
+						content: result.content,
+						details: result.details,
+						isError: result.isError,
+						usage: result.usage,
+					};
 				});
 			},
 		};
@@ -277,22 +325,13 @@ export class ExtensionService extends Service {
 
 		// 1. Register any new custom tools
 		for (const tool of this.ctx.tools.getCustomTools()) {
-			try {
-				this.activePi.registerTool?.(this.adaptToolForPi(tool));
-			} catch {
-				// Ignore duplicate
-			}
+			this.activePi.registerTool?.(this.adaptToolForPi(tool));
 		}
 
 		// 2. Compute exported tool names (taking active filters like code-mode into account)
 		const exportedToolNames = this.ctx.tools.getExportedToolNames();
-		try {
-			this.activePi.setActiveTools?.(exportedToolNames);
-		} catch {
-			// Ignore
-		}
+		this.activePi.setActiveTools?.(exportedToolNames);
 	}
 }
 
 export default ExtensionService;
-

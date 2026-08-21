@@ -9,7 +9,7 @@ Pi-Cordis is a plugin-based terminal coding agent harness on the official Cordis
 Pi-Cordis adheres to a strict 4-layer decoupling model. Never bypass intermediate layers or re-clone upstream sources:
 
 ```
-Level 4: Presets & Plugins   — presets/* (default, plan, ptc) & packages/plugins/* (15 native plugins)
+Level 4: Presets & Plugins   — presets/* (default, plan, ptc) & packages/plugins/* (13 published capabilities, profiles, 3 private prototypes)
 Level 3: Microkernel Mesh    — packages/core (@pi-cordis/core: 10 Cordis services, EventBus, picds CLI)
 Level 2: Coding Agent Spec   — @earendil-works/pi-coding-agent (TUI canvas, prompt templates, agent loop)
 Level 1: Generic Agent Core  — @earendil-works/pi-agent-core (LLM adapters, tool execution primitives)
@@ -23,7 +23,7 @@ Level 1: Generic Agent Core  — @earendil-works/pi-agent-core (LLM adapters, to
 presets/     Scenario-driven capability presets (preset.yml + cordis.yml)
   default/     Default is Best standard development mode
   plan/        Strict read-only planning and audit mode
-  ptc/         Programmatic Tool Calling (TypeScript SDK + Worker sandbox)
+  ptc/         Programmatic Tool Calling (TypeScript SDK + timeout-isolated Worker)
 packages/
   core/        @pi-cordis/core: microkernel bootstrapper, 10 Core Services, picds CLI
     docs/        10 Core Services detailed API contracts and guides
@@ -34,15 +34,15 @@ packages/
     git-guard/          Dirty workspace warning & atomic git stash checkpoints
     todo-tracker/       4-state task progression & adaptive prompt compression
     rules-injector/     Automatic project rules discovery & SHA-256 caching
-    code-mode/          PTC mode: dynamic .d.ts + Worker thread sandbox
+    code-mode/          PTC mode: dynamic .d.ts + timeout-isolated Worker (not a permission sandbox)
     ask-question/       Interactive multi-question batching & recommended selection
     plan-mode/          Step state machine, progress bar & mutating tool blocker
-    output-truncator/   Head/tail preservation & .pi/spill/ overflow persistence
-    context-compactor/  4-dimensional structured context retention
-    subagent/           Scope-isolated subagent delegation (ctx.extend)
+    output-truncator/   Head/tail preservation & .picds/spill/ overflow persistence
+    context-compactor/  Private prototype; not connected to Pi compaction
+    subagent/           Private prototype; no production agent driver
     session-handoff/    Standardized handoff envelope & markdown briefings
     git-automation/     Staged diff semantic analysis & Conventional Commits
-    ssh-delegator/      Remote SSH execution proxy & latency measurement
+    ssh-delegator/      Private prototype; no production SSH transport
     tools-manager/      Dynamic capability slicing & tool visibility toggling
     profiles/           YAML profile loader, preset composer & dual-track HMR
 .agents/     Agent workflows and Architecture Decision Records (notes/)
@@ -56,7 +56,7 @@ CHANGELOG.md Progressively updated changelog (Keep a Changelog)
 
 ```sh
 pnpm install            # pnpm workspaces, node >=22.19
-pnpm test               # vitest unit tests across core and plugins (40 tests)
+pnpm test               # vitest unit and integration tests across core and plugins
 pnpm run check          # TypeScript strict typecheck (tsc --noEmit)
 pnpm picds              # launch interactive terminal (Default is Best mode)
 pnpm picds --profile plan # launch in read-only plan mode
@@ -81,7 +81,7 @@ Real-API runs read `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`, and root `.
 - **10 Core Services Seams**:
   - `ctx.settings` (`SettingsService`): Global and project settings management; emits `pi/settings-updated`.
   - `ctx.auth` (`AuthService`): Credential and API key storage; emits `pi/auth-updated`.
-  - `ctx.ai` (`AIService`): Multi-model runtime (1307+ models) & dynamic provider registry; emits `pi/model-change`.
+  - `ctx.ai` (`AIService`): Upstream Pi multi-model runtime & dynamic provider registry; emits `pi/model-change`.
   - `ctx.tools` (`ToolRegistryService`): 7 built-in tools, dynamic tools, presentation masking, and hooked `executeTool` pipeline.
   - `ctx.session` (`SessionService`): Persistent & in-memory session management; emits `pi/session-created`/`closed`.
   - `ctx.skills` (`SkillsService`): File-based and dynamic skill discovery; emits `pi/skill-registered`.
@@ -93,7 +93,7 @@ Real-API runs read `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`, and root `.
 - **CLI & User Space Isolation**:
   - Executable binaries are `picds` and `picordis`. Never register `pi` to avoid PATH collisions with native Pi installations.
   - Global user configuration lives in `~/.picds/agent/` (`settings.json`, `auth.json`, `sessions/`, `presets/`).
-  - Project configuration prioritizes `<cwd>/.picds/` and gracefully falls back to `<cwd>/.pi/`.
+  - Pi-Cordis control-plane configuration prioritizes `<cwd>/.picds/` and falls back to `<cwd>/.pi/` only where documented; Pi-owned resources retain upstream paths.
 - **Typed Events Declaration Merging**: Extend the Cordis event bus via `declare module "@deepseek-ai/cordis" { interface Events { ... } }` in `packages/core/src/core/cordis/types.ts`.
 - **ESM Everywhere**: `"type": "module"` across all packages. Use package names across packages and explicit `.ts` in local relative imports.
 - **Cross-Platform Defensiveness**:

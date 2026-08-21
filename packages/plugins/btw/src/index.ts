@@ -49,7 +49,7 @@ export function apply(ctx: Context, config: BtwPluginConfig = {}) {
 				return;
 			}
 
-			// 2. Perform ephemeral single-turn completion (100% bypass, no session logging)
+			// 2. Perform a single-turn completion outside the active AgentSession history.
 			try {
 				const runtime = ctx.ai.getRuntime();
 				const response = await runtime.completeSimple(

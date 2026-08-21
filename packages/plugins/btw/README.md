@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-`@pi-cordis/plugin-btw` is the **zero-context-pollution ephemeral side-channel LLM question plugin** for Pi-Cordis.
+`@pi-cordis/plugin-btw` is an ephemeral side-question plugin for Pi-Cordis.
 
 ---
 
@@ -10,5 +10,6 @@ English | [中文](README.zh.md)
 
 - Registers `/btw <question>` terminal slash command;
 - Bypasses main conversation session to query active LLM via `ctx.ai` directly;
-- **100% Physical Isolation**: Never writes to SQLite / `session.jsonl` logs, never consumes main session context tokens, preserves KV-cache;
+- Calls `completeSimple()` outside the active `AgentSession`, so the question and answer are not appended to the main session history;
+- Uses a separate model request with its own token usage; provider-side cache behavior is provider-dependent;
 - Renders concise answer directly in TUI notification overlay.

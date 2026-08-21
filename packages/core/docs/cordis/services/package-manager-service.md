@@ -8,7 +8,7 @@ English | [中文](package-manager-service.zh.md)
 
 ## Supported Package Sources
 
-Pi-Cordis is 100% compatible with native Pi package sources:
+Pi-Cordis delegates package operations to Pi's `DefaultPackageManager`, so supported source syntax follows the installed Pi version:
 - **`pi.dev` Community Packages**: Direct package names, e.g. `rpiv-todo`;
 - **npm Packages**: `npm:@scope/package-name`;
 - **Git Repositories**: `git:https://github.com/user/repo.git`;

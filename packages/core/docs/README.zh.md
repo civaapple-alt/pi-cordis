@@ -11,7 +11,7 @@
 ### 1. 核心服务接口与契约 ([`cordis/services/`](cordis/services/README.zh.md))
 - [SettingsService (`ctx.settings`)](cordis/services/settings-service.zh.md) — 全局与项目级配置管理、响应式更新与 `pi/settings-updated`
 - [AuthService (`ctx.auth`)](cordis/services/auth-service.zh.md) — 安全凭证存储、API Key 管理与 `pi/auth-updated`
-- [AIService (`ctx.ai`)](cordis/services/ai-service.zh.md) — 多模型运行时（1307+ 模型）、动态 Provider 注册与 `pi/model-change`
+- [AIService (`ctx.ai`)](cordis/services/ai-service.zh.md) — 上游 Pi 多模型运行时、动态 Provider 注册与 `pi/model-change`
 - [ToolRegistryService (`ctx.tools`)](cordis/services/tool-registry-service.zh.md) — 7 大内置工具、表现层工具遮蔽与 `executeTool` 拦截管道
 - [SessionService (`ctx.session`)](cordis/services/session-service.zh.md) — SQLite 与内存会话存储、分支树管理与 `inMemory` 隔离会话
 - [SkillsService (`ctx.skills`)](cordis/services/skills-service.zh.md) — Markdown 技能自动发现与动态可逆注册

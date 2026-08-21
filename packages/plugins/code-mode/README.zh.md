@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。将多轮串行 JSON Function Calling 转换为面向强类型 TypeScript SDK 的单一 `run_code` 执行入口，运行在具有物理级 `worker.terminate()` 死循环强杀保护的独立 Node.js `worker_threads.Worker` 工作线程中。
+Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。它可将多轮串行 JSON Function Calling 转换为面向生成式 TypeScript SDK 的单一 `run_code` 执行入口；默认在独立 Node.js Worker 中执行，并可在超时时终止该 Worker。
 
 ## 工具
 
@@ -29,13 +29,14 @@ Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。将多轮串行 JSO
 
 ### 2. 工具表现层遮蔽（Tool Presentation Masking）
 - 自动从大模型可见的顶层工具列表中过滤掉底层零散工具（`read`、`write`、`edit`、`bash`、`grep`、`find`、`ls`）；
-- 仅向模型暴露 `run_code`（以及白名单中的顶层交互工具如 `ask_question`、`session_handoff`），将工具 Schema 的 Token 开销减少 80%+；
-- 沙箱内部仍然保留对全部底层工具的无限制程序化调用能力。
+- 仅向模型暴露 `run_code` 与白名单中的顶层交互工具，减少重复的工具 Schema 表面积；
+- Worker 内通过 `pi.*` SDK 保留对当前活跃工具的程序化调用能力。
 
 ### 3. 独立工作线程执行引擎 (`worker-runner.ts`)
 - 每次执行启动一个全新的 Node.js `worker_threads.Worker`（独立的 V8 Isolate 与操作系统线程）；
-- **异步死循环强杀保护**：当脚本出现死循环（例如 `while(true) await Promise.resolve()`）时，主线程在超时到达后直接调用 `worker.terminate()` 物理销毁底层 V8 Isolate，瞬间释放所有 CPU 与内存资源，主线程 CPU 毫发无损；
-- **环境降级**：若运行环境限制创建线程，会自动无缝回退至 `node:vm` 沙箱。
+- **超时保护**：脚本执行超过 `timeoutMs` 时，主线程调用 `worker.terminate()`；
+- **环境降级**：Worker 创建失败时回退到 `node:vm` 执行上下文；
+- **安全边界**：Worker 与 `node:vm` 都不是权限沙箱。生成代码拥有 Picds 用户的本机权限，应按 Shell 工具执行代码看待；经 `pi.*` 发起的调用仍经过 Cordis 工具与 Safety Gate 管线。
 
 ### 4. TUI 专属可视化卡片 (`renderer.ts`)
 - `renderCall`：显示代码行数统计标签与前 4 行语法高亮预览（`⚡ run_code (N lines)`）；
@@ -66,7 +67,7 @@ Pi-Cordis 编程化工具调用（PTC / Code Mode）插件。将多轮串行 JSO
 
 ### 执行与上下文防爆
 - 中间大数据（例如扫描遍历 50 个文件或数组过滤）完全在 Worker 内存中就地处理；
-- 仅将 `console.log` 提炼后的结论和最终结果返回到对话上下文，节省 90%+ 的上下文空间。
+- 仅将捕获的控制台输出和最终结果返回对话上下文；实际节省取决于具体工作负载。
 
 ## 已知限制与暂缓事项
 - Worker 内不保留跨次执行的全局变量持久状态（每次执行均为独立纯净 Isolate）；

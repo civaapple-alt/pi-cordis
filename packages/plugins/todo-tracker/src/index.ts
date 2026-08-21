@@ -98,6 +98,9 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 			if (args.action === "add" && args.title) {
 				const id = args.id ?? `todo_${todos.length + 1}`;
 				const deps = args.dependsOn ?? [];
+				if (todos.some((todo) => todo.id === id)) {
+					return { error: `Task ID "${id}" already exists` };
+				}
 
 				// Check self-dependency
 				if (deps.includes(id)) {
@@ -133,6 +136,15 @@ export function apply(ctx: Context, config: TodoTrackerConfig = {}) {
 						item.dependsOn = args.dependsOn;
 					}
 					if (args.title) item.title = args.title;
+					if (args.status === "in_progress" || args.status === "completed") {
+						const incompleteDependencies = (item.dependsOn ?? []).filter((dependencyId) => {
+							const dependency = todos.find((todo) => todo.id === dependencyId);
+							return !dependency || dependency.status !== "completed";
+						});
+						if (incompleteDependencies.length > 0) {
+							return { error: `Task "${item.id}" is blocked by incomplete dependencies: ${incompleteDependencies.join(", ")}` };
+						}
+					}
 					if (args.status) item.status = args.status;
 					if (args.category) item.category = args.category;
 					return { message: `Updated task ${args.id} -> ${item.status}`, item };

@@ -10,7 +10,6 @@ export * from "./worker-runner.js";
 
 export interface CodeModeConfig {
 	timeoutMs?: number;
-	allowImports?: boolean;
 	injectFullDts?: boolean;
 	maskUnderlyingTools?: boolean;
 	allowedTopLevelTools?: string[];
@@ -83,9 +82,12 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 		renderCall: (args: { code?: string }, theme?: any) => renderCodeModeCall(args, theme),
 		renderResult: (result: any, options?: any, theme?: any) => renderCodeModeResult(result, options, theme),
 		execute: async (args: { code: string }): Promise<CodeExecutionResult> => {
-			const allTools = ctx.tools.getAllToolDefinitions();
+			const allTools = ctx.tools.getAllToolDefinitions().filter((tool) => tool.name !== "run_code");
+			const executeTool = (toolName: string, toolArgs: unknown) => (
+				ctx.tools.executeTool(toolName, (toolArgs ?? {}) as Record<string, unknown>)
+			);
 
-			// 2.1 Prefer Worker Thread for 100% async infinite-loop isolation & terminate() safety
+			// 2.1 Prefer a Worker Thread for timeout and failure isolation.
 			if (useWorkerThreads) {
 				try {
 					const toolNames = allTools.map((t) => t.name);
@@ -94,9 +96,7 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 						timeoutMs,
 						toolNames,
 						callTool: async (toolName, toolArgs) => {
-							const t = ctx.tools.get(toolName);
-							if (!t) throw new Error(`Tool "${toolName}" not found`);
-							const res = await (t as any).execute(toolArgs);
+							const res = await executeTool(toolName, toolArgs);
 							if (res && typeof res === "object" && "details" in res) {
 								return res.details;
 							}
@@ -108,14 +108,14 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 				}
 			}
 
-			// 2.2 Fallback: node:vm sandbox
+			// 2.2 Fallback: node:vm execution context (not a permission boundary)
 			const startTime = Date.now();
 			const logs: string[] = [];
 			const flatTools: Record<string, Function> = {};
 
 			for (const t of allTools) {
 				flatTools[t.name] = async (toolArgs: unknown) => {
-					const res = await (t as any).execute(toolArgs);
+					const res = await executeTool(t.name, toolArgs);
 					if (res && typeof res === "object" && "details" in res) {
 						return res.details;
 					}
@@ -244,4 +244,3 @@ export function apply(ctx: Context, config: CodeModeConfig = {}) {
 }
 
 export default { name, inject, apply };
-

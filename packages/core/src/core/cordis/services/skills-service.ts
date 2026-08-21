@@ -19,7 +19,7 @@ export class SkillsService extends Service {
 	private cwd: string;
 	private agentDir: string;
 	private skillPaths: string[];
-	private customSkills: Map<string, Skill> = new Map();
+	private customSkills = new Map<string, Skill[]>();
 
 	constructor(ctx: Context, config?: SkillsServiceConfig) {
 		super(ctx, "skills");
@@ -34,7 +34,7 @@ export class SkillsService extends Service {
 		const paths = options?.skillPaths ?? this.skillPaths;
 		const diskResult = loadSkills({ cwd, agentDir, skillPaths: paths, includeDefaults: true });
 		return {
-			skills: [...diskResult.skills, ...this.customSkills.values()],
+			skills: [...diskResult.skills, ...Array.from(this.customSkills.values(), (items) => items.at(-1)!)],
 		};
 	}
 
@@ -43,17 +43,24 @@ export class SkillsService extends Service {
 	 */
 	public registerSkill(skill: Skill): () => void {
 		return this.ctx.effect(() => {
-			this.customSkills.set(skill.name, skill);
+			const registrations = this.customSkills.get(skill.name) ?? [];
+			registrations.push(skill);
+			this.customSkills.set(skill.name, registrations);
 			this.ctx.emit("pi/skill-registered", skill);
 			return () => {
-				this.customSkills.delete(skill.name);
+				const activeRegistrations = this.customSkills.get(skill.name);
+				if (activeRegistrations) {
+					const index = activeRegistrations.lastIndexOf(skill);
+					if (index >= 0) activeRegistrations.splice(index, 1);
+					if (activeRegistrations.length === 0) this.customSkills.delete(skill.name);
+				}
 				this.ctx.emit("pi/skill-unregistered", skill.name);
 			};
 		});
 	}
 
 	public getSkill(name: string): Skill | undefined {
-		if (this.customSkills.has(name)) return this.customSkills.get(name);
+		if (this.customSkills.has(name)) return this.customSkills.get(name)?.at(-1);
 		const all = this.load().skills;
 		return all.find((s) => s.name === name);
 	}

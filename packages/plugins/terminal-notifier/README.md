@@ -2,11 +2,12 @@
 
 English | [中文](README.zh.md)
 
-`@pi-cordis/plugin-terminal-notifier` emits native OS desktop notifications via OSC 777 in modern terminal emulators.
+`@pi-cordis/plugin-terminal-notifier` writes OSC 777 notification sequences when stdout is a TTY.
 
 ---
 
 ## Core Capabilities
 
-- Listens to `pi/tool-call` (when `ask_question` awaits user input) and `pi/session-turn-end` (turn completion);
-- Emits standard OSC 777 escape sequences to Warp, Ghostty, and iTerm2 for native OS desktop notifications.
+- Listens to `pi/tool-call` for `ask_question` and to `pi/turn-end`;
+- Emits OSC 777 sequences. Display behavior depends on terminal support and notification settings;
+- Does nothing when stdout is not a TTY and does not use a platform-specific notification API.

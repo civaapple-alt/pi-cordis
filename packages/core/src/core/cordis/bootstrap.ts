@@ -32,35 +32,39 @@ export async function createPiContext(options: CreatePiContextOptions = {}): Pro
 	const agentDir = options.agentDir ?? getAgentDir();
 
 	const ctx = new Context();
+	try {
+		// 1. Mount 10 core Pi services as Cordis plugins (Static Programmatic Loading)
+		ctx.plugin(SettingsService, { cwd, agentDir });
+		ctx.plugin(AuthService, { agentDir });
+		ctx.plugin(AIService, { agentDir, allowModelNetwork: options.allowModelNetwork, signal: options.signal });
+		ctx.plugin(ToolRegistryService, { cwd });
+		ctx.plugin(SessionService, { cwd, sessionDir: options.sessionDir });
+		ctx.plugin(SkillsService, { cwd, agentDir, skillPaths: options.skillPaths });
+		ctx.plugin(PromptsService, { cwd, agentDir, promptPaths: options.promptPaths });
+		ctx.plugin(ExtensionService, { cwd, agentDir, extensionPaths: options.extensionPaths });
+		ctx.plugin(PackageManagerService, { cwd, agentDir });
+		ctx.plugin(AgentService);
 
-	// 1. Mount 10 core Pi services as Cordis plugins (Static Programmatic Loading)
-	ctx.plugin(SettingsService, { cwd, agentDir });
-	ctx.plugin(AuthService, { agentDir });
-	ctx.plugin(AIService, { agentDir, allowModelNetwork: options.allowModelNetwork, signal: options.signal });
-	ctx.plugin(ToolRegistryService, { cwd });
-	ctx.plugin(SessionService, { cwd, sessionDir: options.sessionDir });
-	ctx.plugin(SkillsService, { cwd, agentDir, skillPaths: options.skillPaths });
-	ctx.plugin(PromptsService, { cwd, agentDir, promptPaths: options.promptPaths });
-	ctx.plugin(ExtensionService, { cwd, agentDir, extensionPaths: options.extensionPaths });
-	ctx.plugin(PackageManagerService, { cwd, agentDir });
-	ctx.plugin(AgentService);
+		// 2. Mount profiles management plugin & apply active profile
+		ctx.plugin(profilesPlugin);
+		const profileName = options.profile ?? "default";
+		await applyProfile(ctx, profileName, options.plugins, { cwd, agentDir });
 
-	// 2. Mount profiles management plugin & apply active profile
-	ctx.plugin(profilesPlugin);
-	const profileName = options.profile ?? "default";
-	await applyProfile(ctx, profileName, options.plugins, { cwd, agentDir });
+		// 3. Optional HMR Watcher for presets and packages/plugins
+		if (options.enableHmr) {
+			const hmr = setupPluginHmr(ctx, profileName, {
+				cwd,
+				agentDir,
+			});
+			(ctx as any).hmrManager = hmr;
+		}
 
-	// 3. Optional HMR Watcher for presets and packages/plugins
-	if (options.enableHmr) {
-		const hmr = setupPluginHmr(ctx, profileName, {
-			cwd,
-			agentDir,
-		});
-		(ctx as any).hmrManager = hmr;
+		await Promise.resolve();
+		await ctx.ai.init();
+
+		return ctx;
+	} catch (error) {
+		await ctx.fiber.dispose();
+		throw error;
 	}
-
-	await Promise.resolve();
-	await ctx.ai.init();
-
-	return ctx;
 }

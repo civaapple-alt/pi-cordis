@@ -1,62 +1,62 @@
-# Profiles, Presets & YAML Composition
+# Profiles, presets, and YAML composition
 
 English | [中文](profiles-and-presets.zh.md)
 
-Following the "Default is Best" minimalist philosophy, Pi-Cordis delivers 3 canonical out-of-the-box presets and supports declarative plugin composition and hot module reloading (HMR) via `cordis.yml`.
+Profiles are small, scenario-specific sets of built-in Pi-Cordis plugins. They change policy and the model-facing tool surface; they do not replace Pi's agent loop or TUI.
 
----
+## Canonical profiles
 
-## 1. The 3 Canonical Presets
+| Profile | Composition |
+| --- | --- |
+| `default` | `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `btw`, `terminal-notifier` |
+| `plan` | `plan-mode`, read-only `safety-gate`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question` |
+| `ptc` | `code-mode`, `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question` |
+
+`minimal` is an internal/testing escape hatch that mounts no capability plugins.
+
+## Lookup order
+
+Profile definitions are merged in this order, with later definitions replacing the same profile name:
+
+1. built-in definitions;
+2. `<cwd>/presets/` source-tree fallback;
+3. `<agentDir>/presets/`;
+4. `<cwd>/.picds/presets/`, or `<cwd>/.pi/presets/` only when `.picds/presets/` is absent.
+
+Single-file `cordis.yml` lookup follows the same `.picds`-or-legacy-`.pi` rule.
+
+## Directory format
 
 ```text
-┌────────────────────────────────────────────────────────────────────────┐
-│                        3 Canonical Agent Presets                       │
-├────────────────────────────────────────────────────────────────────────┤
-│ 🌟 1. default (Standard Dev)  : Out-of-the-box safe, rich UX, complete │
-│ 🛡️ 2. plan (Planning/Review)  : Strict read-only, step state machine   │
-│ ⚡ 3. ptc (Code Mode)         : TypeScript SDK + 1-round batch execute │
-└────────────────────────────────────────────────────────────────────────┘
+.picds/presets/review/
+  preset.yml
+  cordis.yml
 ```
-
-| Preset | Configuration | Purpose & Active Plugins |
-|---|---|---|
-| **`default`** | `presets/default/cordis.yml` | **Default is Best**. Everyday coding, activating `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`, `ask-question`, `btw`, `terminal-notifier`, `subagent`, `context-compactor`, etc. |
-| **`plan`** | `presets/plan/cordis.yml` | Architecture planning, review, and audit. Activates `plan-mode` and `safety-gate: { readOnly: true }` to block all mutations. |
-| **`ptc`** | `presets/ptc/cordis.yml` | Programmatic Tool Calling. Activates `code-mode` to expose a dynamic `.d.ts` SDK while masking granular single-step tools. |
-
----
-
-## 2. Declarative `cordis.yml` Syntax
-
-Define `cordis.yml` in your project root or under `presets/<name>/`:
 
 ```yaml
-plugins:
-  "@pi-cordis/plugin-safety-gate":
-    readOnly: false
-    blockedCommands:
-      - "rm -rf /"
-      - "mkfs"
-
-  "@pi-cordis/plugin-todo-tracker":
-    maxActiveTasks: 5
-
-  "@pi-cordis/plugin-rules-injector":
-    scanClaudeRules: true
-    scanAgentRules: true
+# preset.yml
+name: review
+description: Read-only review
 ```
 
----
+```yaml
+# cordis.yml
+- name: '@pi-cordis/plugin-plan-mode'
+- name: '@pi-cordis/plugin-safety-gate'
+  config:
+    readOnly: true
+- name: '@pi-cordis/plugin-rules-injector'
+```
 
-## 3. CLI & Runtime Preset Switching
+Profile YAML currently composes built-in Pi-Cordis plugins only. Unknown names fail the switch before the active profile is disposed. Install ordinary Pi extensions through Pi's package manager.
+
+## Switching and teardown
 
 ```bash
-# Launch with a specific preset
-pnpm picds --profile plan
-pnpm picds --profile ptc
-
-# Live switching in the terminal without restarting
-/profile plan
-/profile ptc
-/profile default
+picds --profile plan
+picds --profile ptc
 ```
+
+Inside the TUI use `/profile default`, `/profile plan`, or `/profile ptc`. Each switch disposes the exact fibers mounted by the previous profile, mounts the new set, and calls `pi.setActiveTools()` through the bridge.
+
+Development HMR watches preset YAML and optional plugin source. A YAML change triggers one serialized profile reload; watchers, debounce timers, and hot-loaded fibers are disposed with the Cordis context.

@@ -2,7 +2,7 @@
 
 [English](auth-service.md) | 中文
 
-`AuthService` 是 Pi-Cordis 的安全凭据与 API Key 管理服务，负责安全读写存储在 `~/.picds/agent/auth.json` 中的各大模型供应商凭证，支持内存凭据覆盖、凭据存在性检测，并在凭据变更时向 Cordis 中央事件总线广播 `pi/auth-updated` 事件。
+`AuthService` 是 Pi-Cordis 的凭据管理接缝，负责读写 `~/.picds/agent/auth.json` 中的模型供应商凭证、缓存成功写入的凭据，并在变更后向 Cordis 事件总线广播 `pi/auth-updated`。
 
 ---
 
@@ -10,14 +10,19 @@
 
 - **存储路径**：`~/.picds/agent/auth.json`（与原生 `~/.pi/agent/auth.json` 物理隔离）；
 - **格式规范**：JSON 键值对，Key 为 Provider 标识符（如 `"deepseek"`, `"openai"`, `"anthropic"`），Value 为包含 `apiKey` 与凭据类型的对象；
-- **内存优先**：支持通过运行时传入内存凭据，优先于磁盘存储。
+- **安全写入**：进程内写操作串行执行，先写临时文件，再原子重命名；
+- **文件权限**：支持 POSIX 权限的平台上，新写入文件使用仅所有者可读写的 `0600`；
+- **失败语义**：JSON 损坏或持久化失败会拒绝操作，不会静默覆盖或丢失凭据；
+- **内存优先**：成功写入的凭据会被缓存，并优先于磁盘存储。
+
+该服务可避免半写文件和同一进程内的更新丢失，但不是多进程凭据数据库；请避免多个 Picds 进程同时修改同一认证文件。
 
 ---
 
 ## API 接口参考
 
 ### 1. `ctx.auth.getApiKey(provider: string): Promise<string | undefined>`
-异步获取指定 Provider 的有效 API Key。优先查找内存覆盖，其次读取磁盘 `auth.json`，最后读取对应的环境变量（如 `DEEPSEEK_API_KEY`）。
+异步获取指定 Provider 的已存储 API Key。优先查找成功写入后的内存缓存，其次读取磁盘 `auth.json`。环境变量凭据解析仍由上游 Pi 运行时负责。
 ```typescript
 const apiKey = await ctx.auth.getApiKey("deepseek");
 ```

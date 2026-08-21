@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: ContextCompactorConfig = {}) {
 	// 1. Register trigger_compact tool
 	const unregisterTool = ctx.tools.register({
 		name: "trigger_compact",
-		description: "Trigger structured conversation compaction to summarize past context across 4 core dimensions and reclaim token budget.",
+		description: "Private unavailable prototype. Not connected to Pi's compaction driver.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -60,8 +60,9 @@ export function apply(ctx: Context, config: ContextCompactorConfig = {}) {
 			return `${theme.fg("accent", theme.bold("🗜️ trigger_compact "))}${theme.fg("dim", `(${r})`)}`;
 		},
 		renderResult: (result: any, options?: any, theme?: any) => {
-			if (!theme?.fg) return `✓ Context compaction completed (Threshold: ${tokenThreshold})`;
-			return `${theme.fg("success", "✓ Context compaction completed")} ${theme.fg("dim", `(Token threshold: ${tokenThreshold})`)}`;
+			const success = result?.success === true;
+			if (!theme?.fg) return `${success ? "✓ Context compaction completed" : "✗ Context compaction unavailable"} (Threshold: ${tokenThreshold})`;
+			return `${theme.fg(success ? "success" : "error", success ? "✓ Context compaction completed" : "✗ Context compaction unavailable")} ${theme.fg("dim", `(Token threshold: ${tokenThreshold})`)}`;
 		},
 		execute: async (args: {
 			reason?: string;
@@ -80,11 +81,10 @@ export function apply(ctx: Context, config: ContextCompactorConfig = {}) {
 				pendingBlockers: args.pendingBlockers ?? [],
 			};
 
-			ctx.emit("pi/compact" as any, data);
-
 			return {
-				success: true,
-				message: "Context compaction completed. Structured 4-dimensional summary preserved.",
+				success: false,
+				error: "COMPACTION_DRIVER_UNAVAILABLE",
+				message: "Compaction was not performed: this private prototype is not connected to Pi's native compaction driver.",
 				tokenThreshold,
 				compaction: data,
 			};

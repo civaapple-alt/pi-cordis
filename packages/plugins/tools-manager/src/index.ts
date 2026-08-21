@@ -9,6 +9,10 @@ export const inject = ["tools"];
 
 export function apply(ctx: Context, config: ToolsManagerConfig = {}) {
 	const disabledTools = new Set<string>();
+	const allowRuntimeToggle = config.allowRuntimeToggle ?? true;
+	const removeFilter = ctx.tools.addFilter((tool) => (
+		tool.name === "manage_tools" || !disabledTools.has(tool.name)
+	));
 
 	// 1. Register list_tools tool
 	const unregisterTool = ctx.tools.register({
@@ -33,21 +37,35 @@ export function apply(ctx: Context, config: ToolsManagerConfig = {}) {
 			const allToolNames = ctx.tools.getToolNames();
 
 			if (args.action === "disable" && args.toolName) {
+				if (!allowRuntimeToggle) {
+					return { error: "Runtime tool toggling is disabled by profile policy." };
+				}
 				if (!allToolNames.includes(args.toolName)) {
 					return { error: `Tool "${args.toolName}" does not exist.` };
 				}
+				if (args.toolName === "manage_tools") {
+					return { error: "manage_tools cannot disable itself." };
+				}
 				disabledTools.add(args.toolName);
+				ctx.emit("pi/tools-changed");
 				return { message: `Tool "${args.toolName}" disabled for this session.` };
 			}
 
 			if (args.action === "enable" && args.toolName) {
+				if (!allowRuntimeToggle) {
+					return { error: "Runtime tool toggling is disabled by profile policy." };
+				}
+				if (!allToolNames.includes(args.toolName)) {
+					return { error: `Tool "${args.toolName}" does not exist.` };
+				}
 				disabledTools.delete(args.toolName);
+				ctx.emit("pi/tools-changed");
 				return { message: `Tool "${args.toolName}" re-enabled.` };
 			}
 
 			return {
 				total: allToolNames.length,
-				active: allToolNames.filter((t: string) => !disabledTools.has(t)),
+				active: ctx.tools.getExportedToolNames(),
 				disabled: Array.from(disabledTools),
 			};
 		},
@@ -56,6 +74,7 @@ export function apply(ctx: Context, config: ToolsManagerConfig = {}) {
 	// Reversible disposal
 	return () => {
 		unregisterTool();
+		removeFilter();
 		disabledTools.clear();
 	};
 }

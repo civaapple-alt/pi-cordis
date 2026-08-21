@@ -2,34 +2,16 @@
 
 English | [中文](README.zh.md)
 
-Central profile resolver, YAML loader, and dual-track Hot Module Replacement (HMR) manager for the Pi-Cordis plugin ecosystem. It unifies built-in profile declarations, directory-based preset loading (`presets/<name>/preset.yml` and `cordis.yml`), and dynamic runtime switching via the `/profile` command.
+Profile resolver, YAML loader, runtime switcher, and development HMR manager for Pi-Cordis.
 
-## Curated Built-in Profiles
+The built-in profiles are deliberately small:
 
-- **`default` (Default is Best)**:
-  - `safety-gate`: High-risk command and sensitive file protection.
-  - `git-guard`: Git status and stash checkpoint tracking.
-  - `rules-injector`: Auto-scanning of repository instructions.
-  - `todo-tracker`: Live checklist management and prompt injection.
-  - `output-truncator`: Oversized tool output protection.
-- **`safe`**: Read-only safety gate with file write interception.
-- **`strict`**: Safe profile with strict command blocking and uncommitted git checks.
-- **`plan`**: Interactive plan mode with mutating write blocker.
-- **`ptc`**: Programmatic Tool Calling (PTC) with sandboxed JavaScript execution.
-- **`full`**: All 14 native Cordis plugins active simultaneously.
-- **`minimal`**: Pure minimalist microkernel with zero extra plugins.
+- `default`: eight verified daily-development plugins;
+- `plan`: read-only planning and review controls;
+- `ptc`: Programmatic Tool Calling with a timeout-isolated Worker. It is not a permission sandbox.
 
-## Dual-Track HMR (Hot Module Replacement)
+`applyProfile()` owns the exact Cordis Fibers it mounts. A switch disposes those Fibers before mounting the next profile, so tools, commands, listeners, timers, and filters registered as Cordis effects are reversible. Unknown profiles and plugin names fail explicitly.
 
-1. **Preset Track (YAML)**:
-   - Watches `presets/**/preset.yml` and `cordis.yml`.
-   - On change: Disposes active forks cleanly and mounts newly declared plugins without restarting the process.
-2. **Plugin Track (TS/JS Code)**:
-   - Watches `packages/plugins/*/src/**/*.ts`.
-   - On change: Dynamic re-import via timestamped URLs and atomic Cordis context rebound.
+Profile discovery prefers `.picds` project configuration and uses `.pi` only as a compatibility fallback. Development HMR serializes reloads and disposes its watchers and timers with the owning Fiber.
 
-## Interactive Command Extension
-
-Exports `createProfileCommandExtension(ctx)` which registers the `/profile` command in the Pi TUI/CLI:
-- `/profile`: Opens an interactive selector to choose from all available profiles.
-- `/profile <name>`: Instantly switches the active profile and displays the loaded plugin roster.
+The `/profile` command lists or switches the available profiles. See the repository `presets/` directory for their exact compositions.

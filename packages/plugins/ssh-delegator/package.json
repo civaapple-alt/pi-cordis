@@ -1,5 +1,6 @@
 {
 	"name": "@pi-cordis/plugin-ssh-delegator",
+	"private": true,
 	"version": "0.1.0",
 	"description": "Remote SSH tool proxy and remote environment delegation plugin for Pi-Cordis",
 	"type": "module",

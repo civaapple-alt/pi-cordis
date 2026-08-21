@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { createPiContext } from "../src/core/cordis/index.ts";
 
 describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", () => {
@@ -35,15 +38,61 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 	});
 
 	it("2. AuthService: credential accessors and pi/auth-updated event", async () => {
-		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false });
-		let authUpdated = false;
-		ctx.on("pi/auth-updated", () => {
-			authUpdated = true;
-		});
+		const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "picds-auth-test-"));
+		let ctx: Awaited<ReturnType<typeof createPiContext>> | undefined;
+		try {
+			ctx = await createPiContext({ cwd: process.cwd(), agentDir, allowModelNetwork: false });
+			let authUpdated = false;
+			ctx.on("pi/auth-updated", () => {
+				authUpdated = true;
+			});
 
-		await ctx.auth.setApiKey("test-provider", "sk-test-123456");
-		expect(authUpdated).toBe(true);
-		expect(await ctx.auth.getApiKey("test-provider")).toBe("sk-test-123456");
+			await ctx.auth.setApiKey("test-provider", "sk-test-123456");
+			expect(authUpdated).toBe(true);
+			expect(await ctx.auth.getApiKey("test-provider")).toBe("sk-test-123456");
+		} finally {
+			await ctx?.fiber.dispose();
+			fs.rmSync(agentDir, { recursive: true, force: true });
+		}
+	});
+
+	it("2.1 AuthService: serializes concurrent writes without losing providers", async () => {
+		const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "picds-auth-concurrency-test-"));
+		let ctx: Awaited<ReturnType<typeof createPiContext>> | undefined;
+		try {
+			ctx = await createPiContext({ cwd: process.cwd(), agentDir, allowModelNetwork: false });
+			await Promise.all([
+				ctx.auth.setApiKey("first", "first-key"),
+				ctx.auth.setApiKey("second", "second-key"),
+			]);
+
+			const stored = JSON.parse(fs.readFileSync(path.join(agentDir, "auth.json"), "utf8"));
+			expect(stored).toEqual({
+				first: { type: "api_key", key: "first-key" },
+				second: { type: "api_key", key: "second-key" },
+			});
+		} finally {
+			await ctx?.fiber.dispose();
+			fs.rmSync(agentDir, { recursive: true, force: true });
+		}
+	});
+
+	it("2.2 AuthService: rejects malformed storage without overwriting it", async () => {
+		const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "picds-auth-invalid-test-"));
+		const authPath = path.join(agentDir, "auth.json");
+		fs.writeFileSync(authPath, "{broken", "utf8");
+		let ctx: Awaited<ReturnType<typeof createPiContext>> | undefined;
+		try {
+			ctx = await createPiContext({ cwd: process.cwd(), agentDir, allowModelNetwork: false });
+			await expect(ctx.auth.setApiKey("test-provider", "new-key")).rejects.toThrow(
+				"Failed to read auth.json",
+			);
+			expect(fs.readFileSync(authPath, "utf8")).toBe("{broken");
+			await expect(ctx.auth.has("test-provider")).rejects.toThrow("Failed to read auth.json");
+		} finally {
+			await ctx?.fiber.dispose();
+			fs.rmSync(agentDir, { recursive: true, force: true });
+		}
 	});
 
 	it("3. AIService: dynamic provider registration with effect disposers", async () => {
@@ -98,6 +147,43 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		expect(ctx.tools.has("test_echo")).toBe(false);
 	});
 
+	it("4.1 ToolRegistryService: post hooks transform returned results", async () => {
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+		ctx.on("pi/tool-result", (event) => {
+			event.result = { transformed: true, original: event.result };
+		});
+		ctx.tools.register({
+			name: "transform_me",
+			description: "result transform test",
+			execute: async () => ({ value: 42 }),
+		});
+
+		await expect(ctx.tools.executeTool("transform_me", {})).resolves.toEqual({
+			transformed: true,
+			original: { value: 42 },
+		});
+	});
+
+	it("4.2 ToolRegistryService: disposing shadow registrations restores the previous tool", async () => {
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+		const disposeFirst = ctx.tools.register({
+			name: "shadowed",
+			description: "first",
+			execute: async () => "first",
+		});
+		const disposeSecond = ctx.tools.register({
+			name: "shadowed",
+			description: "second",
+			execute: async () => "second",
+		});
+
+		await expect(ctx.tools.executeTool("shadowed", {})).resolves.toBe("second");
+		disposeSecond();
+		await expect(ctx.tools.executeTool("shadowed", {})).resolves.toBe("first");
+		disposeFirst();
+		expect(ctx.tools.has("shadowed")).toBe(false);
+	});
+
 	it("5. SessionService: session tracking, memory sessions, and pi/session-created event", async () => {
 		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false });
 		let createdSession: any = null;
@@ -134,14 +220,28 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		expect(skillRegistered).toBeDefined();
 		expect(skillRegistered.name).toBe("custom-deploy-skill");
 		expect(ctx.skills.getSkill("custom-deploy-skill")).toBeDefined();
+		const unregisterOverride = ctx.skills.registerSkill({
+			name: "custom-deploy-skill",
+			description: "Override",
+		});
+		expect(ctx.skills.getSkill("custom-deploy-skill")?.description).toBe("Override");
 
 		unregister();
+		expect(ctx.skills.getSkill("custom-deploy-skill")?.description).toBe("Override");
+		unregisterOverride();
 		expect(skillUnregistered).toBe("custom-deploy-skill");
 		expect(ctx.skills.getSkill("custom-deploy-skill")).toBeUndefined();
 	});
 
-	it("7. PromptsService: dynamic prompt template registration with effect disposers", async () => {
-		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false });
+	it("7. PromptsService: loads Pi templates and restores shadowed dynamic registrations", async () => {
+		const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "picds-prompts-test-"));
+		fs.mkdirSync(path.join(agentDir, "prompts"), { recursive: true });
+		fs.writeFileSync(
+			path.join(agentDir, "prompts", "disk-review.md"),
+			"---\ndescription: Review from disk\n---\nReview the staged changes.\n",
+			"utf8",
+		);
+		const ctx = await createPiContext({ cwd: process.cwd(), agentDir, allowModelNetwork: false });
 		let promptRegistered: any = null;
 		ctx.on("pi/prompt-registered", (p) => {
 			promptRegistered = p;
@@ -156,10 +256,20 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 
 		expect(promptRegistered).toBeDefined();
 		expect(promptRegistered.name).toBe("review-pr");
-		expect(ctx.prompts.getPrompt("review-pr")).toBeDefined();
+		expect(await ctx.prompts.getPrompt("review-pr")).toBeDefined();
+		expect((await ctx.prompts.getPrompt("disk-review"))?.description).toBe("Review from disk");
+		const unregisterOverride = ctx.prompts.registerPrompt({
+			name: "review-pr",
+			description: "Override review",
+		});
+		expect((await ctx.prompts.getPrompt("review-pr"))?.description).toBe("Override review");
 
 		unregister();
-		expect(ctx.prompts.getPrompt("review-pr")).toBeUndefined();
+		expect((await ctx.prompts.getPrompt("review-pr"))?.description).toBe("Override review");
+		unregisterOverride();
+		expect(await ctx.prompts.getPrompt("review-pr")).toBeUndefined();
+		await ctx.fiber.dispose();
+		fs.rmSync(agentDir, { recursive: true, force: true });
 	});
 
 	it("8. ExtensionService & PackageManagerService: event streaming and progress callbacks", async () => {
@@ -218,6 +328,12 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 	it("11. ExtensionService: bridges before_agent_start prompt transformation and session lifecycle events", async () => {
 		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false });
 		const eventHandlers: Record<string, Function> = {};
+		const providers = new Map<string, unknown>();
+		let switchedModel: unknown;
+		const disposeProvider = ctx.ai.registerProvider("bridge-provider", {
+			baseUrl: "https://bridge.invalid/v1",
+			api: "openai-compatible",
+		});
 
 		const mockPi: any = {
 			registerTool: () => {},
@@ -225,15 +341,23 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 			on: (eventName: string, handler: Function) => {
 				eventHandlers[eventName] = handler;
 			},
+			registerProvider: (name: string, config: unknown) => providers.set(name, config),
+			unregisterProvider: (name: string) => providers.delete(name),
+			setModel: async (model: unknown) => {
+				switchedModel = model;
+				return true;
+			},
 		};
 
 		const bridge = ctx.extensions.createBridgeExtensionFactory();
 		bridge.factory(mockPi);
+		expect(providers.has("bridge-provider")).toBe(true);
 
 		expect(eventHandlers["before_agent_start"]).toBeDefined();
 		expect(eventHandlers["session_start"]).toBeDefined();
 		expect(eventHandlers["agent_settled"]).toBeDefined();
 		expect(eventHandlers["turn_start"]).toBeDefined();
+		expect(eventHandlers["model_select"]).toBeDefined();
 
 		// Test prompt transform hook
 		ctx.on("pi/prompt-transform" as any, async (evt: { prompt: string }) => {
@@ -249,12 +373,23 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		expect(transformResult.systemPrompt).toContain("Base system prompt");
 		expect(transformResult.systemPrompt).toContain("[INJECTED_SYSTEM_GUIDELINE]");
 
+		const selectedModel = { provider: "deepseek", id: "deepseek-chat", api: "openai-completions" };
+		eventHandlers["model_select"]({ model: selectedModel });
+		expect(ctx.ai.activeModel).toBe(selectedModel);
+		const switched = await ctx.ai.switchModel(selectedModel as any);
+		expect(switched).toBe(true);
+		expect(switchedModel).toBe(selectedModel);
+
 		// Test lifecycle event forwarding
 		let sessionStarted = false;
+		let sessionReason = "";
 		let agentSettled = false;
 		let turnStarted = false;
 
-		ctx.on("pi/session-start" as any, () => { sessionStarted = true; });
+		ctx.on("pi/session-start" as any, (event: { reason?: string }) => {
+			sessionStarted = true;
+			sessionReason = event.reason ?? "";
+		});
 		ctx.on("pi/agent-settled" as any, () => { agentSettled = true; });
 		ctx.on("pi/turn-start" as any, () => { turnStarted = true; });
 
@@ -263,8 +398,93 @@ describe("Pi-Cordis Microkernel Bootstrap & 10 Core Services (The 5 Pillars)", (
 		eventHandlers["turn_start"]({ turnIndex: 1, timestamp: Date.now() });
 
 		expect(sessionStarted).toBe(true);
+		expect(sessionReason).toBe("startup");
 		expect(agentSettled).toBe(true);
 		expect(turnStarted).toBe(true);
+
+		const removeFailure = ctx.on("pi/prompt-transform" as any, () => {
+			throw new Error("invalid supplemental rules");
+		});
+		await expect(eventHandlers["before_agent_start"]({ systemPrompt: "base", prompt: "user" }))
+			.rejects.toThrow("invalid supplemental rules");
+		removeFailure();
+		disposeProvider();
+		expect(providers.has("bridge-provider")).toBe(false);
+	});
+
+	it("11.0 ExtensionService: control-plane synchronization failures are observable", async () => {
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+		const bridge = ctx.extensions.createBridgeExtensionFactory();
+		expect(() => bridge.factory({
+			registerTool: () => {},
+			registerCommand: () => {},
+			on: () => {},
+			setActiveTools: () => {
+				throw new Error("Pi tool visibility rejected");
+			},
+		})).toThrow("Pi tool visibility rejected");
+		await ctx.fiber.dispose();
+	});
+
+	it("11.1 ExtensionService: command bridges dispatch the active reversible registration", async () => {
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+		const commands = new Map<string, any>();
+		ctx.extensions.createBridgeExtensionFactory().factory({
+			registerTool: () => {},
+			registerCommand: (name: string, definition: any) => commands.set(name, definition),
+			on: () => {},
+			setActiveTools: () => {},
+		});
+
+		const calls: string[] = [];
+		const disposeFirst = ctx.extensions.registerCommand("temporary", {
+			description: "first",
+			handler: () => { calls.push("first"); },
+		});
+		const disposeSecond = ctx.extensions.registerCommand("temporary", {
+			description: "second",
+			handler: () => { calls.push("second"); },
+		});
+		const proxy = commands.get("temporary");
+		await proxy.handler("", {});
+		expect(calls).toEqual(["second"]);
+
+		disposeFirst();
+		await proxy.handler("", {});
+		expect(calls).toEqual(["second", "second"]);
+
+		let unavailable = "";
+		disposeSecond();
+		await proxy.handler("", { ui: { notify: (message: string) => { unavailable = message; } } });
+		expect(unavailable).toContain("unavailable in the active profile");
+		await ctx.fiber.dispose();
+	});
+
+	it("12. ExtensionService: returns Cordis tool-result transformations to Pi", async () => {
+		const ctx = await createPiContext({ cwd: process.cwd(), allowModelNetwork: false, profile: "minimal" });
+		const eventHandlers: Record<string, Function> = {};
+		ctx.on("pi/tool-result", (event) => {
+			const result = event.result as any;
+			result.content[0].text = "transformed by Cordis";
+		});
+
+		ctx.extensions.createBridgeExtensionFactory().factory({
+			registerTool: () => {},
+			registerCommand: () => {},
+			on: (eventName: string, handler: Function) => {
+				eventHandlers[eventName] = handler;
+			},
+		});
+
+		const transformed = await eventHandlers.tool_result({
+			toolName: "read",
+			input: { path: "README.md" },
+			content: [{ type: "text", text: "original" }],
+			details: undefined,
+			isError: false,
+		});
+
+		expect(transformed.content[0].text).toBe("transformed by Cordis");
+		expect(transformed.isError).toBe(false);
 	});
 });
-

@@ -4,14 +4,9 @@
 - name: '@pi-cordis/plugin-code-mode'
   config:
     timeoutMs: 30000
-    allowImports: true
-- name: '@pi-cordis/plugin-plan-mode'
-  config:
-    autoBlockWrites: false
-    injectGuidelines: true
 - name: '@pi-cordis/plugin-safety-gate'
 - name: '@pi-cordis/plugin-git-guard'
 - name: '@pi-cordis/plugin-rules-injector'
 - name: '@pi-cordis/plugin-todo-tracker'
 - name: '@pi-cordis/plugin-output-truncator'
-- name: '@pi-cordis/plugin-context-compactor'
+- name: '@pi-cordis/plugin-ask-question'

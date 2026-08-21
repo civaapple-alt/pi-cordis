@@ -20,7 +20,7 @@ export function apply(ctx: Context) {
 		}
 	});
 
-	const unregisterTurn = ctx.on("pi/session-turn-end" as any, () => {
+	const unregisterTurn = ctx.on("pi/turn-end", () => {
 		emitOsc777("Pi Agent", "Turn completed.");
 	});
 

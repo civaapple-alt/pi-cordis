@@ -1,12 +1,12 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { randomUUID } from "node:crypto";
 import type { Context } from "@deepseek-ai/cordis";
 
 const execFileAsync = promisify(execFile);
 
 export interface GitGuardConfig {
 	autoCheckpoint?: boolean;
-	warnDirtyOnStart?: boolean;
 }
 
 export interface GitCheckpointInfo {
@@ -20,25 +20,12 @@ export const name = "git-guard";
 export const inject = ["settings", "tools"];
 
 export function apply(ctx: Context, config: GitGuardConfig = {}) {
-	const autoCheckpoint = config.autoCheckpoint ?? true;
+	const autoCheckpoint = config.autoCheckpoint ?? false;
 	const checkpoints = new Map<string, GitCheckpointInfo>();
 
 	const getCwd = () => (ctx as any).settings?.getCwd?.() ?? process.cwd();
 
-	// 1. Check if git working tree is dirty on session start
-	const removeStartHook = ctx.on("pi/session-start" as any, async () => {
-		try {
-			const { stdout } = await execFileAsync("git", ["status", "--porcelain"], { cwd: getCwd() });
-			if (stdout.trim().length > 0 && config.warnDirtyOnStart) {
-				const dirtyFiles = stdout.trim().split("\n").length;
-				// Emits warning or logs for status
-			}
-		} catch {
-			// Not a git repository or git unavailable
-		}
-	});
-
-	// 2. Auto-create lightweight stash checkpoint before session turns
+	// 1. Optionally create a lightweight stash checkpoint before session turns.
 	let removeBeforeHook: (() => void) | undefined;
 	if (autoCheckpoint) {
 		removeBeforeHook = ctx.on("pi/session-before" as any, async (event: any) => {
@@ -46,7 +33,7 @@ export function apply(ctx: Context, config: GitGuardConfig = {}) {
 				const { stdout } = await execFileAsync("git", ["stash", "create"], { cwd: getCwd() });
 				const sha = stdout.trim();
 				if (sha) {
-					const id = `cp_${Date.now()}`;
+					const id = `cp_${randomUUID()}`;
 					checkpoints.set(id, { id, sha, timestamp: Date.now(), description: event?.title ?? "Auto checkpoint" });
 				}
 			} catch {
@@ -55,10 +42,10 @@ export function apply(ctx: Context, config: GitGuardConfig = {}) {
 		});
 	}
 
-	// 3. Register git_checkpoint tool
+	// 2. Register git_checkpoint tool
 	const unregisterTool = (ctx as any).tools?.register?.({
 		name: "git_checkpoint",
-		description: "Manage lightweight git stash snapshots to enable safe rollback if modifications fail.",
+		description: "Create, list, or apply process-local references to tracked-file git stash snapshots.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -88,7 +75,7 @@ export function apply(ctx: Context, config: GitGuardConfig = {}) {
 					if (!sha) {
 						return { success: true, message: "Working tree is clean; no checkpoint needed." };
 					}
-					const id = `cp_${Date.now()}`;
+					const id = `cp_${randomUUID()}`;
 					const info: GitCheckpointInfo = { id, sha, timestamp: Date.now(), description: args.description };
 					checkpoints.set(id, info);
 					return { success: true, message: `Created checkpoint "${id}" (${sha.slice(0, 7)})`, checkpoint: info };
@@ -107,7 +94,7 @@ export function apply(ctx: Context, config: GitGuardConfig = {}) {
 				}
 				try {
 					await execFileAsync("git", ["stash", "apply", cp.sha], { cwd });
-					return { success: true, message: `Successfully restored state from checkpoint "${args.checkpointId}"` };
+					return { success: true, message: `Applied checkpoint "${args.checkpointId}" to the current working tree.` };
 				} catch (err: any) {
 					return { success: false, error: `Failed to restore checkpoint: ${err?.message || String(err)}` };
 				}
@@ -125,7 +112,6 @@ export function apply(ctx: Context, config: GitGuardConfig = {}) {
 	});
 
 	return () => {
-		removeStartHook();
 		removeBeforeHook?.();
 		unregisterTool?.();
 	};

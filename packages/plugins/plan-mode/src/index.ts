@@ -42,7 +42,7 @@ export interface PlanModeConfig {
 }
 
 export const name = "plan-mode";
-export const inject = ["tools"];
+export const inject = ["tools", "settings"];
 
 export function calculateProgress(steps: PlanStep[]): { percentage: number; bar: string; completedCount: number } {
 	if (steps.length === 0) return { percentage: 0, bar: "[░░░░░░░░░░] 0%", completedCount: 0 };
@@ -146,49 +146,41 @@ export function renderWalkthroughMarkdown(plan: PlanDocument): string {
 	md += `\n`;
 
 	if (plan.verificationPlan) {
-		md += `## 验证结果 (Verification Results)\n\n${plan.verificationPlan.trim()}\n\n- [x] 所有自动化与集成测试已执行并通过验证。\n`;
+		md += `## 验证计划记录 (Verification Plan Record)\n\n${plan.verificationPlan.trim()}\n`;
 	}
 
 	return md;
 }
 
 function writeDurableFile(filePath: string, content: string) {
-	try {
-		const dir = path.dirname(filePath);
-		if (!fs.existsSync(dir)) {
-			fs.mkdirSync(dir, { recursive: true });
-		}
-		fs.writeFileSync(filePath, content, "utf-8");
-	} catch {
-		// Ignore write errors in read-only environments
+	const dir = path.dirname(filePath);
+	if (!fs.existsSync(dir)) {
+		fs.mkdirSync(dir, { recursive: true });
 	}
+	fs.writeFileSync(filePath, content, "utf-8");
 }
 
 /**
  * Generate plan index file when multiple sessions have concurrent plans
  */
 function syncMultiSessionIndex(baseDir: string, plans: Map<string, PlanDocument>) {
-	try {
-		const indexPath = path.join(baseDir, ".pi", "plans", "index.json");
-		const indexData = Array.from(plans.values()).map((p) => ({
-			sessionId: p.sessionId,
-			title: p.title,
-			isApproved: p.isApproved,
-			stepsCount: p.steps.length,
-			completedCount: p.steps.filter((s) => s.status === "completed").length,
-			planFilePath: p.planFilePath,
-			walkthroughFilePath: p.walkthroughFilePath,
-			updatedAt: p.updatedAt,
-		}));
-		writeDurableFile(indexPath, JSON.stringify(indexData, null, 2));
-	} catch {
-		// Ignore index sync errors
-	}
+	const indexPath = path.join(baseDir, ".picds", "plans", "index.json");
+	const indexData = Array.from(plans.values()).map((p) => ({
+		sessionId: p.sessionId,
+		title: p.title,
+		isApproved: p.isApproved,
+		stepsCount: p.steps.length,
+		completedCount: p.steps.filter((s) => s.status === "completed").length,
+		planFilePath: p.planFilePath,
+		walkthroughFilePath: p.walkthroughFilePath,
+		updatedAt: p.updatedAt,
+	}));
+	writeDurableFile(indexPath, `${JSON.stringify(indexData, null, 2)}\n`);
 }
 
 export function apply(ctx: Context, config: PlanModeConfig = {}) {
-	const cwd = config.cwd ?? process.cwd();
-	const basePlansDir = path.join(cwd, ".pi", "plans");
+	const cwd = config.cwd ?? ctx.settings.getCwd();
+	const basePlansDir = path.join(cwd, ".picds", "plans");
 
 	const rootCtx = (ctx.root ?? ctx) as any;
 	const plans: Map<string, PlanDocument> = (rootCtx._planModePlans ??= new Map<string, PlanDocument>());
@@ -244,7 +236,7 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 		const md = renderImplementationPlanMarkdown(plan);
 		writeDurableFile(plan.planFilePath, md);
 
-		// If this is default or the latest active session, sync canonical .pi/plans/implementation_plan.md
+		// If this is default or the latest active session, sync the canonical plan.
 		if (plan.sessionId === "default" || plan.sessionId === activeSessionId) {
 			const canonicalPath = path.join(basePlansDir, "implementation_plan.md");
 			if (canonicalPath !== plan.planFilePath) {
@@ -257,8 +249,8 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 	};
 
 	// Track session switches
-	const removeSessionStartHook = ctx.on("pi/session-start" as any, (evt: { sessionId?: string; session?: any }) => {
-		const sId = evt?.sessionId ?? evt?.session?.id;
+	const removeSessionStartHook = ctx.on("pi/session-start", (evt) => {
+		const sId = evt?.sessionId;
 		if (sId) {
 			activeSessionId = sId;
 			getOrCreatePlan(sId);
@@ -498,10 +490,6 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 							userFeedback = inputVal.trim();
 						}
 					}
-				} else {
-					// In non-interactive or test mode, action === "approve" approves directly
-					userApproved = args.action === "approve";
-					targetProfile = "default";
 				}
 
 				if (userApproved) {
@@ -533,6 +521,18 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 					planDoc.isApproved = false;
 					const md = syncPlanToDisk(planDoc);
 					const { bar } = calculateProgress(planDoc.steps);
+
+					if (!hasUI && args.action === "approve") {
+						return {
+							status: "approval_unavailable",
+							isApproved: false,
+							message: "PLAN NOT APPROVED: interactive user confirmation is unavailable. The model cannot self-approve; the user must switch profiles explicitly.",
+							sessionId: sId,
+							progress: bar,
+							planFilePath: planDoc.planFilePath,
+							markdown: md,
+						};
+					}
 
 					if (userFeedback) {
 						return {
@@ -582,6 +582,15 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 
 			// H. Finish & Generate Walkthrough
 			if (args.action === "finish") {
+				const incompleteSteps = planDoc.steps.filter((step) => step.status !== "completed");
+				if (planDoc.steps.length === 0 || incompleteSteps.length > 0) {
+					return {
+						success: false,
+						error: "PLAN_STEPS_INCOMPLETE",
+						message: `Cannot finalize session [${sId}]: ${incompleteSteps.length || "no"} plan steps are incomplete.`,
+						sessionId: sId,
+					};
+				}
 				isPlanModeActive = false;
 				planDoc.isApproved = true;
 				if (args.summary) planDoc.walkthroughSummary = args.summary;
@@ -687,4 +696,3 @@ export function apply(ctx: Context, config: PlanModeConfig = {}) {
 }
 
 export default { name, inject, apply };
-

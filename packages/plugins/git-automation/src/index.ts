@@ -1,7 +1,6 @@
 import type { Context } from "@deepseek-ai/cordis";
 
 export interface GitAutomationConfig {
-	autoSuggestCommit?: boolean;
 	conventionalCommits?: boolean;
 }
 
@@ -21,7 +20,7 @@ export function apply(ctx: Context, config: GitAutomationConfig = {}) {
 
 	const unregisterTool = ctx.tools.register({
 		name: "git_smart_commit",
-		description: "Generate structured Conventional Commit messages with scope inference and breaking change tracking.",
+		description: "Format a proposed git commit message and shell instruction without executing git commit.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -70,7 +69,9 @@ export function apply(ctx: Context, config: GitAutomationConfig = {}) {
 			const issuePart = args.issueNumber ? ` (#${args.issueNumber})` : "";
 			const breakingMark = args.breakingChange ? "!" : "";
 
-			let formattedMessage = `${args.type}${scopePart}${breakingMark}: ${args.message}${issuePart}`;
+			let formattedMessage = conventionalCommits
+				? `${args.type}${scopePart}${breakingMark}: ${args.message}${issuePart}`
+				: `${args.message}${issuePart}`;
 
 			if (args.breakingChange) {
 				formattedMessage += `\n\nBREAKING CHANGE: ${args.breakingChange}`;

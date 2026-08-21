@@ -13,7 +13,6 @@
 ```
 packages/plugins/my-plugin/
 ├── package.json
-├── tsconfig.json
 ├── README.md
 └── src/
     └── index.ts
@@ -25,13 +24,27 @@ packages/plugins/my-plugin/
   "name": "@pi-cordis/plugin-my-plugin",
   "version": "0.1.0",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsdown --config ../../../tsdown.plugin.config.ts",
+    "publint": "publint"
+  },
+  "publishConfig": { "access": "public" },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1"
   }
 }
 ```
+
+源码入口只用于开发。发布包必须暴露编译后的 `dist/` JavaScript 与类型声明，并通过 `publint`。
 
 ---
 

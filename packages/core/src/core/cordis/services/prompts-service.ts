@@ -19,7 +19,7 @@ export class PromptsService extends Service {
 	private cwd: string;
 	private agentDir: string;
 	private promptPaths: string[];
-	private customPrompts: Map<string, PromptTemplate> = new Map();
+	private customPrompts = new Map<string, PromptTemplate[]>();
 	private loader?: DefaultResourceLoader;
 
 	constructor(ctx: Context, config?: PromptsServiceConfig) {
@@ -29,23 +29,24 @@ export class PromptsService extends Service {
 		this.promptPaths = config?.promptPaths ?? [];
 	}
 
-	public load(options?: { cwd?: string; agentDir?: string; promptPaths?: string[] }): PromptTemplate[] {
+	public async load(options?: { cwd?: string; agentDir?: string; promptPaths?: string[] }): Promise<PromptTemplate[]> {
 		const cwd = options?.cwd ?? this.cwd;
 		const agentDir = options?.agentDir ?? this.agentDir;
 		const paths = options?.promptPaths ?? this.promptPaths;
 
-		try {
-			this.loader = new DefaultResourceLoader({
-				cwd,
-				agentDir,
-				additionalPromptTemplatePaths: paths,
-			});
-			const result = this.loader.getPrompts?.();
-			const diskPrompts = (Array.isArray(result) ? result : (result as any)?.prompts ?? []) as PromptTemplate[];
-			return [...diskPrompts, ...this.customPrompts.values()];
-		} catch {
-			return Array.from(this.customPrompts.values());
-		}
+		this.loader = new DefaultResourceLoader({
+			cwd,
+			agentDir,
+			additionalPromptTemplatePaths: paths,
+			noExtensions: true,
+			noSkills: true,
+			noThemes: true,
+			noContextFiles: true,
+		});
+		await this.loader.reload();
+		const result = this.loader.getPrompts?.();
+		const diskPrompts = (Array.isArray(result) ? result : (result as any)?.prompts ?? []) as PromptTemplate[];
+		return [...diskPrompts, ...Array.from(this.customPrompts.values(), (items) => items.at(-1)!)];
 	}
 
 	/**
@@ -53,21 +54,29 @@ export class PromptsService extends Service {
 	 */
 	public registerPrompt(template: PromptTemplate): () => void {
 		return this.ctx.effect(() => {
-			this.customPrompts.set(template.name, template);
+			const registrations = this.customPrompts.get(template.name) ?? [];
+			registrations.push(template);
+			this.customPrompts.set(template.name, registrations);
 			this.ctx.emit("pi/prompt-registered", template);
 			return () => {
-				this.customPrompts.delete(template.name);
+				const activeRegistrations = this.customPrompts.get(template.name);
+				if (activeRegistrations) {
+					const index = activeRegistrations.lastIndexOf(template);
+					if (index >= 0) activeRegistrations.splice(index, 1);
+					if (activeRegistrations.length === 0) this.customPrompts.delete(template.name);
+				}
+				this.ctx.emit("pi/prompt-unregistered", template.name);
 			};
 		});
 	}
 
-	public getPrompt(name: string): PromptTemplate | undefined {
-		if (this.customPrompts.has(name)) return this.customPrompts.get(name);
-		const all = this.load();
+	public async getPrompt(name: string): Promise<PromptTemplate | undefined> {
+		if (this.customPrompts.has(name)) return this.customPrompts.get(name)?.at(-1);
+		const all = await this.load();
 		return all.find((p) => p.name === name);
 	}
 
-	public getAllPrompts(): PromptTemplate[] {
+	public async getAllPrompts(): Promise<PromptTemplate[]> {
 		return this.load();
 	}
 }

@@ -70,7 +70,7 @@ export function createToolDefinition(toolName: ToolName, cwd: string, options?: 
 
 export class ToolRegistryService extends Service {
 	static provide = "tools";
-	private customTools: Map<string, ToolDef> = new Map();
+	private customTools: Map<string, ToolDef[]> = new Map();
 	private filters: Set<ToolFilterFn> = new Set();
 	private cwd: string;
 	private toolsOptions?: any;
@@ -87,13 +87,21 @@ export class ToolRegistryService extends Service {
 
 	public registerCustomTool(tool: ToolDef | CordisPluginToolDef | any): () => void {
 		return this.ctx.effect(() => {
-			this.customTools.set(tool.name, tool as ToolDef);
+			const definition = tool as ToolDef;
+			const registrations = this.customTools.get(tool.name) ?? [];
+			registrations.push(definition);
+			this.customTools.set(tool.name, registrations);
 			this.ctx.emit("pi/tool-registered", tool as ToolDef);
-			this.ctx.emit("pi/tools-changed" as any);
+			this.ctx.emit("pi/tools-changed");
 			return () => {
-				this.customTools.delete(tool.name);
+				const activeRegistrations = this.customTools.get(tool.name);
+				if (activeRegistrations) {
+					const index = activeRegistrations.lastIndexOf(definition);
+					if (index >= 0) activeRegistrations.splice(index, 1);
+					if (activeRegistrations.length === 0) this.customTools.delete(tool.name);
+				}
 				this.ctx.emit("pi/tool-unregistered", tool.name);
-				this.ctx.emit("pi/tools-changed" as any);
+				this.ctx.emit("pi/tools-changed");
 			};
 		});
 	}
@@ -105,10 +113,10 @@ export class ToolRegistryService extends Service {
 	public addFilter(filter: ToolFilterFn): () => void {
 		return this.ctx.effect(() => {
 			this.filters.add(filter);
-			this.ctx.emit("pi/tools-changed" as any);
+			this.ctx.emit("pi/tools-changed");
 			return () => {
 				this.filters.delete(filter);
-				this.ctx.emit("pi/tools-changed" as any);
+				this.ctx.emit("pi/tools-changed");
 			};
 		});
 	}
@@ -118,7 +126,8 @@ export class ToolRegistryService extends Service {
 	}
 
 	public getCustomTools(): ToolDef[] {
-		return Array.from(this.customTools.values());
+		return Array.from(this.customTools.values(), (registrations) => registrations.at(-1)!)
+			.filter(Boolean);
 	}
 
 	public getAllToolDefinitions(cwd: string = this.cwd): ToolDef[] {
@@ -161,7 +170,7 @@ export class ToolRegistryService extends Service {
 
 	public get(toolName: string, cwd: string = this.cwd): ToolDef | undefined {
 		if (this.customTools.has(toolName)) {
-			return this.customTools.get(toolName);
+			return this.customTools.get(toolName)?.at(-1);
 		}
 		if (allToolNames.has(toolName as ToolName)) {
 			return this.getBuiltinToolDefinition(toolName as ToolName, cwd);
@@ -183,15 +192,20 @@ export class ToolRegistryService extends Service {
 		}
 
 		// 1. Pre-execution hook
-		await this.ctx.serial("pi/tool-call" as any, { toolName, name: toolName, args });
+		await this.ctx.serial("pi/tool-call", { toolName, name: toolName, args });
 
 		// 2. Execution
-		const result = await tool.execute(args, ...rest);
+		const resultEvent = {
+			toolName,
+			name: toolName,
+			args,
+			result: await tool.execute(args, ...rest),
+		};
 
 		// 3. Post-execution hook
-		await this.ctx.parallel("pi/tool-result" as any, { toolName, name: toolName, args, result });
+		await this.ctx.serial("pi/tool-result", resultEvent);
 
-		return result;
+		return resultEvent.result;
 	}
 }
 

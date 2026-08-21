@@ -102,6 +102,7 @@ If a proposed approach is rejected during review:
 | `2026-08-20` | [Pi-Cordis: Built-in Plugin Ecosystem Optimal Architecture Blueprint and Guide](implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.md) | The 5 Pillars of optimal plugin architecture, 15 plugins optimization matrix, and 3-phase delivery |
 | `2026-08-20` | [Pi-Cordis: Agent Self-Inspection, Introspection Architecture, and Knowledge Grounding](implemented/architecture/2026-08-20-pi-cordis-agent-self-inspection-and-introspection-architecture.md) | Preserving 100% of native Pi introspection, 5-dimensional self-inspection model, rules-injector SHA-256 KV-cache protection, and microkernel service mesh reflection |
 | `2026-08-20` | [Pi-Cordis: Bidirectional Tool Bridge Hub, Dynamic Tool Masking, and Interactive Terminal UI Specification](implemented/architecture/2026-08-20-pi-cordis-bidirectional-tool-bridge-and-interactive-ui.md) | Eliminating CLI `--tools` allowlist filtering issues, ExtensionService unified bridge hub, Profile hot-switching lifecycle unloading & `pi.setActiveTools` dynamic masking sync, `ask_question` blocking terminal select modal and custom input guidelines |
+| `2026-08-21` | [Pi-Cordis 产品边界与上线门禁](implemented/architecture/2026-08-21-pi-cordis-product-boundary-and-production-gates.zh.md) | Thin Cordis control-plane positioning, capability honesty, exact fiber disposal, package artifacts, and cross-platform release gates |
 
 #### Features & Extensions (`implemented/feature/`)
 | Date | Title | Focus |

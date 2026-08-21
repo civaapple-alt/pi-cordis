@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { createPiContext } from "../src/core/cordis/bootstrap.js";
 import subagentPlugin from "@pi-cordis/plugin-subagent";
 import planModePlugin from "@pi-cordis/plugin-plan-mode";
@@ -10,29 +13,29 @@ import toolsManagerPlugin from "@pi-cordis/plugin-tools-manager";
 import sessionHandoffPlugin from "@pi-cordis/plugin-session-handoff";
 import gitAutomationPlugin from "@pi-cordis/plugin-git-automation";
 import sshDelegatorPlugin from "@pi-cordis/plugin-ssh-delegator";
-import safetyGatePlugin from "@pi-cordis/plugin-safety-gate";
+import btwPlugin from "@pi-cordis/plugin-btw";
+import safetyGatePlugin, { isCommandDangerous } from "@pi-cordis/plugin-safety-gate";
 import gitGuardPlugin from "@pi-cordis/plugin-git-guard";
 import rulesInjectorPlugin from "@pi-cordis/plugin-rules-injector";
 import { BUILTIN_PROFILES } from "@pi-cordis/profiles";
 
-describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
+describe("Pi-Cordis plugin behavior and private prototype honesty", () => {
 	let ctx: any;
 
 	beforeEach(async () => {
 		ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
 	});
 
-	it("1. @pi-cordis/plugin-subagent: registers subagent tool, allocates isolated session, enforces role tool slicing, and guards depth limits", async () => {
+	it("1. @pi-cordis/plugin-subagent: exposes explicit unavailable and depth-limit failures", async () => {
 		const fork = await ctx.plugin(subagentPlugin, { maxDepth: 2 });
 		expect(ctx.tools.has("subagent")).toBe(true);
 
 		const tool = ctx.tools.get("subagent");
 		const result = await tool!.execute({ task: "Run unit tests", role: "scout" });
-		expect(result.success).toBe(true);
-		expect(result.summary).toContain("[SCOUT]");
-		expect(result.summary).toContain("Run unit tests");
+		expect(result.success).toBe(false);
+		expect(result.error).toBe("SUBAGENT_DRIVER_UNAVAILABLE");
 		expect(result.details?.allowedTools).toEqual(["read", "grep", "find", "ls"]);
-		expect(result.deliverables).toBeDefined();
+		expect(result.deliverables).toBeUndefined();
 
 		// Depth limit guard test
 		const deepResult = await tool!.execute({ task: "Run deeply nested task", depth: 3 });
@@ -44,7 +47,8 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 	});
 
 	it("2. @pi-cordis/plugin-plan-mode: manages plan steps, generates implementation_plan.md, gates approval, and emits walkthrough", async () => {
-		const fork = await ctx.plugin(planModePlugin);
+		const planCwd = fs.mkdtempSync(path.join(os.tmpdir(), "picds-plan-test-"));
+		const fork = await ctx.plugin(planModePlugin, { cwd: planCwd });
 		expect(ctx.tools.has("plan_step")).toBe(true);
 
 		const tool = ctx.tools.get("plan_step");
@@ -88,6 +92,9 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		const reviewRes = await tool!.execute({ action: "request_review" });
 		expect(reviewRes.isApproved).toBe(false);
 		expect(reviewRes.markdown).toContain("Pending User Review");
+		const selfApproveRes = await tool!.execute({ action: "approve" });
+		expect(selfApproveRes.status).toBe("approval_unavailable");
+		expect(selfApproveRes.isApproved).toBe(false);
 
 		// 4.1 Interactive UI approval
 		let profileSwitchEmitted = false;
@@ -155,12 +162,18 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		}
 		expect(sessionBBlocked).toBe(true);
 
-		// 9. Finish plan mode and generate walkthrough
+		// 9. Finish rejects incomplete work, then generates a walkthrough once complete.
+		const incompleteFinish = await tool!.execute({ action: "finish" });
+		expect(incompleteFinish.error).toBe("PLAN_STEPS_INCOMPLETE");
+		await tool!.execute({ action: "update", id: 2, status: "completed" });
 		const finishRes = await tool!.execute({ action: "finish", summary: "Database migration successfully completed." });
 		expect(finishRes.message).toContain("Plan finalized");
 		expect(finishRes.walkthroughFilePath).toBeDefined();
 
 		await fork.dispose();
+		fs.rmSync(planCwd, { recursive: true, force: true });
+		// Approval switched to the lean default profile, where planning controls are
+		// intentionally absent from the model-facing tool surface.
 		expect(ctx.tools.has("plan_step")).toBe(false);
 	});
 
@@ -201,6 +214,13 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(result.output).toContain("FS namespace available: true");
 		expect(result.output).toContain("Bash namespace available: true");
 
+		// Calls inside PTC still cross the Cordis safety pipeline.
+		const safetyFork = await ctx.plugin(safetyGatePlugin);
+		const blocked = await tool!.execute({ code: `await pi.bash.run("rm -rf /");` });
+		expect(blocked.success).toBe(false);
+		expect(blocked.error).toContain("Dangerous command blocked");
+		await safetyFork.dispose();
+
 		// 4. Verify TUI Renderers
 		const callText = (tool as any).renderCall({ code: "console.log('hello world');" });
 		expect(callText).toContain("run_code");
@@ -232,13 +252,13 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ctx.tools.getExportedToolNames()).toContain("read");
 	});
 
-	it("4. @pi-cordis/plugin-ask-question: registers ask_question tool with preview and note support", async () => {
+	it("4. @pi-cordis/plugin-ask-question: requires real UI input and preserves selected notes", async () => {
 		const fork = await ctx.plugin(askQuestionPlugin);
 		expect(ctx.tools.has("ask_question")).toBe(true);
 
 		const tool = ctx.tools.get("ask_question");
 
-		// 1. Non-interactive fallback
+		// 1. Headless execution must never fabricate a user choice.
 		const resultFallback = await tool!.execute({
 			questions: [
 				{
@@ -252,10 +272,8 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 			],
 		});
 
-		expect(resultFallback.answers).toBeDefined();
-		expect(resultFallback.answers[0].id).toBe("db_choice");
-		expect(resultFallback.answers[0].selected[0]).toContain("PostgreSQL");
-		expect(resultFallback.answers[0].notes).toBe("Best for transactional data");
+		expect(resultFallback.answers).toEqual([]);
+		expect(resultFallback.error).toBe("INTERACTIVE_UI_UNAVAILABLE");
 
 		// 2. Interactive UI select
 		let selectTitle = "";
@@ -309,19 +327,32 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(resultCustom.answers[0].selected[0]).toBe("SQLite");
 		expect(resultCustom.wasCustom).toBe(true);
 
+		// 4. Cancelling a selector does not silently choose the first option.
+		const resultCancelled = await tool!.execute(
+			{ question: "Continue?", options: [{ label: "Yes" }, { label: "No" }] },
+			{ ctx: { hasUI: true, ui: { select: async () => undefined, input: async () => undefined } } },
+		);
+		expect(resultCancelled.cancelled).toBe(true);
+		expect(resultCancelled.answers[0].selected).toEqual([]);
+
 		await fork.dispose();
 		expect(ctx.tools.has("ask_question")).toBe(false);
 	});
 
 	it("5. @pi-cordis/plugin-output-truncator: truncates oversized output with Spill storage and Head/Tail", () => {
+		const spillDir = fs.mkdtempSync(path.join(os.tmpdir(), "picds-spill-test-"));
 		const lines = Array.from({ length: 3000 }, (_, i) => `Line ${i}`).join("\n");
-		const res = truncateText(lines, { maxBytes: 50 * 1024, maxLines: 2000, headLines: 30, tailLines: 20, enableSpill: true });
-		expect(res.truncated).toBe(true);
-		expect(res.text).toContain("Line 0");
-		expect(res.text).toContain("Line 29");
-		expect(res.text).toContain("Line 2999");
-		expect(res.text).toContain("omitted by @pi-cordis/plugin-output-truncator");
-		expect(res.spillPath).toBeDefined();
+		try {
+			const res = truncateText(lines, { maxBytes: 50 * 1024, maxLines: 2000, headLines: 30, tailLines: 20, enableSpill: true, spillDir });
+			expect(res.truncated).toBe(true);
+			expect(res.text).toContain("Line 0");
+			expect(res.text).toContain("Line 29");
+			expect(res.text).toContain("Line 2999");
+			expect(res.text).toContain("omitted by @pi-cordis/plugin-output-truncator");
+			expect(res.spillPath).toBeDefined();
+		} finally {
+			fs.rmSync(spillDir, { recursive: true, force: true });
+		}
 	});
 
 	it("6. @pi-cordis/plugin-context-compactor: registers trigger_compact tool and emits compact event", async () => {
@@ -335,8 +366,9 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 
 		const tool = ctx.tools.get("trigger_compact");
 		const result = await tool!.execute({ reason: "Context budget near 100k tokens" });
-		expect(result.success).toBe(true);
-		expect(compactEmitted).toBe(true);
+		expect(result.success).toBe(false);
+		expect(result.error).toBe("COMPACTION_DRIVER_UNAVAILABLE");
+		expect(compactEmitted).toBe(false);
 
 		await fork.dispose();
 		expect(ctx.tools.has("trigger_compact")).toBe(false);
@@ -400,15 +432,15 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ctx.tools.has("git_smart_commit")).toBe(false);
 	});
 
-	it("10. @pi-cordis/plugin-ssh-delegator: simulates remote SSH execution", async () => {
+	it("10. @pi-cordis/plugin-ssh-delegator: fails honestly without an SSH transport", async () => {
 		const fork = await ctx.plugin(sshDelegatorPlugin, { defaultHost: "remote.server.com", defaultUser: "deploy" });
 		expect(ctx.tools.has("ssh_exec")).toBe(true);
 
 		const tool = ctx.tools.get("ssh_exec");
 		const result = await tool!.execute({ command: "uname -a" });
-		expect(result.success).toBe(true);
+		expect(result.success).toBe(false);
 		expect(result.target).toBe("deploy@remote.server.com");
-		expect(result.stdout).toContain("uname -a");
+		expect(result.stderr).toContain("SSH_TRANSPORT_UNAVAILABLE");
 
 		await fork.dispose();
 		expect(ctx.tools.has("ssh_exec")).toBe(false);
@@ -425,15 +457,13 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		expect(ptcCtx.tools.has("run_code")).toBe(true);
 		expect(ptcCtx.tools.has("todo_write")).toBe(true);
 
-		// Default profile (Default is Best: full capabilities)
+		// Default profile (Default is Best: verified essentials, not every plugin)
 		const defaultCtx = await createPiContext({ allowModelNetwork: false, profile: "default" });
-		expect(defaultCtx.tools.has("subagent")).toBe(true);
 		expect(defaultCtx.tools.has("todo_write")).toBe(true);
 		expect(defaultCtx.tools.has("ask_question")).toBe(true);
-		expect(defaultCtx.tools.has("manage_tools")).toBe(true);
-		expect(defaultCtx.tools.has("session_handoff")).toBe(true);
-		expect(defaultCtx.tools.has("git_smart_commit")).toBe(true);
-		expect(defaultCtx.tools.has("ssh_exec")).toBe(true);
+		expect(defaultCtx.tools.has("subagent")).toBe(false);
+		expect(defaultCtx.tools.has("trigger_compact")).toBe(false);
+		expect(defaultCtx.tools.has("ssh_exec")).toBe(false);
 	});
 
 	it("12. @pi-cordis/plugin-safety-gate: blocks destructive commands, sensitive path writes, and read-only breaches", async () => {
@@ -453,6 +483,17 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 		await expect(ctx.serial("pi/tool-call", { name: "write", args: { path: ".env" } })).rejects.toThrow(
 			"is a protected file",
 		);
+		await expect(ctx.serial("pi/tool-call", { name: "write", args: { path: "node_modules\\pkg\\index.js" } })).rejects.toThrow(
+			"is a protected file",
+		);
+
+		// 4. Native Windows shell destructive commands
+		expect(isCommandDangerous("Remove-Item -Recurse -Force C:\\")).toMatchObject({ dangerous: true });
+		expect(isCommandDangerous("format C:")).toMatchObject({ dangerous: true });
+
+		// 5. An allow-list entry is exact and cannot whitelist an injected suffix.
+		expect(isCommandDangerous("rm -rf /", [], ["rm -rf /"])).toEqual({ dangerous: false });
+		expect(isCommandDangerous("rm -rf /; echo bypass", [], ["rm -rf /"])).toMatchObject({ dangerous: true });
 
 		await fork.dispose();
 	});
@@ -473,19 +514,23 @@ describe("Pi-Cordis Top 10 Priority Native Built-in Plugins", () => {
 	});
 
 	it("14. @pi-cordis/plugin-rules-injector: injects project rules and caches content with SHA-256", async () => {
-		const fork = await ctx.plugin(rulesInjectorPlugin);
-
-		const promptEvent = { prompt: "Base instructions" };
-		await ctx.parallel("pi/prompt-transform", promptEvent);
-
-		// If AGENTS.md or CLAUDE.md exists in repo, it should be injected
-		expect(promptEvent.prompt.length).toBeGreaterThan("Base instructions".length);
-
-		await fork.dispose();
+		const rulesCwd = fs.mkdtempSync(path.join(os.tmpdir(), "picds-rules-test-"));
+		fs.writeFileSync(path.join(rulesCwd, ".cursorrules"), "Use deterministic tests.\n", "utf8");
+		const rulesCtx = await createPiContext({ cwd: rulesCwd, allowModelNetwork: false, profile: "minimal" });
+		try {
+			const fork = await rulesCtx.plugin(rulesInjectorPlugin);
+			const promptEvent = { prompt: "Base instructions" };
+			await rulesCtx.parallel("pi/prompt-transform", promptEvent);
+			expect(promptEvent.prompt).toContain("Use deterministic tests.");
+			expect(promptEvent.prompt).not.toContain("AGENTS.md");
+			await fork.dispose();
+		} finally {
+			await rulesCtx.fiber.dispose();
+			fs.rmSync(rulesCwd, { recursive: true, force: true });
+		}
 	});
 
 	it("15. @pi-cordis/plugin-btw: registers /btw command and performs ephemeral side-channel LLM query", async () => {
-		const btwPlugin = (await import("@pi-cordis/plugin-btw")).default;
 		const fork = await ctx.plugin(btwPlugin);
 
 		const cmd = ctx.extensions.getRegisteredCommands().get("btw");

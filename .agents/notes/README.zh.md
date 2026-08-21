@@ -102,6 +102,7 @@ graph LR
 | `2026-08-20` | [Pi-Cordis 全套内置插件最优解架构演进蓝图与实践指南](implemented/architecture/2026-08-20-pi-cordis-plugin-ecosystem-optimal-architecture-and-roadmap.zh.md) | 插件最优解 5 大核心准则、15 个内置插件全量对齐矩阵与三阶段交付总结 |
 | `2026-08-20` | [Pi-Cordis 智能体自我认知（Self-Inspection）架构演进与知识沉淀](implemented/architecture/2026-08-20-pi-cordis-agent-self-inspection-and-introspection-architecture.zh.md) | 100% 继承 Pi 原生自省传统、5 维自我认知模型、rules-injector SHA-256 KV-Cache 保护、10 大服务运行时反射与 /profile 预设自检 |
 | `2026-08-20` | [Pi-Cordis 双向工具桥接中枢、Profile 动态工具遮罩与终端交互式 UI 规范](implemented/architecture/2026-08-20-pi-cordis-bidirectional-tool-bridge-and-interactive-ui.zh.md) | 避免 CLI `--tools` 白名单过滤副作用、ExtensionService 统一桥接搜索工具与插件工具、Profile 热切换插件生命周期卸载与 `pi.setActiveTools` 动态遮罩同步、`ask_question` 真实终端阻塞式多选弹窗与自定义输入规范 |
+| `2026-08-21` | [Pi-Cordis 产品边界与上线门禁](implemented/architecture/2026-08-21-pi-cordis-product-boundary-and-production-gates.zh.md) | 轻量 Cordis 控制面定位、能力真实性、精确 Fiber 销毁、发布产物与跨平台门禁 |
 
 #### 特性与扩展类决策 (`implemented/feature/`)
 | 制定日期 | 决策标题 | 核心关注点 |

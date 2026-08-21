@@ -12,11 +12,6 @@ export interface QuestionItem {
 	question: string;
 	header?: string;
 	options?: QuestionOption[];
-	multi_select?: boolean;
-}
-
-export interface AskQuestionConfig {
-	defaultTimeoutMs?: number;
 }
 
 export interface QuestionAnswer {
@@ -33,15 +28,17 @@ export interface AskQuestionResult {
 	selected?: string;
 	wasCustom?: boolean;
 	notes?: string;
+	cancelled?: boolean;
+	error?: "INVALID_QUESTION" | "INTERACTIVE_UI_UNAVAILABLE";
 }
 
 export const name = "ask-question";
 export const inject = ["tools"];
 
-export function apply(ctx: Context, config: AskQuestionConfig = {}) {
+export function apply(ctx: Context) {
 	const unregisterTool = ctx.tools.register({
 		name: "ask_question",
-		description: "Ask the user one or more clarifying questions with selectable options, markdown previews, or custom text input.",
+		description: "Ask the user one or more sequential clarifying questions with selectable options or custom text input.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -66,7 +63,6 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 									required: ["label"],
 								},
 							},
-							multi_select: { type: "boolean", description: "Whether multiple options can be chosen" },
 						},
 						required: ["question"],
 					},
@@ -104,7 +100,7 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 			return `${theme.fg("accent", theme.bold("❓ ask_question "))}${theme.fg("dim", `(${count} question${count > 1 ? "s" : ""}${previewTag})`)}\n${theme.fg("foreground", title)}`;
 		},
 		renderResult: (result: AskQuestionResult, options?: any, theme?: any) => {
-			const ans = result?.answers?.[0]?.selected?.join(", ") ?? result?.selected ?? "Answered";
+			const ans = result.error ?? (result.cancelled ? "Cancelled" : result?.answers?.[0]?.selected?.join(", ") || result?.selected || "No answer");
 			const noteText = result?.notes ? ` (Note: ${result.notes})` : "";
 			if (!theme?.fg) return `✓ User answer: ${ans}${noteText}`;
 			return `${theme.fg("success", "✓ User answer:")} ${theme.fg("foreground", ans)}${theme.fg("dim", noteText)}`;
@@ -127,7 +123,6 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 					id: "q1",
 					question: args.question,
 					options: args.options ?? [],
-					multi_select: false,
 				});
 			}
 
@@ -135,6 +130,18 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 			const ui = execContext?.ctx?.ui;
 			const hasUI = Boolean(execContext?.ctx?.hasUI && ui?.select);
 			const signal = execContext?.signal;
+			if (items.length === 0) {
+				return { answers: [], error: "INVALID_QUESTION" };
+			}
+			if (!hasUI) {
+				return {
+					answers: [],
+					question: items[0]?.question,
+					options: items[0]?.options?.map((option) => option.label) ?? [],
+					error: "INTERACTIVE_UI_UNAVAILABLE",
+				};
+			}
+			let cancelled = false;
 
 			for (let idx = 0; idx < items.length; idx++) {
 				const q = items[idx];
@@ -155,7 +162,7 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 							optionMap.set(opt.label, opt);
 						}
 
-						if (args.allowCustom !== false) {
+						if (args.allowCustom !== false && typeof ui.input === "function") {
 							displayLabels.push("✍️ Other (Type custom answer)");
 						}
 
@@ -168,8 +175,7 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 								custom = trimmed;
 								selected = [trimmed];
 							} else {
-								selected = [q.options[0]?.label ?? "Yes"];
-								notes = q.options[0]?.note;
+								cancelled = true;
 							}
 						} else if (chosen) {
 							const matched = optionMap.get(chosen);
@@ -178,10 +184,9 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 							notes = matched?.note;
 						} else {
 							// Cancelled by user
-							selected = [q.options[0]?.label ?? "Cancelled"];
-							notes = q.options[0]?.note;
+							cancelled = true;
 						}
-					} else {
+					} else if (typeof ui.input === "function") {
 						// Free-text question without options
 						const inputVal = await ui.input(q.question, "Enter your answer...", { signal });
 						const trimmed = inputVal?.trim();
@@ -189,14 +194,11 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 							custom = trimmed;
 							selected = [trimmed];
 						} else {
-							selected = ["No answer provided"];
+							cancelled = true;
 						}
 					}
 				} else {
-					// Non-interactive / Headless fallback (e.g. CI / automated tests)
-					const firstOption = q.options?.[0]?.label ?? "Yes";
-					selected = [firstOption];
-					notes = q.options?.[0]?.note;
+					cancelled = true;
 				}
 
 				answers.push({
@@ -217,6 +219,7 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 				selected: primaryAnswer,
 				wasCustom: Boolean(answers[0]?.custom),
 				notes: answers[0]?.notes,
+				cancelled,
 			};
 		},
 	});
@@ -227,4 +230,3 @@ export function apply(ctx: Context, config: AskQuestionConfig = {}) {
 }
 
 export default { name, inject, apply };
-

@@ -1,5 +1,6 @@
 {
 	"name": "@pi-cordis/plugin-context-compactor",
+	"private": true,
 	"version": "0.1.0",
 	"description": "Conversation compaction and token optimization plugin for Pi-Cordis",
 	"type": "module",

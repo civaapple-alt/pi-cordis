@@ -11,7 +11,7 @@ Welcome to the `@pi-cordis/core` documentation hub. Serving as the microkernel c
 ### 1. Core Services Contracts ([`cordis/services/`](cordis/services/README.md))
 - [SettingsService (`ctx.settings`)](cordis/services/settings-service.md) — Hierarchical configuration, reactive updates & `pi/settings-updated`
 - [AuthService (`ctx.auth`)](cordis/services/auth-service.md) — Credential storage, API key management & `pi/auth-updated`
-- [AIService (`ctx.ai`)](cordis/services/ai-service.md) — 1307+ models runtime, dynamic provider registration & `pi/model-change`
+- [AIService (`ctx.ai`)](cordis/services/ai-service.md) — upstream Pi model runtime, dynamic provider registration & `pi/model-change`
 - [ToolRegistryService (`ctx.tools`)](cordis/services/tool-registry-service.md) — 7 built-in coding tools, presentation tool masking & `executeTool` pipeline
 - [SessionService (`ctx.session`)](cordis/services/session-service.md) — SQLite/JSON tree persistence & ephemeral `inMemory` sessions
 - [SkillsService (`ctx.skills`)](cordis/services/skills-service.md) — Automatic Markdown skill discovery & dynamic reversible registration

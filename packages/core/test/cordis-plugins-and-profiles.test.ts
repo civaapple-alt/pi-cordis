@@ -158,6 +158,59 @@ profiles:
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
+	it("prefers project .picds presets and does not merge legacy .pi when both exist", () => {
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-cordis-profile-priority-"));
+		try {
+			const legacyDir = path.join(tmpDir, ".pi", "presets", "review");
+			const picdsDir = path.join(tmpDir, ".picds", "presets", "review");
+			fs.mkdirSync(legacyDir, { recursive: true });
+			fs.mkdirSync(picdsDir, { recursive: true });
+			fs.writeFileSync(path.join(legacyDir, "cordis.yml"), "- name: '@pi-cordis/plugin-plan-mode'\n");
+			fs.writeFileSync(path.join(picdsDir, "cordis.yml"), "- name: '@pi-cordis/plugin-safety-gate'\n");
+
+			const profiles = loadProfilesFromYaml(tmpDir);
+			expect(profiles.review.plugins["safety-gate"]).toBe(true);
+			expect(profiles.review.plugins["plan-mode"]).toBeUndefined();
+		} finally {
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+
+	it("fails fast on malformed profile YAML without disposing the active profile", async () => {
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-cordis-invalid-profile-"));
+		const presetDir = path.join(tmpDir, "presets", "broken");
+		fs.mkdirSync(presetDir, { recursive: true });
+		fs.writeFileSync(path.join(presetDir, "cordis.yml"), "- name: [unterminated", "utf8");
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
+		try {
+			expect(ctx.tools.has("todo_write")).toBe(true);
+			expect(() => loadProfilesFromYaml(tmpDir)).toThrow("Failed to parse profile YAML");
+			await expect(applyProfile(ctx, "broken", undefined, { cwd: tmpDir })).rejects.toThrow(
+				"Failed to parse profile YAML",
+			);
+			expect(ctx.tools.has("todo_write")).toBe(true);
+		} finally {
+			await ctx.fiber.dispose();
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects unknown profile plugins without disposing the active profile", async () => {
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "default" });
+		expect(ctx.tools.has("todo_write")).toBe(true);
+
+		await expect(
+			applyProfile(ctx, "default", { "not-a-real-plugin": true } as any),
+		).rejects.toThrow("unsupported Cordis plugins");
+		expect(ctx.tools.has("todo_write")).toBe(true);
+	});
+
+	it("rejects unknown profile names instead of silently loading default", async () => {
+		const ctx = await createPiContext({ allowModelNetwork: false, profile: "minimal" });
+		await expect(applyProfile(ctx, "typo-profile")).rejects.toThrow('Unknown profile "typo-profile"');
+		expect(ctx.tools.has("todo_write")).toBe(false);
+	});
+
 	it("should support HMR reload of presets and active plugins", async () => {
 		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-cordis-hmr-test-"));
 		const presetDir = path.join(tmpDir, "presets", "custom-hmr");
@@ -201,12 +254,12 @@ profiles:
 			"utf-8",
 		);
 
-		hmr.reloadCurrentProfile();
+		await hmr.reloadCurrentProfile();
 
 		expect(reloadFired).toBe(true);
 		expect(updatedProfileName).toBe("custom-hmr");
 
-		hmr.stop();
+		await hmr.stop();
 		// Cleanup
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
@@ -228,6 +281,15 @@ profiles:
 		// Attempt self-dependency
 		const selfDepRes = await tool!.execute({ action: "add", id: "t3", title: "Task 3", dependsOn: ["t3"] });
 		expect(selfDepRes.error).toContain("cannot depend on itself");
+
+		const duplicateRes = await tool!.execute({ action: "add", id: "t1", title: "Duplicate" });
+		expect(duplicateRes.error).toContain("already exists");
+
+		const blockedRes = await tool!.execute({ action: "update", id: "t2", status: "in_progress" });
+		expect(blockedRes.error).toContain("blocked by incomplete dependencies: t1");
+		await tool!.execute({ action: "update", id: "t1", status: "completed" });
+		const unblockedRes = await tool!.execute({ action: "update", id: "t2", status: "in_progress" });
+		expect(unblockedRes.item.status).toBe("in_progress");
 	});
 
 	it("should register /btw command and setup OSC 777 terminal notifier", async () => {
@@ -338,8 +400,9 @@ profiles:
 		expect(activeToolsInPi).not.toContain("run_code");
 	});
 
-	it("should support seamless plan formulation in plan mode and execution in ptc / default modes", async () => {
-		const ctx = await createPiContext({ profile: "plan" });
+	it("should keep planning controls scoped to plan mode while preserving state", async () => {
+		const profileCwd = fs.mkdtempSync(path.join(os.tmpdir(), "picds-profile-plan-test-"));
+		const ctx = await createPiContext({ profile: "plan", cwd: profileCwd });
 
 		const tool = ctx.tools.get("plan_step");
 		expect(tool).toBeDefined();
@@ -361,23 +424,24 @@ profiles:
 		const profileDef = ctx.extensions.getRegisteredCommands().get("profile");
 		await profileDef!.handler("ptc", { hasUI: false });
 
-		// Verify plan is preserved in ptc mode
-		const viewResPtc = await ctx.tools.get("plan_step")!.execute({ action: "view" });
-		expect(viewResPtc.planTitle).toBe("Refactor Database Module");
-		expect(viewResPtc.totalSteps).toBe(1);
+		// PTC exposes only execution-oriented controls.
+		expect(ctx.tools.has("plan_step")).toBe(false);
 
 		// Switch to default mode
 		await profileDef!.handler("default", { hasUI: false });
+		expect(ctx.tools.has("plan_step")).toBe(false);
 
-		// Verify plan is preserved in default mode
-		const viewResDefault = await ctx.tools.get("plan_step")!.execute({ action: "view" });
-		expect(viewResDefault.planTitle).toBe("Refactor Database Module");
-		expect(viewResDefault.totalSteps).toBe(1);
+		// Switching back to plan restores the plugin and its module-level plan state.
+		await profileDef!.handler("plan", { hasUI: false });
+		const viewRestored = await ctx.tools.get("plan_step")!.execute({ action: "view" });
+		expect(viewRestored.planTitle).toBe("Refactor Database Module");
+		expect(viewRestored.totalSteps).toBe(1);
 
-		// Update step in default mode
 		await ctx.tools.get("plan_step")!.execute({ action: "update", id: 1, status: "completed" });
 		const viewUpdated = await ctx.tools.get("plan_step")!.execute({ action: "view" });
 		expect(viewUpdated.percentage).toBe(100);
+
+		await ctx.fiber.dispose();
+		fs.rmSync(profileCwd, { recursive: true, force: true });
 	});
 });
-

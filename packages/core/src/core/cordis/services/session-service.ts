@@ -16,6 +16,9 @@ export class SessionService extends Service {
 		super(ctx, "session");
 		this.cwd = config?.cwd ?? process.cwd();
 		this.sessionDir = config?.sessionDir;
+		this.ctx.effect(() => () => {
+			this.activeSessions.clear();
+		});
 	}
 
 	public create(cwd: string = this.cwd, options?: NewSessionOptions): SessionManager {

@@ -6,16 +6,13 @@ import safetyGatePlugin from "@pi-cordis/plugin-safety-gate";
 import gitGuardPlugin from "@pi-cordis/plugin-git-guard";
 import todoTrackerPlugin from "@pi-cordis/plugin-todo-tracker";
 import rulesInjectorPlugin from "@pi-cordis/plugin-rules-injector";
-import subagentPlugin from "@pi-cordis/plugin-subagent";
 import planModePlugin from "@pi-cordis/plugin-plan-mode";
 import codeModePlugin from "@pi-cordis/plugin-code-mode";
 import askQuestionPlugin from "@pi-cordis/plugin-ask-question";
 import outputTruncatorPlugin from "@pi-cordis/plugin-output-truncator";
-import contextCompactorPlugin from "@pi-cordis/plugin-context-compactor";
 import toolsManagerPlugin from "@pi-cordis/plugin-tools-manager";
 import sessionHandoffPlugin from "@pi-cordis/plugin-session-handoff";
 import gitAutomationPlugin from "@pi-cordis/plugin-git-automation";
-import sshDelegatorPlugin from "@pi-cordis/plugin-ssh-delegator";
 import btwPlugin from "@pi-cordis/plugin-btw";
 import terminalNotifierPlugin from "@pi-cordis/plugin-terminal-notifier";
 
@@ -24,21 +21,25 @@ export const builtinPlugins = {
 	"git-guard": gitGuardPlugin,
 	"todo-tracker": todoTrackerPlugin,
 	"rules-injector": rulesInjectorPlugin,
-	subagent: subagentPlugin,
 	"plan-mode": planModePlugin,
 	"code-mode": codeModePlugin,
 	"ask-question": askQuestionPlugin,
 	"output-truncator": outputTruncatorPlugin,
-	"context-compactor": contextCompactorPlugin,
 	"tools-manager": toolsManagerPlugin,
 	"session-handoff": sessionHandoffPlugin,
 	"git-automation": gitAutomationPlugin,
-	"ssh-delegator": sshDelegatorPlugin,
 	btw: btwPlugin,
 	"terminal-notifier": terminalNotifierPlugin,
 } as const;
 
 export type BuiltinPluginName = keyof typeof builtinPlugins;
+
+interface ActiveProfileMount {
+	name: BuiltinPluginName;
+	dispose: () => void | Promise<void>;
+}
+
+const activeProfileMounts = new WeakMap<Context, ActiveProfileMount[]>();
 
 export interface PluginEntryConfig {
 	name: string;
@@ -58,21 +59,14 @@ export interface ProfileDefinition {
 export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 	default: {
 		name: "default",
-		description: "标准日常开发模式 (Default is Best: 开箱即用全量安全防护、规则注入、待办追踪与防爆转存)",
+		description: "标准日常开发模式 (Default is Best: 仅启用可验证的安全、规则、任务与交互增强)",
 		plugins: {
-			"plan-mode": { autoBlockWrites: false, injectGuidelines: true },
 			"safety-gate": true,
 			"git-guard": true,
 			"rules-injector": true,
 			"todo-tracker": true,
 			"output-truncator": true,
 			"ask-question": true,
-			"context-compactor": true,
-			subagent: true,
-			"git-automation": true,
-			"session-handoff": true,
-			"ssh-delegator": true,
-			"tools-manager": true,
 			btw: true,
 			"terminal-notifier": true,
 		},
@@ -87,7 +81,6 @@ export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 			"todo-tracker": true,
 			"output-truncator": true,
 			"ask-question": true,
-			"context-compactor": true,
 		},
 	},
 	ptc: {
@@ -95,13 +88,12 @@ export const BUILTIN_PROFILES: Record<string, ProfileDefinition> = {
 		description: "编程化工具调用模式 (PTC / Code Mode: 动态 TypeScript SDK + run_code 批量执行)",
 		plugins: {
 			"code-mode": true,
-			"plan-mode": { autoBlockWrites: false, injectGuidelines: true },
 			"safety-gate": true,
 			"git-guard": true,
 			"rules-injector": true,
 			"todo-tracker": true,
 			"output-truncator": true,
-			"context-compactor": true,
+			"ask-question": true,
 		},
 	},
 };
@@ -113,6 +105,17 @@ function normalizePluginName(name: string): string {
 	return name;
 }
 
+function readProfileYaml(filePath: string): unknown {
+	try {
+		return parseYaml(fs.readFileSync(filePath, "utf8"));
+	} catch (error) {
+		throw new Error(
+			`Failed to parse profile YAML "${filePath}": ${error instanceof Error ? error.message : String(error)}`,
+			{ cause: error },
+		);
+	}
+}
+
 /**
  * Load and merge profile configurations from `presets/<name>/` directories and YAML files.
  */
@@ -122,11 +125,15 @@ export function loadProfilesFromYaml(
 ): Record<string, ProfileDefinition> {
 	const merged: Record<string, ProfileDefinition> = { ...BUILTIN_PROFILES };
 
-	// 1. Scan directory-based presets: presets/<name>/, .pi/presets/<name>/, ~/.pi/presets/<name>/
+	// 1. Scan directory-based presets. The Pi-Cordis project namespace takes
+	// precedence, while .pi remains a compatibility fallback.
+	const picdsPresetRoot = path.join(cwd, ".picds", "presets");
+	const legacyPresetRoot = path.join(cwd, ".pi", "presets");
+	const projectPresetRoot = fs.existsSync(picdsPresetRoot) ? picdsPresetRoot : legacyPresetRoot;
 	const presetRoots = [
-		agentDir ? path.join(agentDir, "presets") : null,
-		path.join(cwd, ".pi", "presets"),
 		path.join(cwd, "presets"),
+		agentDir ? path.join(agentDir, "presets") : null,
+		projectPresetRoot,
 	].filter((p): p is string => Boolean(p));
 
 	for (const root of presetRoots) {
@@ -147,40 +154,43 @@ export function loadProfilesFromYaml(
 				let description = `Preset "${entry.name}" loaded from ${path.relative(cwd, presetDir)}`;
 
 				if (fs.existsSync(presetYmlPath)) {
-					try {
-						const meta = parseYaml(fs.readFileSync(presetYmlPath, "utf-8"));
-						if (meta && typeof meta === "object") {
-							if (meta.name) displayName = String(meta.name);
-							if (meta.description) description = String(meta.description);
-						}
-					} catch {
-						// Ignore parse error
+					const meta = readProfileYaml(presetYmlPath) as Record<string, unknown> | undefined;
+					if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+						if (meta.name) displayName = String(meta.name);
+						if (meta.description) description = String(meta.description);
 					}
 				}
 
 				const pluginsMap: Record<string, boolean | Record<string, unknown>> = {};
 
 				if (cordisYmlPath && fs.existsSync(cordisYmlPath)) {
-					try {
-						const pluginList = parseYaml(fs.readFileSync(cordisYmlPath, "utf-8"));
-						if (Array.isArray(pluginList)) {
-							for (const item of pluginList) {
-								if (!item) continue;
-								if (typeof item === "string") {
-									pluginsMap[normalizePluginName(item)] = true;
-								} else if (typeof item === "object" && item.name) {
-									if (item.disabled) continue;
-									const key = normalizePluginName(item.name);
-									pluginsMap[key] = item.config ?? true;
-								}
-							}
-						} else if (pluginList && typeof pluginList === "object") {
-							for (const [k, v] of Object.entries(pluginList)) {
-								pluginsMap[normalizePluginName(k)] = (v as any) ?? true;
+					const pluginList = readProfileYaml(cordisYmlPath);
+					if (Array.isArray(pluginList)) {
+						for (const item of pluginList) {
+							if (!item) continue;
+							if (typeof item === "string") {
+								pluginsMap[normalizePluginName(item)] = true;
+							} else if (
+								typeof item === "object" &&
+								item !== null &&
+								"name" in item &&
+								typeof item.name === "string"
+							) {
+								if ("disabled" in item && item.disabled) continue;
+								const key = normalizePluginName(item.name);
+								pluginsMap[key] = "config" in item && item.config !== undefined
+									? item.config as Record<string, unknown>
+									: true;
+							} else {
+								throw new Error(`Invalid plugin entry in profile YAML "${cordisYmlPath}".`);
 							}
 						}
-					} catch {
-						// Ignore parse error
+					} else if (pluginList && typeof pluginList === "object") {
+						for (const [k, v] of Object.entries(pluginList)) {
+							pluginsMap[normalizePluginName(k)] = (v as boolean | Record<string, unknown> | null) ?? true;
+						}
+					} else if (pluginList !== undefined && pluginList !== null) {
+						throw new Error(`Invalid plugin list in profile YAML "${cordisYmlPath}".`);
 					}
 				}
 
@@ -190,37 +200,41 @@ export function loadProfilesFromYaml(
 					plugins: pluginsMap,
 				};
 			}
-		} catch {
-			// Directory read error
+		} catch (error) {
+			if (error instanceof Error && error.message.startsWith("Failed to parse profile YAML")) {
+				throw error;
+			}
+			throw new Error(
+				`Failed to load profile directory "${root}": ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error },
+			);
 		}
 	}
 
 	// 2. Scan single-file YAML profiles for backwards compatibility
+	const picdsConfigPath = path.join(cwd, ".picds", "cordis.yml");
+	const legacyConfigPath = path.join(cwd, ".pi", "cordis.yml");
+	const projectConfigPath = fs.existsSync(picdsConfigPath) ? picdsConfigPath : legacyConfigPath;
 	const candidateSingleFiles = [
-		agentDir ? path.join(agentDir, "cordis.yml") : null,
-		path.join(cwd, ".pi", "cordis.yml"),
 		path.join(cwd, "cordis.yml"),
+		agentDir ? path.join(agentDir, "cordis.yml") : null,
+		projectConfigPath,
 	].filter((p): p is string => Boolean(p));
 
 	for (const filePath of candidateSingleFiles) {
 		if (fs.existsSync(filePath)) {
-			try {
-				const content = fs.readFileSync(filePath, "utf-8");
-				const parsed = parseYaml(content);
-				if (parsed && typeof parsed === "object" && parsed.profiles) {
-					for (const [key, val] of Object.entries(parsed.profiles)) {
-						if (val && typeof val === "object") {
-							const def = val as Partial<ProfileDefinition>;
-							merged[key] = {
-								name: def.name ?? key,
-								description: def.description ?? `Custom profile "${key}"`,
-								plugins: (def.plugins ?? (val as Record<string, unknown>)) as any,
-							};
-						}
+			const parsed = readProfileYaml(filePath) as { profiles?: Record<string, unknown> } | undefined;
+			if (parsed && typeof parsed === "object" && parsed.profiles) {
+				for (const [key, val] of Object.entries(parsed.profiles)) {
+					if (val && typeof val === "object" && !Array.isArray(val)) {
+						const def = val as Partial<ProfileDefinition>;
+						merged[key] = {
+							name: def.name ?? key,
+							description: def.description ?? `Custom profile "${key}"`,
+							plugins: (def.plugins ?? (val as Record<string, unknown>)) as ProfileDefinition["plugins"],
+						};
 					}
 				}
-			} catch {
-				// Parse error
 			}
 		}
 	}
@@ -237,53 +251,63 @@ export async function applyProfile(
 	customPluginConfigs?: Partial<Record<BuiltinPluginName | string, boolean | Record<string, unknown>>>,
 	options: { cwd?: string; agentDir?: string } = {},
 ): Promise<string[]> {
-	// 1. Unload previously active profile plugins via ctx.registry.delete
-	if ((ctx as any)._activeProfilePluginKeys) {
-		const prevKeys = (ctx as any)._activeProfilePluginKeys as string[];
-		for (const key of prevKeys) {
-			const plugin = builtinPlugins[key as BuiltinPluginName];
-			if (plugin) {
-				ctx.registry.delete(plugin);
-			}
-		}
-		(ctx as any)._activeProfilePluginKeys = [];
-		// Allow Cordis fiber disposal to settle
-		await new Promise((r) => setTimeout(r, 0));
-	}
-
+	const profileScope = ctx.root;
 	if (profileName === "minimal") {
-		(ctx as any)._activeProfilePluginKeys = [];
+		await Promise.allSettled(
+			(activeProfileMounts.get(profileScope) ?? []).map((mount) => Promise.resolve(mount.dispose())),
+		);
+		activeProfileMounts.delete(profileScope);
 		(ctx as any).extensions?.syncActiveTools?.();
 		return [];
 	}
 
 	const allProfiles = loadProfilesFromYaml(options.cwd, options.agentDir);
-	const profile = allProfiles[profileName] ?? allProfiles.default ?? BUILTIN_PROFILES.default;
+	const profile = allProfiles[profileName];
+	if (!profile) {
+		throw new Error(
+			`Unknown profile "${profileName}". Available profiles: ${Object.keys(allProfiles).sort().join(", ")}.`,
+		);
+	}
 
 	const resolvedPlugins = {
 		...profile.plugins,
 		...customPluginConfigs,
 	};
-
-	const loadedPlugins: string[] = [];
-
-	for (const [pluginKey, config] of Object.entries(resolvedPlugins)) {
-		if (!config) continue;
-
-		// 1. Match builtin plugins
-		const plugin = builtinPlugins[pluginKey as BuiltinPluginName];
-		if (plugin) {
-			const pluginConfig = typeof config === "object" ? config : {};
-			ctx.plugin(plugin, pluginConfig);
-			loadedPlugins.push(pluginKey);
-			continue;
-		}
-
-		// 2. Extensibility: Track external/custom plugin key
-		loadedPlugins.push(pluginKey);
+	const requestedPlugins = Object.entries(resolvedPlugins).filter((entry) => Boolean(entry[1]));
+	const unknownPlugins = requestedPlugins
+		.map(([pluginKey]) => pluginKey)
+		.filter((pluginKey) => !builtinPlugins[pluginKey as BuiltinPluginName]);
+	if (unknownPlugins.length > 0) {
+		throw new Error(
+			`Profile "${profileName}" references unsupported Cordis plugins: ${unknownPlugins.join(", ")}. ` +
+			"Install Pi extensions through Pi's package manager; Profile YAML currently composes built-in Pi-Cordis plugins only.",
+		);
 	}
 
-	(ctx as any)._activeProfilePluginKeys = loadedPlugins;
+	const previousMounts = activeProfileMounts.get(profileScope) ?? [];
+	const loadedPlugins: string[] = [];
+	const mountedPlugins: ActiveProfileMount[] = [];
+
+	try {
+		// Mount the replacement before touching the current profile. Registries use
+		// reversible stacks, so a failed mount can be removed without losing the old
+		// tool or command implementation.
+		for (const [pluginKey, config] of requestedPlugins) {
+			const plugin = builtinPlugins[pluginKey as BuiltinPluginName];
+			const pluginConfig = typeof config === "object" ? config : {};
+			const fork = ctx.plugin(plugin, pluginConfig);
+			mountedPlugins.push({ name: pluginKey as BuiltinPluginName, dispose: () => fork.dispose() });
+			loadedPlugins.push(pluginKey);
+		}
+	} catch (error) {
+		await Promise.allSettled(mountedPlugins.map((mount) => Promise.resolve(mount.dispose())));
+		throw error;
+	}
+
+	// Dispose only the exact Fibers owned by the previous profile after the new
+	// profile is mounted successfully.
+	await Promise.allSettled(previousMounts.map((mount) => Promise.resolve(mount.dispose())));
+	activeProfileMounts.set(profileScope, mountedPlugins);
 
 	// 3. Synchronize active tools in upstream Pi runtime
 	(ctx as any).extensions?.syncActiveTools?.();
@@ -301,7 +325,7 @@ export interface ProfilesPluginConfig {
 }
 
 export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
-	ctx.extensions?.registerCommand?.("profile", {
+	const unregisterCommand = ctx.extensions.registerCommand("profile", {
 		description: "View or switch active Cordis profile (e.g. /profile default, /profile plan, /profile ptc)",
 		getArgumentCompletions: (prefix: string) => {
 			const cwd = (ctx as any).settings?.getCwd?.() ?? process.cwd();
@@ -352,13 +376,17 @@ export function apply(ctx: Context, config: ProfilesPluginConfig = {}) {
 	});
 
 	// Listen for programmatic profile switch events (e.g. from plan-mode user approval)
-	ctx.on("pi/profile-switch" as any, async (targetProfile: string) => {
+	const unregisterSwitch = ctx.on("pi/profile-switch", async (targetProfile: string) => {
 		if (targetProfile) {
 			const cwd = (ctx as any).settings?.getCwd?.() ?? process.cwd();
 			await applyProfile(ctx, targetProfile, undefined, { cwd });
 		}
 	});
+
+	return () => {
+		unregisterSwitch();
+		unregisterCommand();
+	};
 }
 
 export default { name, inject, apply };
-

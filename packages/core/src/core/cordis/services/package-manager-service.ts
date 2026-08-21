@@ -11,13 +11,14 @@ export interface PackageManagerServiceConfig {
 
 export class PackageManagerService extends Service {
 	static provide = "packageManager";
+	static inject = ["settings"];
 	public manager: any;
 
 	constructor(ctx: Context, config?: PackageManagerServiceConfig) {
 		super(ctx, "packageManager");
 		const cwd = config?.cwd ?? process.cwd();
 		const agentDir = config?.agentDir ?? getAgentDir();
-		const settingsManager = config?.settingsManager ?? SettingsManager.create(cwd, agentDir);
+		const settingsManager = config?.settingsManager ?? ctx.settings.getSettingsManager();
 		this.manager = new DefaultPackageManager({ cwd, agentDir, settingsManager });
 
 		// Forward progress events to Cordis event bus

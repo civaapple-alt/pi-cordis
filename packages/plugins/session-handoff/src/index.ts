@@ -1,9 +1,5 @@
 import type { Context } from "@deepseek-ai/cordis";
 
-export interface SessionHandoffConfig {
-	autoArchiveOldSession?: boolean;
-}
-
 export interface HandoffEnvelope {
 	timestamp: string;
 	sessionTitle?: string;
@@ -47,10 +43,10 @@ export function formatHandoffMarkdown(data: Omit<HandoffEnvelope, "formattedMark
 	return md;
 }
 
-export function apply(ctx: Context, config: SessionHandoffConfig = {}) {
+export function apply(ctx: Context) {
 	const unregisterTool = ctx.tools.register({
 		name: "session_handoff",
-		description: "Package current goal, accomplishments, and next steps into a standardized Handoff Envelope for smooth transition to a fresh session.",
+		description: "Format supplied goal, accomplishments, and next steps as a handoff envelope. Does not create or archive sessions.",
 		parameters: {
 			type: "object",
 			properties: {

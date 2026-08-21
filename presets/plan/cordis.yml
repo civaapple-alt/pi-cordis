@@ -12,4 +12,3 @@
 - name: '@pi-cordis/plugin-todo-tracker'
 - name: '@pi-cordis/plugin-output-truncator'
 - name: '@pi-cordis/plugin-ask-question'
-- name: '@pi-cordis/plugin-context-compactor'

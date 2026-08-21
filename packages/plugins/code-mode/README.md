@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Programmatic Tool Calling (PTC / Code Mode) plugin for Pi-Cordis. It replaces multiple serial JSON Function Calling turns with a single `run_code` execution step over a strong-typed TypeScript SDK, running inside an isolated Node.js `worker_threads.Worker` with physical `worker.terminate()` infinite-loop protection.
+Programmatic Tool Calling (PTC / Code Mode) plugin for Pi-Cordis. It can replace multiple serial JSON Function Calling turns with one `run_code` step over a generated TypeScript SDK. Execution normally runs in a dedicated Node.js Worker that can be terminated on timeout.
 
 ## Tool
 
@@ -29,13 +29,14 @@ Returns:
 
 ### 2. Tool Presentation Masking
 - Automatically filters out raw underlying tools (`read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`) from the model's top-level tool list.
-- Only exposes `run_code` (and explicitly allowed top-level interaction tools like `ask_question`, `session_handoff`), reducing tool schema token overhead by 80%+.
-- Retains full programmatic access to all tools inside the worker sandbox.
+- Only exposes `run_code` and explicitly allowed interaction tools at the top level, reducing repeated tool-schema surface.
+- Retains programmatic access to active tools inside the Worker through the `pi.*` SDK.
 
 ### 3. Isolated Worker Thread Execution Engine (`worker-runner.ts`)
 - Spawns a dedicated Node.js `worker_threads.Worker` (isolated V8 Isolate and OS thread) for each execution.
-- **Async Infinite Loop Protection**: If the script contains an infinite loop (e.g. `while(true) await Promise.resolve()`), the main thread invokes `worker.terminate()` upon timeout, destroying the V8 Isolate and immediately freeing all CPU/memory resources.
-- **Fallback**: Gracefully falls back to `node:vm` if worker spawning is restricted.
+- **Timeout Protection**: If the script exceeds `timeoutMs`, the main thread invokes `worker.terminate()`.
+- **Fallback**: Falls back to a `node:vm` execution context if Worker creation fails.
+- **Security Boundary**: Neither Worker threads nor `node:vm` are permission sandboxes. Generated code runs with the Picds user's local authority and must be treated like code executed by the shell tool. Calls through `pi.*` still pass through the Cordis tool and Safety Gate pipeline.
 
 ### 4. TUI Visual Cards (`renderer.ts`)
 - `renderCall`: Displays a formatted header with line count and a 4-line syntax preview.
@@ -66,7 +67,7 @@ Returns:
 
 ### Execution & Context Preservation
 - Intermediate data (e.g. reading 50 files or filtering arrays) is processed entirely in worker memory.
-- Only explicitly printed `console.log` summaries and final results return to the conversation context, saving 90%+ of context window capacity.
+- Only captured console output and the final result return to the conversation context; the actual saving depends on the workload.
 
 ## Known Limitations and Deferred Work
 - Cross-session persistent global variables within the worker are intentionally not preserved (each execution starts from a fresh isolate).

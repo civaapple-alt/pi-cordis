@@ -9,9 +9,15 @@
   "scripts": {
     "picds": "tsx packages/core/src/cli.ts",
     "picordis": "tsx packages/core/src/cli.ts",
-    "build": "tsc --noEmit",
-    "test": "vitest --run",
-    "check": "tsc --noEmit"
+		"build": "pnpm run build:plugins && pnpm run build:core",
+		"build:plugins": "pnpm --filter \"./packages/plugins/*\" --workspace-concurrency=4 exec tsdown --config ../../../tsdown.plugin.config.ts",
+		"build:core": "pnpm --filter @pi-cordis/core run build",
+		"build:check": "tsc --noEmit",
+		"test": "vitest --run",
+		"check": "tsc --noEmit",
+		"publint": "pnpm -r --filter \"./packages/**\" --if-present run publint",
+		"pack:check": "node scripts/package-smoke.mjs",
+		"release:check": "pnpm run check && pnpm test && pnpm run build && pnpm run publint && pnpm run pack:check"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
@@ -20,6 +26,8 @@
   },
   "devDependencies": {
     "@types/node": "22.19.19",
+    "publint": "0.3.15",
+    "tsdown": "0.22.2",
     "tsx": "4.22.1",
     "typescript": "5.9.3",
     "vitest": "4.1.9"

@@ -10,11 +10,19 @@ export interface AIServiceConfig {
 	signal?: AbortSignal;
 }
 
+export interface DynamicProviderRegistration {
+	name: string;
+	kind: "config" | "native";
+	value: any;
+}
+
 export class AIService extends Service {
 	static provide = "ai";
 	public runtime!: ModelRuntime;
 	private config?: AIServiceConfig;
 	public activeModel?: Model<Api>;
+	private providerRegistrations = new Map<string, Array<{ kind: "config" | "native"; value: any }>>();
+	private modelSwitcher?: (model: Model<Api>) => Promise<boolean>;
 
 	constructor(ctx: Context, config?: AIServiceConfig) {
 		super(ctx, "ai");
@@ -52,9 +60,22 @@ export class AIService extends Service {
 		return this.runtime.getModel(provider, modelId);
 	}
 
-	public switchModel(model: Model<Api>): void {
+	public async switchModel(model: Model<Api>): Promise<boolean> {
+		if (this.modelSwitcher && !await this.modelSwitcher(model)) return false;
 		this.activeModel = model;
 		this.ctx.emit("pi/model-change", model);
+		return true;
+	}
+
+	public setModelSwitcher(switcher: ((model: Model<Api>) => Promise<boolean>) | undefined): void {
+		this.modelSwitcher = switcher;
+	}
+
+	public getRegisteredProviders(): DynamicProviderRegistration[] {
+		return Array.from(this.providerRegistrations, ([name, registrations]) => {
+			const active = registrations.at(-1)!;
+			return { name, kind: active.kind, value: active.value };
+		});
 	}
 
 	/**
@@ -63,10 +84,29 @@ export class AIService extends Service {
 	public registerProvider(name: string, config: any): () => void {
 		return this.ctx.effect(() => {
 			this.runtime.registerProvider(name, config);
+			const registration = { kind: "config" as const, value: config };
+			const registrations = this.providerRegistrations.get(name) ?? [];
+			registrations.push(registration);
+			this.providerRegistrations.set(name, registrations);
 			this.ctx.emit("pi/provider-registered", { name, config });
 			return () => {
-				(this.runtime as any).unregisterProvider?.(name);
+				const activeRegistrations = this.providerRegistrations.get(name);
+				if (!activeRegistrations) return;
+				const wasActive = activeRegistrations.at(-1) === registration;
+				const index = activeRegistrations.lastIndexOf(registration);
+				if (index >= 0) activeRegistrations.splice(index, 1);
+				if (activeRegistrations.length === 0) this.providerRegistrations.delete(name);
+				if (!wasActive) return;
+				this.runtime.unregisterProvider(name);
+				const previous = activeRegistrations.at(-1);
+				if (previous?.kind === "config") this.runtime.registerProvider(name, previous.value);
+				else if (previous) this.runtime.registerNativeProvider(previous.value);
 				this.ctx.emit("pi/provider-unregistered", name);
+				if (previous) {
+					this.ctx.emit("pi/provider-registered", previous.kind === "config"
+						? { name, config: previous.value }
+						: { name, provider: previous.value });
+				}
 			};
 		});
 	}
@@ -77,10 +117,30 @@ export class AIService extends Service {
 	public registerNativeProvider(provider: Provider<any> | any): () => void {
 		return this.ctx.effect(() => {
 			this.runtime.registerNativeProvider(provider);
-			this.ctx.emit("pi/provider-registered", { name: provider.name });
+			const name = provider.id;
+			const registration = { kind: "native" as const, value: provider };
+			const registrations = this.providerRegistrations.get(name) ?? [];
+			registrations.push(registration);
+			this.providerRegistrations.set(name, registrations);
+			this.ctx.emit("pi/provider-registered", { name, provider });
 			return () => {
-				(this.runtime as any).unregisterProvider?.(provider.name);
-				this.ctx.emit("pi/provider-unregistered", provider.name);
+				const activeRegistrations = this.providerRegistrations.get(name);
+				if (!activeRegistrations) return;
+				const wasActive = activeRegistrations.at(-1) === registration;
+				const index = activeRegistrations.lastIndexOf(registration);
+				if (index >= 0) activeRegistrations.splice(index, 1);
+				if (activeRegistrations.length === 0) this.providerRegistrations.delete(name);
+				if (!wasActive) return;
+				this.runtime.unregisterProvider(name);
+				const previous = activeRegistrations.at(-1);
+				if (previous?.kind === "config") this.runtime.registerProvider(name, previous.value);
+				else if (previous) this.runtime.registerNativeProvider(previous.value);
+				this.ctx.emit("pi/provider-unregistered", name);
+				if (previous) {
+					this.ctx.emit("pi/provider-registered", previous.kind === "config"
+						? { name, config: previous.value }
+						: { name, provider: previous.value });
+				}
 			};
 		});
 	}

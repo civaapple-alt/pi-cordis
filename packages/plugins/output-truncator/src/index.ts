@@ -22,6 +22,46 @@ export interface TruncateResult {
 export const name = "output-truncator";
 export const inject = ["settings"];
 
+function takeUtf8Prefix(text: string, byteBudget: number): string {
+	let used = 0;
+	let output = "";
+	for (const character of text) {
+		const bytes = Buffer.byteLength(character, "utf8");
+		if (used + bytes > byteBudget) break;
+		output += character;
+		used += bytes;
+	}
+	return output;
+}
+
+function takeUtf8Suffix(text: string, byteBudget: number): string {
+	let used = 0;
+	const output: string[] = [];
+	const characters = Array.from(text);
+	for (let index = characters.length - 1; index >= 0; index--) {
+		const bytes = Buffer.byteLength(characters[index], "utf8");
+		if (used + bytes > byteBudget) break;
+		output.push(characters[index]);
+		used += bytes;
+	}
+	return output.reverse().join("");
+}
+
+function truncateValue(value: unknown, options: Parameters<typeof truncateTextWithSpill>[1]): unknown {
+	if (typeof value === "string") {
+		return truncateTextWithSpill(value, options).text;
+	}
+	if (Array.isArray(value)) {
+		return value.map((item) => truncateValue(item, options));
+	}
+	if (value && typeof value === "object") {
+		for (const [key, child] of Object.entries(value)) {
+			(value as Record<string, unknown>)[key] = truncateValue(child, options);
+		}
+	}
+	return value;
+}
+
 /**
  * Truncate oversized output with Head/Tail preservation and optional Spill persistence
  */
@@ -61,7 +101,7 @@ export function truncateTextWithSpill(
 	// 1. Spill full output to disk if enabled
 	if (enableSpill) {
 		try {
-			const targetDir = options.spillDir ?? path.join(cwd, ".pi", "spill");
+			const targetDir = options.spillDir ?? path.join(cwd, ".picds", "spill");
 			if (!fs.existsSync(targetDir)) {
 				fs.mkdirSync(targetDir, { recursive: true });
 			}
@@ -104,6 +144,22 @@ export function truncateTextWithSpill(
 		processedText = head + spillNotice + tail;
 	}
 
+	// Line preservation must not defeat the byte ceiling when individual lines
+	// are very large. Re-budget from the original text around the notice.
+	if (Buffer.byteLength(processedText, "utf8") > maxBytes) {
+		const noticeMatch = processedText.match(/\n\n\[\.\.\. Truncated:[\s\S]*?\n\n/);
+		const notice = noticeMatch?.[0] ?? "\n\n[... Truncated ...]\n\n";
+		const noticeBytes = Buffer.byteLength(notice, "utf8");
+		if (noticeBytes >= maxBytes) {
+			processedText = takeUtf8Prefix(notice, maxBytes);
+		} else {
+			const contentBudget = maxBytes - noticeBytes;
+			const headBudget = Math.floor(contentBudget * 0.6);
+			const tailBudget = contentBudget - headBudget;
+			processedText = takeUtf8Prefix(text, headBudget) + notice + takeUtf8Suffix(text, tailBudget);
+		}
+	}
+
 	return {
 		text: processedText,
 		truncated: true,
@@ -119,37 +175,22 @@ export function apply(ctx: Context, config: OutputTruncatorConfig = {}) {
 	const headLines = config.headLines ?? 30;
 	const tailLines = config.tailLines ?? 20;
 	const enableSpill = config.enableSpill ?? true;
+	const spillDir = config.spillDir;
 
 	// Intercept tool result events to sanitize long output
 	const removeHook = ctx.on("pi/tool-result" as any, async (event: { result: any }) => {
 		if (!event || !event.result) return;
 		const cwd = (ctx as any).settings?.getCwd?.() ?? process.cwd();
 
-		if (typeof event.result === "string") {
-			const res = truncateTextWithSpill(event.result, {
-				maxBytes,
-				maxLines,
-				headLines,
-				tailLines,
-				enableSpill,
-				cwd,
-			});
-			event.result = res.text;
-		} else if (typeof event.result === "object") {
-			for (const key of Object.keys(event.result)) {
-				if (typeof event.result[key] === "string") {
-					const res = truncateTextWithSpill(event.result[key], {
-						maxBytes,
-						maxLines,
-						headLines,
-						tailLines,
-						enableSpill,
-						cwd,
-					});
-					event.result[key] = res.text;
-				}
-			}
-		}
+		event.result = truncateValue(event.result, {
+			maxBytes,
+			maxLines,
+			headLines,
+			tailLines,
+			enableSpill,
+			spillDir,
+			cwd,
+		});
 	});
 
 	return () => {

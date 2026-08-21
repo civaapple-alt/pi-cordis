@@ -5,8 +5,10 @@ import type { Context } from "@deepseek-ai/cordis";
 
 export interface RulesInjectorConfig {
 	ruleFiles?: string[];
+	includePiContextFiles?: boolean;
 	scanClaudeRules?: boolean;
 	scanAgentRules?: boolean;
+	maxTotalBytes?: number;
 }
 
 export const name = "rules-injector";
@@ -15,29 +17,26 @@ export const inject = ["settings"];
 function findMarkdownFiles(dir: string): string[] {
 	const results: string[] = [];
 	if (!fs.existsSync(dir)) return results;
-	try {
-		const entries = fs.readdirSync(dir, { withFileTypes: true });
-		for (const entry of entries) {
-			const fullPath = path.join(dir, entry.name);
-			if (entry.isDirectory()) {
-				results.push(...findMarkdownFiles(fullPath));
-			} else if (entry.isFile() && entry.name.endsWith(".md")) {
-				results.push(fullPath);
-			}
+	const entries = fs.readdirSync(dir, { withFileTypes: true })
+		.sort((left, right) => left.name.localeCompare(right.name));
+	for (const entry of entries) {
+		const fullPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			results.push(...findMarkdownFiles(fullPath));
+		} else if (entry.isFile() && entry.name.endsWith(".md")) {
+			results.push(fullPath);
 		}
-	} catch {
-		// Ignore read permission errors
 	}
 	return results;
 }
 
 export function apply(ctx: Context, config: RulesInjectorConfig = {}) {
 	const targetRuleFiles = config.ruleFiles ?? [
-		"AGENTS.md",
-		"CLAUDE.md",
+		...(config.includePiContextFiles ? ["AGENTS.override.md", "AGENTS.md", "CLAUDE.md"] : []),
 		".clauderules",
 		".cursorrules",
 	];
+	const maxTotalBytes = config.maxTotalBytes ?? 128 * 1024;
 
 	let cachedHash = "";
 	let cachedBlock = "";
@@ -50,13 +49,9 @@ export function apply(ctx: Context, config: RulesInjectorConfig = {}) {
 		for (const file of targetRuleFiles) {
 			const filePath = path.join(cwd, file);
 			if (fs.existsSync(filePath)) {
-				try {
-					const content = fs.readFileSync(filePath, "utf-8").trim();
-					if (content.length > 0) {
-						rulesFound.push({ file, content });
-					}
-				} catch {
-					// Ignore read errors
+				const content = fs.readFileSync(filePath, "utf-8").trim();
+				if (content.length > 0) {
+					rulesFound.push({ file, content });
 				}
 			}
 		}
@@ -69,17 +64,22 @@ export function apply(ctx: Context, config: RulesInjectorConfig = {}) {
 		for (const rDir of ruleDirs) {
 			const mFiles = findMarkdownFiles(rDir);
 			for (const cf of mFiles) {
-				try {
-					const content = fs.readFileSync(cf, "utf-8").trim();
-					const relPath = path.relative(cwd, cf).replace(/\\/g, "/");
-					rulesFound.push({ file: relPath, content });
-				} catch {
-					// Ignore read errors
-				}
+				const content = fs.readFileSync(cf, "utf-8").trim();
+				const relPath = path.relative(cwd, cf).replace(/\\/g, "/");
+				rulesFound.push({ file: relPath, content });
 			}
 		}
 
 		if (rulesFound.length === 0) return;
+		const totalBytes = rulesFound.reduce(
+			(total, rule) => total + Buffer.byteLength(rule.content, "utf8"),
+			0,
+		);
+		if (totalBytes > maxTotalBytes) {
+			throw new Error(
+				`[rules-injector] Refusing to inject ${totalBytes} bytes of supplemental rules (limit: ${maxTotalBytes}).`,
+			);
+		}
 
 		// 3. Compute combined SHA-256 hash for KV-cache friendly caching
 		const combinedRaw = rulesFound.map((r) => `${r.file}:${r.content}`).join("\n---\n");

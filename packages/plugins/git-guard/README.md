@@ -2,27 +2,12 @@
 
 English | [中文](README.zh.md)
 
-Native Cordis Git repository guard and atomic snapshot checkpoint plugin. It monitors working tree cleanliness, automatically generates `git stash create` snapshot references, and registers the `git_checkpoint` tool for instant rollbacks.
+Registers `git_checkpoint`, which uses `git stash create` to create a snapshot of tracked working-tree changes and keeps its commit reference in process memory.
 
-## Tool
+- `create`: creates a reference when tracked changes exist;
+- `list`: lists references created by this plugin instance;
+- `restore`: applies the selected commit with `git stash apply <sha>`.
 
-### `git_checkpoint`
+Checkpoint references do not survive process exit, do not include untracked files, and applying one may conflict with current changes. The plugin does not reset or delete the current working tree.
 
-Accepts:
-- `action` (`"create"` | `"restore"` | `"list"`, required): Checkpoint action to execute.
-- `checkpointId` (string, optional): Target checkpoint identifier for restore operations.
-- `description` (string, optional): Human-readable note for the checkpoint.
-
-Returns:
-- `success` (boolean): Checkpoint operation outcome.
-- `checkpoint` (object, optional): Created checkpoint details (id, sha, timestamp).
-- `checkpoints` (array, optional): Active session checkpoints on list action.
-
-## Configuration
-
-- `autoCheckpoint` (boolean, default: `true`): Automatically creates lightweight stash references before mutating turns.
-- `warnDirtyOnStart` (boolean, default: `false`): Warns if uncommitted changes exist when the session starts.
-
-## Model Experience
-- **Atomic Rollbacks**: Allows the model or user to safely snapshot experimental code changes and revert with zero Git reflog pollution.
-- **Silent Protection**: Background stash operations execute quietly without inflating prompt tokens.
+`autoCheckpoint` is opt-in and defaults to `false`, avoiding hidden Git object writes in the default Profile. When enabled, it attempts a checkpoint before each agent turn. Git errors are ignored by that background hook; explicit tool actions return failures to the caller.

@@ -1,5 +1,5 @@
 import type { AgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
-import type { Model } from "@earendil-works/pi-ai";
+import type { Model, Provider } from "@earendil-works/pi-ai";
 import type { Settings } from "./services/settings-service.ts";
 import type { ToolDef } from "./services/tool-registry-service.ts";
 import type { Skill } from "./services/skills-service.ts";
@@ -31,24 +31,35 @@ declare module "@deepseek-ai/cordis" {
 
 	interface Events {
 		// Session lifecycle
-		"pi/session-start"(session: AgentSession): void;
-		"pi/session-before"(event: { session: AgentSession; prompt: string }): void;
+		"pi/session-start"(event: {
+			session?: AgentSession;
+			sessionId?: string;
+			reason?: string;
+		}): void;
+		"pi/session-before"(event: { session?: AgentSession; prompt: string; title?: string }): void;
 		"pi/session-after"(event: { session: AgentSession }): void;
 		"pi/session-turn-start"(event: { session: AgentSession; prompt: string }): void;
 		"pi/session-turn-end"(event: { session: AgentSession; response?: unknown }): void;
 		"pi/session-created"(event: { session: SessionManager; cwd: string }): void;
 		"pi/session-forked"(event: { session: SessionManager; sourcePath: string }): void;
 		"pi/session-closed"(event: { id: string }): void;
+		"pi/session-shutdown"(event: unknown): void;
+		"pi/agent-start"(event: unknown): void;
+		"pi/agent-end"(event: unknown): void;
+		"pi/agent-settled"(event: unknown): void;
+		"pi/turn-start"(event: unknown): void;
+		"pi/turn-end"(event: unknown): void;
 
 		// Tool lifecycle & execution
 		"pi/tool-registered"(tool: ToolDef): void;
 		"pi/tool-unregistered"(name: string): void;
+		"pi/tools-changed"(): void;
 		"pi/tool-call"(event: { toolName?: string; name?: string; args: Record<string, unknown> }): void;
 		"pi/tool-result"(event: { toolName?: string; name?: string; args?: Record<string, unknown>; result: unknown }): void;
 
 		// AI & Model lifecycle
 		"pi/model-change"(model: Model<any>): void;
-		"pi/provider-registered"(event: { name: string; config?: any }): void;
+		"pi/provider-registered"(event: { name: string; config?: any; provider?: Provider<any> }): void;
 		"pi/provider-unregistered"(name: string): void;
 
 		// Settings & Auth
@@ -59,6 +70,7 @@ declare module "@deepseek-ai/cordis" {
 		"pi/skill-registered"(skill: Skill): void;
 		"pi/skill-unregistered"(name: string): void;
 		"pi/prompt-registered"(prompt: PromptTemplate): void;
+		"pi/prompt-unregistered"(name: string): void;
 		"pi/extension-loaded"(result: any): void;
 		"pi/command-registered"(event: { name: string; definition: any }): void;
 		"pi/command-unregistered"(name: string): void;
@@ -74,5 +86,8 @@ declare module "@deepseek-ai/cordis" {
 		"pi/compact"(event: { reason: string; timestamp: number; modifiedFiles?: string[]; keyDecisions?: string[]; resolvedIssues?: string[]; pendingBlockers?: string[] }): void;
 		"pi/handoff"(event: Record<string, unknown>): void;
 		"pi/plan-completed"(event: { totalSteps: number }): void;
+		"pi/profile-switch"(profileName: string): void;
+		"pi/hmr-preset-update"(event: { profileName: string; profile: unknown }): void;
+		"pi/hmr-plugin-update"(event: { pluginName: string; filePath: string }): void;
 	}
 }

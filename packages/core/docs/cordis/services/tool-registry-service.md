@@ -8,12 +8,12 @@ English | [中文](tool-registry-service.zh.md)
 
 ## Core Mechanisms
 
-1. **Unified Tool Registry**: Aggregates built-in tools with dynamic tools registered by plugins;
+1. **Unified Tool Registry**: Aggregates built-in tools with dynamic tools registered by plugins. Same-name registrations use stack semantics, so disposing the newest registration restores the previous live definition;
 2. **Presentation Tool Masking**:
    - Allows plugins (such as `@pi-cordis/plugin-code-mode` or `@pi-cordis/plugin-plan-mode`) to hide specific tools dynamically via `ctx.tools.addFilter()`, ensuring the model only perceives the tools relevant to the active mode;
 3. **Hooked Execution Pipeline (`executeTool`)**:
    - Pre-execution: Emits `pi/tool-call` for security inspection plugins (e.g. `@pi-cordis/plugin-safety-gate`) to block destructive actions;
-   - Post-execution: Emits `pi/tool-result` for output processing plugins (e.g. `@pi-cordis/plugin-output-truncator`) to perform head/tail truncation and spill persistence.
+   - Post-execution: Runs a serial mutable `pi/tool-result` transformation chain. The final `event.result` is returned to Pi.
 
 ---
 
@@ -50,15 +50,15 @@ const removeFilter = ctx.tools.addFilter((tool) => {
 ### 3. `ctx.tools.getExportedToolDefinitions(cwd?: string): ToolDef[]`
 Returns the list of tool definitions exported to the LLM after applying all active filters.
 
-### 4. `ctx.tools.getTool(name: string, cwd?: string): ToolDef | undefined`
+### 4. `ctx.tools.get(name: string, cwd?: string): ToolDef | undefined`
 Retrieves a specific tool definition by name.
 
 ### 5. `ctx.tools.executeTool(toolName: string, args: Record<string, unknown>, ...rest: any[]): Promise<any>`
 Executes a tool through the full lifecycle pipeline:
 1. Emits `pi/tool-call` serial pre-check (execution aborts if an error is thrown);
 2. Invokes the underlying `execute(args, ...)` function;
-3. Emits `pi/tool-result` post-process event;
-4. Returns the result.
+3. Emits a mutable `pi/tool-result` post-process event;
+4. Returns the possibly transformed `event.result`.
 
 ---
 

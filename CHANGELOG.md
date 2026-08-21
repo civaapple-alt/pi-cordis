@@ -6,6 +6,36 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-21
+
+### 🧭 产品边界与默认面收敛
+
+- 明确 Pi-Cordis 是 Pi 数据面之上的轻量 Cordis 控制面；DSH 仅作为能力接缝、作用域组合与副作用可逆的架构来源，不构成运行时依赖；
+- `default` 收敛为 8 个经过真实路径核验的增强插件，`plan-mode` 与 `code-mode` 分别只归属 `plan`、`ptc` 场景；
+- 将没有真实执行驱动的 `subagent`、`ssh-delegator`、`context-compactor` 标记为私有，并从 Profiles 与发布依赖图移除，停止以模拟结果声明成功。
+
+### 🔄 生命周期与执行管线修复
+
+- 工具、命令、技能、提示词与 Provider 注册改为栈式可逆语义，同名覆盖项卸载后恢复仍然存活的前一项；
+- Profile 保存并销毁精确 Fiber，未知插件在切换前失败，替换挂载失败时回滚并保留旧 Profile；HMR 改为单次串行重载并清理 Watcher、Timer 与热载 Fiber；
+- `pi/tool-result` 的修改结果现在会返回给 Pi，`output-truncator` 可递归处理 Pi 文本块并转存到 `.picds/spill/`；
+- `tools-manager` 现在真实改变模型侧工具可见性；`terminal-notifier` 对齐 Pi 的 `turn_end` 事件；
+- PTC 内部工具统一经 `ToolRegistryService.executeTool()`，不再绕过 `safety-gate`；
+- `PromptsService` 在读取磁盘模板前执行真实 reload；动态 Provider 与模型选择通过 Pi 桥双向同步；统一 `pi/session-start` 事件信封。
+
+### 🛡️ 失败语义与运行安全
+
+- Auth 写入按进程串行、临时文件原子替换并限制为 `0600`；畸形凭据与持久化失败不再静默吞掉；
+- PowerShell/CMD 破坏性命令识别、Windows 路径归一化与严格 allowlist 匹配加入安全回归；明确 `safety-gate` 是防误操作护栏而非安全沙箱；
+- `ask-question` 在无 UI 或取消时不再伪造第一个选项；Plan Mode 无 UI 时不能自批，未完成计划不能生成成功 Walkthrough；
+- Git Guard 默认不创建隐藏 Git 检查点，Rules Injector 默认不重复注入 Pi 已负责的 AGENTS/CLAUDE 上下文。
+
+### 📦 可发布产物与上线门禁
+
+- 使用 `tsdown` 为 Core 与插件工作区生成 Node 22 ESM、Source Map 和 `.d.ts`，包入口改为 `dist/` 并移除错误的上游 `npm-shrinkwrap.json`；
+- 14 个公开插件/Profile 包与 Core 通过 `publint`；新增全量 tarball 临时安装及编译后 `picds --version` 烟雾测试；
+- 新增 `pnpm release:check` 统一门禁，以及 Ubuntu、Windows、macOS 的 GitHub Actions Node 22.19 矩阵。
+
 ### 📦 Cordis 官方 npm 包迁移
 
 - 移除仓库内置的 `vendor/` Cordis、CosmoKit、Schemastery 及辅助 Cordis 插件源码；
@@ -33,7 +63,7 @@
   - 显式声明 `inject = ["extensions", "settings"]`，通过 `ctx.extensions.registerCommand("profile", ...)` 注册交互式预设查询与即时热重载命令。
 - **新建 `@pi-cordis/plugin-btw`（真实 LLM 旁路问答）**：
   - 独立插件工作区（`packages/plugins/btw`），显式声明 `inject = ["extensions", "ai"]`；
-  - 注册 `/btw` 指令，调用 `ctx.ai.getRuntime().completeSimple(...)` 进行真实单轮 LLM 流式推理并在终端展示，**100% 物理隔离不污染 SQLite / JSONL 会话日志，零上下文 Token 浪费**；
+  - 注册 `/btw` 指令，在活跃 `AgentSession` 之外调用 `ctx.ai.getRuntime().completeSimple(...)` 进行独立单轮推理；不会追加到主会话历史，但会产生独立模型请求的 Token 消耗；
   - 触发 `pi/btw-query` 与 `pi/btw-response` 响应式事件。
 - **新建 `@pi-cordis/plugin-terminal-notifier`（原生桌面通知）**：
   - 独立插件工作区（`packages/plugins/terminal-notifier`），监听智能体交互等待与轮次完成，向 Warp / Ghostty / iTerm2 发射 `OSC 777` 桌面弹窗通知。
@@ -47,7 +77,7 @@
   - 废除 5 大内部排列组合，收敛为 3 大极简场景预设：
     1. `default`（标准开发模式，内置安全守门、Git 检查点、规则注入、待办追踪、输出防爆、多智能体协同、旁路问答与桌面通知）；
     2. `plan`（规划与审计模式，只读探索、步骤状态机与写操作强制拦截）；
-    3. `ptc`（编程化调用模式，动态 TypeScript SDK 与 Worker 线程沙箱 1 轮极速批处理）。
+    3. `ptc`（编程化调用模式，动态 TypeScript SDK 与可超时终止的 Worker 批处理；Worker 不是权限沙箱）。
 
 ### 🐛 插件自定义工具终端渲染适配修复 (Plugin Custom Tool TUI Rendering Fix)
 

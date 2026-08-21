@@ -1,36 +1,35 @@
-# plugins/ — Native Cordis Plugin Ecosystem for Pi
+# Pi-Cordis plugins
 
-English | [中文](README.zh.md)
+Native plugins extend the Pi data plane through Cordis services. Every registration must be fiber-owned and reversible.
 
-Native Cordis plugins and profiles for Pi. Every plugin follows the **"Everything is a Plugin"** and **"Registration as Effect"** architecture, providing isolated capabilities, tool registrations, event intercepts, and prompt injections that are 100% reversible via Cordis disposers.
+## Published packages
 
-## Plugin Catalog
+| Plugin | Injected services | Status |
+| --- | --- | --- |
+| `ask-question` | `tools` | Interactive Pi TUI question tool with non-interactive fallback. |
+| `btw` | `extensions`, `ai` | Ephemeral one-turn question command. |
+| `code-mode` | `tools` | Worker-based PTC; nested tool calls pass through Cordis interception. |
+| `git-automation` | `tools` | Conventional Commit message formatter from explicit inputs; it does not commit. |
+| `git-guard` | `settings`, `tools` | Lightweight `git stash create` checkpoints. |
+| `output-truncator` | `settings` | Recursive text truncation and `.picds/spill` persistence. |
+| `plan-mode` | `tools`, `settings` | Plan state, review flow, and read-only write blocking. |
+| `profiles` | `extensions`, `settings`, `tools` | Built-in profile composition and development HMR. |
+| `rules-injector` | `settings` | Project-rule discovery and prompt injection. |
+| `safety-gate` | none | Serial destructive-command and protected-path interception. |
+| `session-handoff` | `tools` | Structured handoff envelope generation and event emission. |
+| `terminal-notifier` | none | OSC 777 notification on questions and Pi turn completion. |
+| `todo-tracker` | `tools` | Four-state todo graph with cycle validation. |
+| `tools-manager` | `tools` | Runtime model-facing tool visibility filter. |
 
-| Package | Role | Key Tools / Intercepts | `inject` |
-|---|---|---|---|
-| [`profiles/`](profiles/README.md) | Central profile resolver, YAML loader, and dual-track HMR manager. | Profile switching, `/profile` command | `[]` |
-| [`subagent/`](subagent/README.md) | Spawns isolated subagents with separate context scopes. | `subagent` | `["tools"]` |
-| [`plan-mode/`](plan-mode/README.md) | Structured planning mode, step tracking, and write-blocking interceptor. | `plan_step` | `["tools"]` |
-| [`code-mode/`](code-mode/README.md) | Programmatic Tool Calling (PTC) executing JS/TS with `pi.*` SDK tools. | `run_code` | `["tools"]` |
-| [`ask-question/`](ask-question/README.md) | Interactive clarifying questions with selectable options. | `ask_question` | `["tools"]` |
-| [`output-truncator/`](output-truncator/README.md) | Automatic truncation for oversized tool outputs (>50KB / >2000 lines). | Event interceptor (`pi/tool-result`) | `[]` |
-| [`context-compactor/`](context-compactor/README.md) | Manual and token-threshold context compaction. | `trigger_compact` | `["tools"]` |
-| [`tools-manager/`](tools-manager/README.md) | Dynamic tool inspection and runtime enablement/disablement. | `manage_tools` | `["tools"]` |
-| [`session-handoff/`](session-handoff/README.md) | Packages session goals and milestones for clean context transitions. | `session_handoff` | `["tools"]` |
-| [`git-automation/`](git-automation/README.md) | Conventional Commits generator and issue linker. | `git_smart_commit` | `["tools"]` |
-| [`ssh-delegator/`](ssh-delegator/README.md) | Proxies shell commands and file operations to remote SSH/Docker hosts. | `ssh_exec` | `["tools"]` |
-| [`safety-gate/`](safety-gate/README.md) | Security guard blocking destructive bash commands and sensitive file writes. | Event interceptor (`pi/tool-call`) | `[]` |
-| [`git-guard/`](git-guard/README.md) | Automatic git dirty check on session start and git stash checkpoints. | Event interceptors | `["settings"]` |
-| [`todo-tracker/`](todo-tracker/README.md) | In-session task tracking with automatic prompt injection. | `todo_write`, `todo_read` | `["tools"]` |
-| [`rules-injector/`](rules-injector/README.md) | Auto-scans and injects `AGENTS.md`, `CLAUDE.md`, `.cursorrules` into prompt. | Prompt transform hook | `["settings"]` |
+## Private prototypes
 
-## Presets & Profiles
+`subagent`, `ssh-delegator`, and `context-compactor` are private workspaces. Their previous implementations did not execute the work implied by their names, so they are excluded from `@pi-cordis/profiles` and the publication graph.
 
-Plugins are organized into curated profiles:
-- **`default` (Default is Best)**: `safety-gate`, `git-guard`, `rules-injector`, `todo-tracker`, `output-truncator`.
-- **`safe`**: Read-only safety gate with protected file boundaries.
-- **`strict`**: Safe profile with strict command enforcement and dirty git check.
-- **`plan`**: Interactive plan mode with mutating write blocker.
-- **`ptc`**: Programmatic Tool Calling via sandboxed JavaScript execution.
-- **`full`**: All 14 native Cordis plugins active simultaneously.
-- **`minimal`**: Pure minimalist microkernel with zero extra plugins.
+## Profiles
+
+- `default`: eight verified daily-development enhancements.
+- `plan`: read-only planning and review controls.
+- `ptc`: programmatic tool calling with the same safety pipeline.
+- `minimal`: internal/testing escape hatch with no native capability plugins.
+
+See the [root README](../../README.md) for the exact composition and release gates.
