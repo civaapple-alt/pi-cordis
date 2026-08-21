@@ -78,22 +78,26 @@
 ```
 
 ### 1 分钟快速上手
-
+ 
 ```bash
-# 1. 源码克隆与安装
+# 1. 源码克隆与依赖安装
 git clone https://github.com/civaapple-alt/pi-cordis.git
 cd pi-cordis
 pnpm install
 
-# 2. 配置 API Key (.env)
+# 2. 配置 API Key (根目录 .env 或 ~/.picds/agent/.env)
 echo "DEEPSEEK_API_KEY=sk-your-key" > .env
 
-# 3. 启动交互式终端 (Default is Best: 全功能就绪且自带最高安全防线)
-pnpm picds
+# 3. (推荐) 注册本地全局 CLI 命令
+npm link
 
-# 4. 在终端中即时切换场景模式
-/profile plan
-/profile ptc
+# 4. 在任意项目或工作目录下直接运行 picds！
+picds                # 默认标准日常开发模式 (Default is Best: 全功能安全开箱即用)
+picds --profile plan # 规划与审计模式 (只读代码库探索 + 交互式审批与实施计划编排)
+picds --profile ptc  # 编程化工具调用模式 (强类型 TypeScript SDK + Worker 批处理沙箱)
+
+# (也可在源码目录下免全局安装直接运行)
+pnpm picds
 ```
 
 ### 核心特性全景对比矩阵

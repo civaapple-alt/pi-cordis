@@ -80,20 +80,24 @@
 ### Quick Start
 
 ```bash
-# 1. Clone and install
+# 1. Clone repository and install dependencies
 git clone https://github.com/civaapple-alt/pi-cordis.git
 cd pi-cordis
 pnpm install
 
-# 2. Configure API Key in .env
+# 2. Configure API Key in root or ~/.picds/agent/.env
 echo "DEEPSEEK_API_KEY=sk-your-key" > .env
 
-# 3. Launch interactive terminal (Default is Best: full capabilities & safety)
-pnpm picds
+# 3. (Recommended) Register global CLI command locally
+npm link
 
-# 4. Switch presets live in terminal
-/profile plan
-/profile ptc
+# 4. Now launch picds from ANY project or working directory!
+picds                # Standard Coding Mode (Default is Best: full capabilities & safety)
+picds --profile plan # Planning & Audit Mode (Read-only review & step orchestration)
+picds --profile ptc  # Programmatic Tool Calling Mode (Dynamic TypeScript SDK & batch sandbox)
+
+# (Alternative: Run directly from source without global linking)
+pnpm picds
 ```
 
 ### Core Feature Matrix
