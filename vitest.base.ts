@@ -18,6 +18,8 @@ export const workspaceSourcePaths = {
 	sessionHandoffIndex: fileURLToPath(new URL("./packages/plugins/session-handoff/src/index.ts", import.meta.url)),
 	gitAutomationIndex: fileURLToPath(new URL("./packages/plugins/git-automation/src/index.ts", import.meta.url)),
 	sshDelegatorIndex: fileURLToPath(new URL("./packages/plugins/ssh-delegator/src/index.ts", import.meta.url)),
+	btwIndex: fileURLToPath(new URL("./packages/plugins/btw/src/index.ts", import.meta.url)),
+	terminalNotifierIndex: fileURLToPath(new URL("./packages/plugins/terminal-notifier/src/index.ts", import.meta.url)),
 } as const;
 
 export default defineConfig({
@@ -39,6 +41,8 @@ export default defineConfig({
 			{ find: /^@pi-cordis\/plugin-session-handoff$/, replacement: workspaceSourcePaths.sessionHandoffIndex },
 			{ find: /^@pi-cordis\/plugin-git-automation$/, replacement: workspaceSourcePaths.gitAutomationIndex },
 			{ find: /^@pi-cordis\/plugin-ssh-delegator$/, replacement: workspaceSourcePaths.sshDelegatorIndex },
+			{ find: /^@pi-cordis\/plugin-btw$/, replacement: workspaceSourcePaths.btwIndex },
+			{ find: /^@pi-cordis\/plugin-terminal-notifier$/, replacement: workspaceSourcePaths.terminalNotifierIndex },
 		],
 	},
 });

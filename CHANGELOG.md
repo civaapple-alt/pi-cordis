@@ -36,6 +36,7 @@
 - 14 个公开插件/Profile 包与 Core 通过 `publint`；新增全量 tarball 临时安装及编译后 `picds --version` 烟雾测试；
 - 新增 `pnpm release:check` 统一门禁，以及 Ubuntu、Windows、macOS 的 GitHub Actions Node 22.19 矩阵；
 - 迁移到 pnpm 11 `allowBuilds` 供应链策略，仅允许构建工具 `esbuild` 执行安装脚本，明确拒绝非必要依赖脚本。
+- 补齐 Vitest 对 `btw` 与 `terminal-notifier` 的工作区源码解析，保证无预生成 `dist/` 的洁净 checkout 可直接执行门禁。
 
 ### 📦 Cordis 官方 npm 包迁移
 
